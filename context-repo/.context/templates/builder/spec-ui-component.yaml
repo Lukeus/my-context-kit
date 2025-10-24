@@ -1,0 +1,60 @@
+# Template: UI Component Specification
+# Description: User interface component design spec
+_template:
+  name: UI Component Spec
+  description: Design specification for a UI component
+  entityType: spec
+  icon: 🎨
+
+id: "{{id}}"
+title: "Component: {{componentName}}"
+type: ui
+related:
+  features: []
+  packages: []
+content: |
+  ## Component Overview
+  {{componentName}} - {{description}}
+  
+  ## Props / Input
+  | Prop | Type | Required | Default | Description |
+  |------|------|----------|---------|-------------|
+  | {{prop1}} | {{type1}} | {{required1}} | {{default1}} | {{desc1}} |
+  | {{prop2}} | {{type2}} | {{required2}} | {{default2}} | {{desc2}} |
+  
+  ## Events / Output
+  | Event | Payload | Description |
+  |-------|---------|-------------|
+  | {{event1}} | {{payload1}} | {{eventDesc1}} |
+  | {{event2}} | {{payload2}} | {{eventDesc2}} |
+  
+  ## Visual States
+  - Default
+  - Hover
+  - Active/Selected
+  - Disabled
+  - Loading
+  - Error
+  
+  ## Variants
+  - {{variant1}}: {{variantDesc1}}
+  - {{variant2}}: {{variantDesc2}}
+  
+  ## Accessibility
+  - ARIA label: {{ariaLabel}}
+  - Keyboard navigation: {{keyboardNav}}
+  - Screen reader support: Yes
+  
+  ## Responsive Behavior
+  - Mobile: {{mobileBehavior}}
+  - Tablet: {{tabletBehavior}}
+  - Desktop: {{desktopBehavior}}
+  
+  ## Usage Example
+  ```vue
+  <{{componentName}}
+    :{{prop1}}="{{exampleValue1}}"
+    :{{prop2}}="{{exampleValue2}}"
+    @{{event1}}="handle{{Event1}}"
+  />
+  ```

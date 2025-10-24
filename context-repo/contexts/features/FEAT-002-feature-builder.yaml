@@ -1,0 +1,7 @@
+id: FEAT-002
+requires:
+  - svc-git
+title: Feature builder
+domain: developer-tools
+status: proposed
+objective: a tool for building features

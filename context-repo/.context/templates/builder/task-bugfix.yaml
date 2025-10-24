@@ -1,0 +1,36 @@
+# Template: Bug Fix Task
+# Description: Task for fixing a reported bug
+_template:
+  name: Bug Fix
+  description: Investigate and fix a reported issue
+  entityType: task
+  icon: 🐛
+
+id: "{{id}}"
+title: "Fix: {{bugDescription}}"
+status: todo
+related:
+  feature: "{{feature}}"
+owner: ""
+description: |
+  Bug Report: {{bugDescription}}
+  
+  Steps to Reproduce:
+  1. {{step1}}
+  2. {{step2}}
+  3. {{step3}}
+  
+  Expected Behavior: {{expected}}
+  Actual Behavior: {{actual}}
+steps:
+  - Reproduce the bug locally
+  - Investigate root cause
+  - Implement fix
+  - Add regression test
+  - Verify fix resolves issue
+  - Test for side effects
+doneCriteria:
+  - Bug no longer reproduces
+  - Regression test added and passing
+  - No new issues introduced
+  - Fix reviewed and approved

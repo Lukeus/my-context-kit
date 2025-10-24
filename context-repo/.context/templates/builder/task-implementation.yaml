@@ -1,0 +1,29 @@
+# Template: Implementation Task
+# Description: Standard implementation task with steps
+_template:
+  name: Implementation Task
+  description: Development task with clear steps and done criteria
+  entityType: task
+  icon: ⚙️
+
+id: "{{id}}"
+title: "{{title}}"
+status: todo
+related:
+  feature: "{{feature}}"
+  spec: "{{spec}}"
+owner: ""
+steps:
+  - Review requirements and design
+  - Set up development environment
+  - Implement core functionality
+  - Add error handling
+  - Write unit tests
+  - Manual testing
+  - Code review
+doneCriteria:
+  - Code compiles without errors
+  - All unit tests pass
+  - Manual testing completed
+  - Code reviewed and approved
+  - Documentation updated

@@ -53,11 +53,28 @@ A desktop application for managing GitHub-versioned context repositories for spe
 - ✅ Merge protection documentation
 - ✅ Complete CI/CD pipeline
 
-### In Progress (Phase 8)
-- ⏳ Error handling improvements
-- ⏳ Keyboard shortcuts
-- ⏳ User guide documentation
-- ⏳ Demo video
+#### Phase 8: Polish & Docs ✅
+- ✅ Error handling (network, file I/O)
+- ✅ Loading states and spinners
+- ✅ Keyboard shortcuts (Ctrl+N for entity creation)
+- ✅ User guide (README)
+
+#### Phase 9: Context Building & Generation ✅
+- ✅ Multi-step wizard modal for entity creation
+- ✅ Smart suggestions (domain, relationships, ID generation)
+- ✅ Template library with 7 pre-built entity patterns
+- ✅ AI integration (Ollama and Azure OpenAI support)
+- ✅ Secure credential storage with OS-level encryption
+- ✅ Keyboard shortcuts (Ctrl+N for quick create)
+- ✅ Auto-commit and feature branch creation
+- ✅ Bulk entity creation mode
+
+### Current Phase
+
+All MVP phases complete! The application now includes:
+- **AI-Assisted Entity Creation**: Generate entities from natural language with Ollama or Azure OpenAI
+- **Intelligent Context Building**: Smart suggestions, templates, and relationship inference
+- **Material 3 Design System**: Consistent, modern UI with Intel brand colors
 
 ## Prerequisites
 
@@ -104,9 +121,11 @@ pnpm start
 
 The app will launch and open a window where you can:
 - Browse and edit YAML entities in the context repository
+- Create new entities with AI assistance using natural language
 - View dependency graphs between features, stories, specs, and tasks
 - Validate entity schemas
 - Generate AI-ready prompts
+- Commit changes with Git integration
 
 ### 4. Validate Context Repository (Optional)
 
@@ -313,6 +332,9 @@ pnpm validate
 
 ### ✅ Implemented
 
+- **AI-Assisted Entity Creation**: Generate entities from natural language using Ollama or Azure OpenAI
+- **Smart Context Builder**: 4-step wizard with templates, suggestions, and validation
+- **Secure AI Configuration**: Encrypted API key storage with OS-level security (Windows Credential Manager)
 - **Context Management**: Browse, edit, and validate YAML entities
 - **Dependency Graph**: Visual representation of entity relationships
 - **Impact Analysis**: See what changes affect related entities
@@ -320,13 +342,20 @@ pnpm validate
 - **Git Workflow**: Commit, branch, create PRs from within the app
 - **CI/CD**: Automated validation and impact analysis on PRs
 - **Schema Validation**: Ensure all entities comply with JSON schemas
+- **Material 3 Design**: Modern, consistent UI with Intel brand colors
+- **Keyboard Shortcuts**: Ctrl+N for quick entity creation, Ctrl+S for save
 
-### 🚧 Coming Soon (Phase 8)
+### 🎯 Key Features
 
-- Enhanced error handling and user feedback
-- Keyboard shortcuts for common actions
-- Comprehensive user guide
-- Video tutorials
+**Context Building (Phase 9)**:
+- Multi-step wizard for creating features, user stories, specs, and tasks
+- AI generation from natural language prompts ("Create a feature for user authentication with OAuth")
+- Smart domain suggestions based on keywords and existing patterns
+- Relationship suggestions with confidence levels (high ✨, medium, low)
+- Template library: CRUD operations, API integration, UI components, bug fixes
+- Auto-commit with smart commit messages and feature branch creation
+- Bulk creation mode for related entities
+- Real-time ID conflict detection and validation
 
 ## Contributing
 

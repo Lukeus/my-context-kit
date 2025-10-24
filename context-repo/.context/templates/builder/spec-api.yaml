@@ -1,0 +1,65 @@
+# Template: API Specification
+# Description: REST API endpoint specification
+_template:
+  name: API Specification
+  description: Document REST API endpoint design
+  entityType: spec
+  icon: 📡
+
+id: "{{id}}"
+title: "API: {{endpointName}}"
+type: api
+related:
+  features: []
+  services: []
+content: |
+  ## Endpoint
+  `{{method}} {{path}}`
+  
+  ## Description
+  {{description}}
+  
+  ## Request
+  ### Headers
+  ```
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+  ```
+  
+  ### Body
+  ```json
+  {
+    "{{param1}}": "{{type1}}",
+    "{{param2}}": "{{type2}}"
+  }
+  ```
+  
+  ## Response
+  ### Success (200 OK)
+  ```json
+  {
+    "success": true,
+    "data": {
+      "{{field1}}": "{{value1}}",
+      "{{field2}}": "{{value2}}"
+    }
+  }
+  ```
+  
+  ### Error (400/500)
+  ```json
+  {
+    "success": false,
+    "error": {
+      "code": "ERROR_CODE",
+      "message": "Error description"
+    }
+  }
+  ```
+  
+  ## Authentication
+  Required: Yes
+  Permissions: {{permissions}}
+  
+  ## Rate Limiting
+  {{rateLimit}} requests per {{timeWindow}}
