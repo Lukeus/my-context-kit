@@ -37,17 +37,16 @@ A desktop application for managing GitHub-versioned context repositories for spe
 
 ## Quick Start
 
-### 1. Setup
+### 1. Clone and Setup
 
 ```powershell
-# Enable pnpm
+# Clone the repository
+git clone https://github.com/lukeus/my-context-kit.git
+cd my-context-kit
+
+# Enable pnpm (if not already enabled)
 corepack enable
 corepack prepare pnpm@latest --activate
-pnpm config set node-linker hoisted
-
-# Clone repository
-git clone <your-repo-url>
-cd my-context-kit
 ```
 
 ### 2. Install Dependencies
@@ -57,21 +56,31 @@ cd my-context-kit
 cd app
 pnpm install
 
-# Install context-repo dependencies
+# Install context-repo dependencies (if needed)
 cd ../context-repo
 pnpm install
+
+# Return to app directory
+cd ../app
 ```
 
-### 3. Run the App
+### 3. Run the Application
 
 ```powershell
-cd app
+# Start the Electron app in development mode
 pnpm start
 ```
 
-### 4. Validate Context Repository
+The app will launch and open a window where you can:
+- Browse and edit YAML entities in the context repository
+- View dependency graphs between features, stories, specs, and tasks
+- Validate entity schemas
+- Generate AI-ready prompts
+
+### 4. Validate Context Repository (Optional)
 
 ```powershell
+# From project root
 cd context-repo
 pnpm validate
 ```
