@@ -2,9 +2,11 @@
 import { ref, computed, onMounted } from 'vue';
 import { useContextStore } from '../stores/contextStore';
 import { useImpactStore } from '../stores/impactStore';
+import { useBuilderStore } from '../stores/builderStore';
 
 const contextStore = useContextStore();
 const impactStore = useImpactStore();
+const builderStore = useBuilderStore();
 
 // Local state
 const searchQuery = ref('');
@@ -85,6 +87,10 @@ async function loadEntities() {
   await contextStore.loadGraph();
 }
 
+function createNewEntity(entityType: string) {
+  builderStore.initBuilder(entityType, {}, contextStore.repoPath);
+}
+
 onMounted(() => {
   loadEntities();
 });
@@ -136,24 +142,35 @@ onMounted(() => {
         class="border-b border-surface-variant"
       >
         <!-- Type header -->
-        <button
-          @click="toggleType(type)"
-          class="w-full px-4 py-3 flex items-center justify-between hover:bg-surface-3 text-left transition-colors"
-        >
-          <span class="text-sm font-medium text-secondary-700">
-            {{ entityTypeLabels[type] }}
-            <span class="text-secondary-500 ml-1">({{ entities.length }})</span>
-          </span>
-          <svg
-            class="w-4 h-4 text-secondary-600 transform transition-transform"
-            :class="{ 'rotate-90': isTypeExpanded(type) }"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div class="w-full px-4 py-3 flex items-center justify-between hover:bg-surface-3 transition-colors">
+          <button
+            @click="toggleType(type)"
+            class="flex-1 flex items-center justify-between text-left"
           >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+            <span class="text-sm font-medium text-secondary-700">
+              {{ entityTypeLabels[type] }}
+              <span class="text-secondary-500 ml-1">({{ entities.length }})</span>
+            </span>
+            <svg
+              class="w-4 h-4 text-secondary-600 transform transition-transform"
+              :class="{ 'rotate-90': isTypeExpanded(type) }"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          <button
+            @click.stop="createNewEntity(type)"
+            class="ml-2 p-1 text-primary-600 hover:bg-primary-100 rounded transition-colors"
+            :title="'Create new ' + entityTypeLabels[type].toLowerCase()"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
 
         <!-- Entity list -->
         <div v-if="isTypeExpanded(type)" class="bg-surface-1">

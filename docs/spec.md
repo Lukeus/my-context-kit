@@ -719,6 +719,178 @@ F --> G[Merge]
 
 **Deliverable:** Production-ready MVP
 
+### Phase 9: Context Building & Generation (Weeks 11-15)
+
+Intelligent entity creation with AI assistance and smart suggestions.
+
+#### Phase 9.1: Core Builder (Week 11)
+- ✅ Multi-step wizard modal component (ContextBuilderModal.vue)
+- ✅ Basic field entry (ID, title, status, domain)
+- ✅ Simple next-ID generation (FEAT-003, US-105, etc.)
+- ✅ YAML preview with syntax highlighting
+- ✅ Schema validation during creation
+- ✅ File creation and saving via IPC handlers
+- ✅ builderStore for wizard state management
+
+**Deliverable:** Create entities through guided wizard
+
+#### Phase 9.2: Smart Suggestions (Week 12)
+- ✅ Implement `context-builder.mjs` pipeline
+- ✅ Domain suggestion based on existing entity patterns and keywords
+- ✅ Next ID generation with conflict detection
+- ✅ Related entity suggestions from dependency graph
+- ✅ Relationship inference (e.g., tasks → recent in-progress features)
+- ✅ Domain clustering analysis with confidence levels
+- ✅ Real-time validation with hints and warnings
+- ✅ Confidence-based suggestion display (✨ high, medium, low)
+
+**Deliverable:** Smart autocomplete and relationship suggestions
+
+#### Phase 9.3: Templates (Week 13)
+- ✅ Template storage in `.context/templates/builder/`
+- ✅ Template library (feature, user story, task, spec patterns) with 7 templates
+- ✅ Template picker UI in wizard Step 1 with clickable cards
+- ✅ Variable substitution engine with placeholder replacement
+- ✅ Common patterns: CRUD operations, API endpoints, UI components, microservices, bugfix
+- ✅ Template preview and customization in wizard
+
+**Deliverable:** Quick-start templates for common entity types
+
+#### Phase 9.4: AI Integration (Week 14)
+- ✅ Implement `ai-generator.mjs` pipeline with Ollama and Azure OpenAI support
+- ✅ Natural language → structured entity generation with system prompts per type
+- ✅ Description parsing and field extraction from AI responses
+- ✅ AI-powered acceptance criteria generation based on entity requirements
+- ✅ Relationship detection from description keywords
+- ✅ AI assist panel in ContextBuilderModal with natural language input
+- ✅ Token usage tracking and display in UI
+- ✅ Secure credential storage using Electron safeStorage API (OS-level encryption)
+- ✅ AISettingsModal.vue for provider configuration (Ollama/Azure OpenAI)
+- ✅ API key encryption and secure retrieval (never logged or exposed to renderer)
+- ✅ Test connection functionality before saving configuration
+
+**Deliverable:** AI-assisted entity creation from plain English with secure credential storage
+
+#### Phase 9.5: Advanced Features & Polish (Week 15)
+- ✅ Bulk creation mode (feature + stories + tasks in sequence)
+- ✅ Auto-linking between newly created entities
+- ✅ Auto-commit option after creation
+- ✅ Feature branch creation during entity setup
+- ✅ Keyboard shortcuts (Ctrl+N for quick create)
+- ✅ Entry points from ContextTree with + buttons
+- ✅ Comprehensive error handling with user-friendly messages
+- ✅ Loading states and animations for async operations
+- ✅ Error message display with warnings
+- ✅ Git integration options in review step
+- Graph integration (create from node context menu) - Deferred
+- RelationshipPicker component with visual graph preview - Deferred
+- Create missing entity from broken reference - Deferred
+
+**Deliverable:** Complete context building/generation system with polish
+
+#### New Components
+
+**Vue Components:**
+- `ContextBuilderModal.vue` - Multi-step entity creation wizard with AI Assist panel integrated
+- `AISettingsModal.vue` - AI provider configuration (Ollama/Azure OpenAI)
+- `RelationshipPicker.vue` - Visual entity relationship selector (Deferred)
+
+**Pinia Store:**
+- `builderStore.ts` - Wizard state, validation, suggestions, templates, AI generation management
+
+**Pipelines:**
+- `context-builder.mjs` - Smart suggestions and ID generation with domain clustering
+- `ai-generator.mjs` - AI-powered entity generation from natural language (Ollama/Azure OpenAI)
+
+**Templates:**
+- `.context/templates/builder/feature-crud.yaml`
+- `.context/templates/builder/feature-api-integration.yaml`
+- `.context/templates/builder/userstory-basic.yaml`
+- `.context/templates/builder/task-implementation.yaml`
+- `.context/templates/builder/task-bugfix.yaml`
+- `.context/templates/builder/spec-api.yaml`
+- `.context/templates/builder/spec-ui-component.yaml`
+
+#### IPC Handlers
+
+```typescript
+ipcMain.handle('context:nextId', async (_e, { repoPath, entityType }) => {
+  // Generate next available ID for entity type
+});
+
+ipcMain.handle('context:createEntity', async (_e, { repoPath, entity, entityType, autoCommit, createBranch }) => {
+  // Create and validate new entity file with optional git operations
+});
+
+ipcMain.handle('context:getSuggestions', async (_e, { repoPath, entityType, partialEntity }) => {
+  // Smart suggestions for domains, IDs, relationships
+});
+
+ipcMain.handle('context:getTemplates', async (_e, { repoPath, entityType }) => {
+  // Load available templates for entity type
+});
+
+ipcMain.handle('ai:getConfig', async (_e, { repoPath }) => {
+  // Load AI configuration from .context/ai-config.json
+});
+
+ipcMain.handle('ai:saveConfig', async (_e, { repoPath, config }) => {
+  // Save AI configuration (without API keys)
+});
+
+ipcMain.handle('ai:saveCredentials', async (_e, { provider, credentials }) => {
+  // Encrypt and save API keys using safeStorage
+});
+
+ipcMain.handle('ai:getCredentials', async (_e, { provider }) => {
+  // Check if credentials exist (returns boolean, never the actual key)
+});
+
+ipcMain.handle('ai:testConnection', async (_e, { repoPath, provider }) => {
+  // Test AI provider connection
+});
+
+ipcMain.handle('ai:generate', async (_e, { repoPath, entityType, userPrompt }) => {
+  // AI generation from natural language with secure credential decryption
+});
+```
+
+#### User Flow
+
+1. **Initiate Creation**
+   - Click "New" button in ContextTree
+   - Press Ctrl+N keyboard shortcut
+   - Right-click in GraphView → "Create Related Entity"
+   - Click broken reference → "Create Missing Entity"
+
+2. **Wizard Steps**
+   - **Step 1**: Basic info (ID, title, domain, status)
+   - **Step 2**: Relationships (link to stories, specs, tasks, services)
+   - **Step 3**: Details (entity-specific fields, acceptance criteria)
+   - **Step 4**: Review (YAML preview, validation, impact analysis)
+
+3. **AI Assistance** (optional)
+   - Enter plain English description
+   - AI generates structured fields
+   - Review and refine suggestions
+   - Apply to wizard form
+
+4. **Save & Link**
+   - Create YAML file
+   - Update dependency graph
+   - Optional: commit with smart message
+   - Optional: create feature branch
+   - Highlight new entity in graph
+
+#### Smart Features
+
+- **ID Conflict Detection**: Check existing IDs before suggesting
+- **Domain Clustering**: Suggest domain based on description keywords
+- **Relationship Inference**: Auto-suggest related entities from graph
+- **Template Matching**: Detect patterns ("API", "CRUD") → suggest template
+- **Validation Hints**: Real-time feedback (✅ valid, ⚠️ warnings, ❌ errors)
+- **Bulk Creation**: Create interconnected entities in one flow
+
 ---
 
 ## Testing Strategy

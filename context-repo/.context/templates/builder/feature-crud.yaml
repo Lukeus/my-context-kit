@@ -1,0 +1,38 @@
+# Template: CRUD Feature
+# Description: Standard Create, Read, Update, Delete feature template
+_template:
+  name: CRUD Operations
+  description: Full CRUD functionality for a data entity
+  entityType: feature
+  icon: 📋
+
+id: "{{id}}"
+title: "{{title}}"
+domain: "{{domain}}"
+status: proposed
+objective: Implement complete CRUD (Create, Read, Update, Delete) operations for {{entityName}} with validation and error handling
+acceptance:
+  - Users can create new {{entityName}} records
+  - Users can view list of all {{entityName}} records
+  - Users can view details of a single {{entityName}}
+  - Users can update existing {{entityName}} records
+  - Users can delete {{entityName}} records with confirmation
+  - All operations include proper validation
+  - Error messages are user-friendly
+constraints:
+  - Must follow RESTful API conventions
+  - Input validation on both frontend and backend
+  - Soft delete preferred over hard delete
+  - Audit logging for all changes
+requires: []
+produces: []
+userStories: []
+specs: []
+tasks: []
+prompts:
+  instructions:
+    - Use TypeScript for type safety
+    - Follow existing API patterns
+    - Include unit tests for all CRUD operations
+    - Add integration tests for API endpoints
+  contextRefs: []

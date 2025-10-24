@@ -6,15 +6,20 @@ import ImpactPanel from './components/ImpactPanel.vue';
 import GraphView from './components/GraphView.vue';
 import GitPanel from './components/GitPanel.vue';
 import WelcomeDocumentation from './components/WelcomeDocumentation.vue';
+import ContextBuilderModal from './components/ContextBuilderModal.vue';
+import AISettingsModal from './components/AISettingsModal.vue';
 import { useContextStore } from './stores/contextStore';
 import { useImpactStore } from './stores/impactStore';
+import { useBuilderStore } from './stores/builderStore';
 
 const contextStore = useContextStore();
 const impactStore = useImpactStore();
+const builderStore = useBuilderStore();
 
 const statusMessage = ref('Ready');
 const showGraphModal = ref(false);
 const showGitModal = ref(false);
+const showAISettings = ref(false);
 
 // Panel state
 const leftPanelOpen = ref(true);
@@ -61,14 +66,26 @@ function stopResize() {
   document.body.style.userSelect = '';
 }
 
+// Keyboard shortcuts
+function handleKeyboard(e: KeyboardEvent) {
+  // Ctrl+N or Cmd+N to create new entity
+  if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+    e.preventDefault();
+    // Open builder with default entity type (feature)
+    builderStore.initBuilder('feature', {}, contextStore.repoPath);
+  }
+}
+
 onMounted(() => {
   window.addEventListener('mousemove', handleMouseMove);
   window.addEventListener('mouseup', stopResize);
+  window.addEventListener('keydown', handleKeyboard);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', handleMouseMove);
   window.removeEventListener('mouseup', stopResize);
+  window.removeEventListener('keydown', handleKeyboard);
 });
 
 const testValidation = async () => {
@@ -100,11 +117,11 @@ function toggleRightPanel() {
             <p class="text-sm text-primary-100">Spec-driven development context manager</p>
           </div>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2.5">
           <!-- Left Panel Toggle -->
           <button
             @click="toggleLeftPanel"
-            class="px-3 py-2 bg-primary-700 hover:bg-primary-800 active:bg-primary-900 rounded-m3-lg transition-all shadow-elevation-1 hover:shadow-elevation-2"
+            class="p-2.5 bg-primary-700 hover:bg-primary-600 active:bg-primary-800 rounded-m3-lg transition-all shadow-elevation-2 hover:shadow-elevation-3 border border-primary-600 hover:border-primary-500"
             :title="leftPanelOpen ? 'Hide Context Tree' : 'Show Context Tree'"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,7 +131,7 @@ function toggleRightPanel() {
           
           <button
             @click="contextStore.setActiveEntity(null)"
-            class="px-4 py-2 bg-primary-700 hover:bg-primary-800 active:bg-primary-900 rounded-m3-lg transition-all shadow-elevation-1 hover:shadow-elevation-2 flex items-center gap-2"
+            class="px-4 py-2.5 bg-primary-700 hover:bg-primary-600 active:bg-primary-800 rounded-m3-lg transition-all shadow-elevation-2 hover:shadow-elevation-3 flex items-center gap-2 font-medium border border-primary-600 hover:border-primary-500"
             title="Return to Welcome Page"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,7 +141,7 @@ function toggleRightPanel() {
           </button>
           <button
             @click="showGitModal = true"
-            class="px-4 py-2 bg-primary-700 hover:bg-primary-800 active:bg-primary-900 rounded-m3-lg transition-all shadow-elevation-1 hover:shadow-elevation-2 flex items-center gap-2"
+            class="px-4 py-2.5 bg-primary-700 hover:bg-primary-600 active:bg-primary-800 rounded-m3-lg transition-all shadow-elevation-2 hover:shadow-elevation-3 flex items-center gap-2 font-medium border border-primary-600 hover:border-primary-500"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -133,18 +150,28 @@ function toggleRightPanel() {
           </button>
           <button
             @click="showGraphModal = true"
-            class="px-4 py-2 bg-primary-700 hover:bg-primary-800 active:bg-primary-900 rounded-m3-lg transition-all shadow-elevation-1 hover:shadow-elevation-2 flex items-center gap-2"
+            class="px-4 py-2.5 bg-primary-700 hover:bg-primary-600 active:bg-primary-800 rounded-m3-lg transition-all shadow-elevation-2 hover:shadow-elevation-3 flex items-center gap-2 font-medium border border-primary-600 hover:border-primary-500"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
             Graph
           </button>
+          <button
+            @click="showAISettings = true"
+            class="px-4 py-2.5 bg-primary-700 hover:bg-primary-600 active:bg-primary-800 rounded-m3-lg transition-all shadow-elevation-2 hover:shadow-elevation-3 flex items-center gap-2 font-medium border border-primary-600 hover:border-primary-500"
+            title="AI Settings"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            AI
+          </button>
           
           <!-- Right Panel Toggle -->
           <button
             @click="toggleRightPanel"
-            class="px-3 py-2 bg-primary-700 hover:bg-primary-800 active:bg-primary-900 rounded-m3-lg transition-all shadow-elevation-1 hover:shadow-elevation-2"
+            class="p-2.5 bg-primary-700 hover:bg-primary-600 active:bg-primary-800 rounded-m3-lg transition-all shadow-elevation-2 hover:shadow-elevation-3 border border-primary-600 hover:border-primary-500"
             :title="rightPanelOpen ? 'Hide Impact Panel' : 'Show Impact Panel'"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,7 +233,8 @@ function toggleRightPanel() {
       <Transition name="modal">
         <div
           v-if="showGitModal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
+          class="fixed inset-0 z-50 flex items-center justify-center"
+          style="background-color: rgba(0, 0, 0, 0.5);"
           @click.self="showGitModal = false"
         >
           <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[600px] h-[80vh] flex flex-col overflow-hidden">
@@ -236,7 +264,8 @@ function toggleRightPanel() {
       <Transition name="modal">
         <div
           v-if="showGraphModal"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-30"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style="background-color: rgba(0, 0, 0, 0.5);"
           @click.self="showGraphModal = false"
         >
           <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[95vw] h-[90vh] flex flex-col overflow-hidden">
@@ -260,6 +289,10 @@ function toggleRightPanel() {
         </div>
       </Transition>
     </Teleport>
+    
+    <!-- Context Builder Modal -->
+    <ContextBuilderModal />
+    <AISettingsModal v-if="showAISettings" @close="showAISettings = false" />
   </div>
 </template>
 

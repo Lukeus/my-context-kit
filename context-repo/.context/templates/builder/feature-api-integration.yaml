@@ -1,0 +1,37 @@
+# Template: API Integration Feature
+# Description: Integration with external API or service
+_template:
+  name: API Integration
+  description: Connect to external service or third-party API
+  entityType: feature
+  icon: 🔌
+
+id: "{{id}}"
+title: "{{title}}"
+domain: api
+status: proposed
+objective: Integrate with {{apiName}} API to enable {{functionality}}
+acceptance:
+  - API connection established with proper authentication
+  - Request/response handling implemented
+  - Error handling for API failures
+  - Rate limiting respected
+  - Retry logic for transient failures
+  - API responses cached when appropriate
+constraints:
+  - API credentials stored securely
+  - Timeout configured for all requests
+  - Logging for debugging without exposing sensitive data
+  - Graceful degradation if API unavailable
+requires: []
+produces: []
+userStories: []
+specs: []
+tasks: []
+prompts:
+  instructions:
+    - Use environment variables for API keys
+    - Implement exponential backoff for retries
+    - Add comprehensive error handling
+    - Include API response validation
+  contextRefs: []

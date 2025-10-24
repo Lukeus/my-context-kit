@@ -75,7 +75,19 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
             </p>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white rounded-m3-lg shadow-elevation-1 p-6">
+              <div class="w-12 h-12 bg-purple-100 rounded-m3-full flex items-center justify-center mb-4">
+                <svg class="w-6 h-6 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-purple-700 mb-2">AI-Assisted Creation</h3>
+              <p class="text-sm text-secondary-600">
+                Generate entities from natural language using Ollama or Azure OpenAI with smart templates.
+              </p>
+            </div>
+
             <div class="bg-white rounded-m3-lg shadow-elevation-1 p-6">
               <div class="w-12 h-12 bg-primary-100 rounded-m3-full flex items-center justify-center mb-4">
                 <svg class="w-6 h-6 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,6 +129,7 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
             <h3 class="text-lg font-semibold text-primary-900 mb-2">Quick Start</h3>
             <ol class="list-decimal list-inside space-y-2 text-secondary-700">
               <li>Set your context repository path below</li>
+              <li>Press <kbd class="px-2 py-1 text-xs font-semibold bg-surface-3 rounded">Ctrl+N</kbd> to create a new entity with AI assistance</li>
               <li>Browse entities in the Context Tree (left sidebar)</li>
               <li>Select an entity to view and edit its YAML definition</li>
               <li>Run impact analysis to see affected entities</li>
@@ -243,6 +256,23 @@ git commit -m "Initial context repository"</pre>
             <h2 class="text-2xl font-bold text-primary-700 mb-6">Features</h2>
 
             <div class="space-y-8">
+              <div>
+                <h3 class="text-xl font-semibold text-purple-700 mb-3">✨ AI-Assisted Entity Creation</h3>
+                <p class="text-secondary-700 mb-3">
+                  Create entities using natural language with AI assistance (Ollama or Azure OpenAI):
+                </p>
+                <ul class="list-disc list-inside space-y-2 text-secondary-700 ml-4">
+                  <li>Multi-step wizard with 4 stages: Basic Info, Relationships, Details, Review</li>
+                  <li>AI generation from plain English descriptions</li>
+                  <li>Smart domain suggestions based on keywords and patterns</li>
+                  <li>Relationship inference with confidence levels (high ✨, medium, low)</li>
+                  <li>Template library: CRUD, API integration, UI components, bug fixes</li>
+                  <li>Auto-commit with smart messages and feature branch creation</li>
+                  <li>Real-time ID conflict detection and validation</li>
+                  <li>Secure API key storage with OS-level encryption</li>
+                </ul>
+              </div>
+
               <div>
                 <h3 class="text-xl font-semibold text-primary-700 mb-3">🌳 Context Tree Browser</h3>
                 <p class="text-secondary-700 mb-3">

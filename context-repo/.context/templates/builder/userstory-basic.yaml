@@ -1,0 +1,20 @@
+# Template: Basic User Story
+# Description: Standard user story format
+_template:
+  name: Basic User Story
+  description: Standard user story following "As a... I want... So that..." format
+  entityType: userstory
+  icon: 👤
+
+id: "{{id}}"
+feature: "{{feature}}"
+asA: "{{userRole}}"
+iWant: "{{capability}}"
+soThat: "{{benefit}}"
+acceptanceCriteria:
+  - "{{criterion1}}"
+  - "{{criterion2}}"
+  - "{{criterion3}}"
+impacts:
+  services: []
+  packages: []
