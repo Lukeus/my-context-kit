@@ -14,6 +14,8 @@ const generatedPrompt = ref<string>('');
 const promptEntityId = ref<string>('');
 const showResolvedIssues = ref(false);
 
+const supportedPromptTypes = new Set(['feature', 'userstory', 'spec']);
+
 const impactedCount = computed(() => {
   return impactStore.impactReport?.impactedIds.length || 0;
 });
@@ -35,6 +37,12 @@ const staleEntities = computed(() => {
   });
 });
 
+const canGeneratePrompt = computed(() => {
+  const entity = contextStore.activeEntity;
+  if (!entity) return false;
+  return supportedPromptTypes.has(entity._type);
+});
+
 async function analyzeImpact() {
   if (!contextStore.activeEntityId) return;
   await impactStore.analyzeImpact([contextStore.activeEntityId]);
@@ -42,6 +50,10 @@ async function analyzeImpact() {
 
 async function generatePrompt() {
   if (!contextStore.activeEntityId) return;
+  if (!canGeneratePrompt.value) {
+    impactStore.error = 'Prompt generation is only available for features, user stories, and specs.';
+    return;
+  }
   
   const result = await impactStore.generatePrompts([contextStore.activeEntityId]);
   
@@ -148,7 +160,8 @@ function isIssueResolved(issue: any): boolean {
         
         <button
           @click="generatePrompt"
-          :disabled="!contextStore.activeEntityId"
+          :disabled="!contextStore.activeEntityId || !canGeneratePrompt"
+          :title="!canGeneratePrompt ? 'Prompts are available for features, user stories, and specs.' : undefined"
           class="w-full px-4 py-2.5 text-sm bg-secondary text-white rounded-m3-lg hover:bg-secondary-700 active:bg-secondary-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium"
         >
           Generate Prompt

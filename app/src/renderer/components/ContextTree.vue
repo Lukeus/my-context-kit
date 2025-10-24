@@ -10,7 +10,7 @@ const builderStore = useBuilderStore();
 
 // Local state
 const searchQuery = ref('');
-const expandedTypes = ref<Set<string>>(new Set(['feature', 'userstory', 'spec', 'task']));
+const expandedTypes = ref<Set<string>>(new Set(['governance', 'feature', 'userstory', 'spec', 'task']));
 
 // Computed
 const filteredEntitiesByType = computed(() => {
@@ -32,6 +32,7 @@ const filteredEntitiesByType = computed(() => {
 });
 
 const entityTypeLabels: Record<string, string> = {
+  governance: 'Governance',
   feature: 'Features',
   userstory: 'User Stories',
   spec: 'Specifications',
@@ -39,6 +40,8 @@ const entityTypeLabels: Record<string, string> = {
   service: 'Services',
   package: 'Packages'
 };
+
+const typesWithCreation = new Set(['feature', 'userstory', 'spec', 'task', 'service', 'package']);
 
 // Methods
 function toggleType(type: string) {
@@ -57,8 +60,13 @@ function selectEntity(entityId: string) {
   contextStore.setActiveEntity(entityId);
 }
 
-function getStatusColor(status?: string): string {
-  if (!status) return 'bg-gray-400';
+function getStatusColor(status: string | undefined, type: string): string {
+  if (!status) {
+    if (type === 'governance') {
+      return 'bg-indigo-500';
+    }
+    return 'bg-gray-400';
+  }
   
   const statusColors: Record<string, string> = {
     'proposed': 'bg-blue-400',
@@ -166,6 +174,7 @@ onMounted(() => {
             </svg>
           </button>
           <button
+            v-if="typesWithCreation.has(type)"
             @click.stop="createNewEntity(type)"
             class="ml-2 p-1 text-primary-600 hover:bg-primary-100 rounded transition-colors"
             :title="'Create new ' + entityTypeLabels[type].toLowerCase()"
@@ -196,7 +205,7 @@ onMounted(() => {
             <!-- Status indicator -->
             <span
               class="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-elevation-1"
-              :class="getStatusColor(entity.status)"
+              :class="getStatusColor(entity.status, entity._type)"
             ></span>
 
             <!-- Entity info -->

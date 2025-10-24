@@ -2,6 +2,9 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 // Expose IPC API to renderer process
 contextBridge.exposeInMainWorld('api', {
+  app: {
+    getDefaultRepoPath: () => ipcRenderer.invoke('app:getDefaultRepoPath'),
+  },
   settings: {
     get: (key: string) => ipcRenderer.invoke('settings:get', { key }),
     set: (key: string, value: any) => ipcRenderer.invoke('settings:set', { key, value }),
@@ -43,6 +46,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('ai:testConnection', { dir, provider, endpoint, model, useStoredKey }),
     generate: (dir: string, entityType: string, userPrompt: string) => 
       ipcRenderer.invoke('ai:generate', { dir, entityType, userPrompt }),
+    assist: (dir: string, question: string, mode?: string, focusId?: string) =>
+      ipcRenderer.invoke('ai:assist', { dir, question, mode, focusId }),
   },
 });
 
@@ -91,7 +96,23 @@ declare global {
           Promise<{ ok: boolean; message?: string; error?: string }>;
         generate: (dir: string, entityType: string, userPrompt: string) => 
           Promise<{ ok: boolean; entity?: any; usage?: any; error?: string; rawContent?: string }>;
+        assist: (dir: string, question: string, mode?: string, focusId?: string) =>
+          Promise<{
+            ok: boolean;
+            answer?: string;
+            improvements?: Array<{ target?: string; suggestion?: string; impact?: string }>;
+            clarifications?: string[];
+            followUps?: string[];
+            references?: Array<{ type?: string; id?: string; note?: string }>;
+            usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+            snapshot?: Record<string, unknown>;
+            error?: string;
+            rawContent?: string;
+          }>;
       };
+        app: {
+          getDefaultRepoPath: () => Promise<{ ok: boolean; path?: string; error?: string }>;
+        };
     };
   }
 }

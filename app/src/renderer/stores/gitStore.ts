@@ -2,17 +2,24 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useContextStore } from './contextStore';
 
+interface RenamedFile {
+  from: string;
+  to: string;
+  type?: string;
+}
+
 interface GitStatus {
   modified: string[];
   created: string[];
   deleted: string[];
-  renamed: string[];
+  renamed: RenamedFile[];
   conflicted: string[];
   staged: string[];
   current: string;
   tracking: string | null;
   ahead: number;
   behind: number;
+  not_added?: string[];
 }
 
 export const useGitStore = defineStore('git', () => {
@@ -32,7 +39,9 @@ export const useGitStore = defineStore('git', () => {
     return (
       status.value.modified.length > 0 ||
       status.value.created.length > 0 ||
-      status.value.deleted.length > 0
+      status.value.deleted.length > 0 ||
+      status.value.renamed.length > 0 ||
+      (status.value.not_added?.length ?? 0) > 0
     );
   });
 
@@ -44,12 +53,21 @@ export const useGitStore = defineStore('git', () => {
       return files.filter(f => f.startsWith('context-repo/'));
     };
     
-    return [
+    const renamedTargets = status.value.renamed
+      .map(entry => entry.to || entry.from)
+      .filter(Boolean);
+
+    const notAdded = status.value.not_added ?? [];
+
+    const aggregated = [
       ...filterContextRepo(status.value.modified),
       ...filterContextRepo(status.value.created),
       ...filterContextRepo(status.value.deleted),
-      ...filterContextRepo(status.value.renamed)
+      ...filterContextRepo(renamedTargets),
+      ...filterContextRepo(notAdded)
     ];
+
+    return Array.from(new Set(aggregated));
   });
 
   const changedFilesCount = computed(() => changedFiles.value.length);

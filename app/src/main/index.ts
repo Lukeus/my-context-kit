@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, clipboard, safeStorage } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import started from 'electron-squirrel-startup';
 import { execa } from 'execa';
 import { simpleGit } from 'simple-git';
@@ -101,6 +102,13 @@ ipcMain.handle('context:generate', async (_event, { dir, ids }: { dir: string; i
     });
     return JSON.parse(result.stdout);
   } catch (error: any) {
+    if (error?.stdout) {
+      try {
+        return JSON.parse(error.stdout);
+      } catch {
+        // Fall through to default error return if stdout isn't valid JSON
+      }
+    }
     return { ok: false, error: error.message };
   }
 });
@@ -138,6 +146,7 @@ ipcMain.handle('fs:findEntityFile', async (_event, { dir, entityType, entityId }
   try {
     // Map entity types to their directory names
     const typeDirMap: Record<string, string> = {
+      governance: 'governance',
       feature: 'features',
       userstory: 'userstories',
       spec: 'specs',
@@ -149,12 +158,33 @@ ipcMain.handle('fs:findEntityFile', async (_event, { dir, entityType, entityId }
     const typeDir = typeDirMap[entityType] || entityType + 's';
     const entityDir = path.join(dir, 'contexts', typeDir);
     const files = await readdir(entityDir);
-    
+
     // Find file that starts with the entity ID
-    const matchingFile = files.find(f => 
-      (f.endsWith('.yaml') || f.endsWith('.yml')) && 
+    let matchingFile = files.find(f =>
+      (f.endsWith('.yaml') || f.endsWith('.yml')) &&
       (f === `${entityId}.yaml` || f === `${entityId}.yml` || f.startsWith(`${entityId}-`))
     );
+
+    if (!matchingFile) {
+      // Fallback: parse YAML files to match entities whose filenames omit the ID (e.g. constitution)
+      const { parse: parseYAML } = await import('yaml');
+      for (const fileName of files) {
+        if (!fileName.endsWith('.yaml') && !fileName.endsWith('.yml')) {
+          continue;
+        }
+
+        try {
+          const content = await readFile(path.join(entityDir, fileName), 'utf-8');
+          const data = parseYAML(content);
+          if (data && data.id === entityId) {
+            matchingFile = fileName;
+            break;
+          }
+        } catch {
+          // Ignore parse errors and keep searching other files
+        }
+      }
+    }
     
     if (matchingFile) {
       return { ok: true, filePath: path.join(entityDir, matchingFile) };
@@ -185,7 +215,8 @@ ipcMain.handle('git:status', async (_event, { dir }: { dir: string }) => {
       current: status.current || '',
       tracking: status.tracking || null,
       ahead: status.ahead || 0,
-      behind: status.behind || 0
+      behind: status.behind || 0,
+      not_added: status.not_added || []
     };
     
     return { ok: true, status: serializedStatus };
@@ -210,7 +241,7 @@ ipcMain.handle('git:diff', async (_event, { dir, filePath }: { dir: string; file
       if (isNewFile && !isStaged) {
         // For new untracked files, show the entire file content as "added"
         try {
-          const content = await readFile(path.join(dir, filePath), 'utf-8');
+          const content = await readFile(path.join(projectRoot, filePath), 'utf-8');
           const lines = content.split('\n');
           const diff = lines.map(line => `+${line}`).join('\n');
           return { ok: true, diff: `New file: ${filePath}\n\n${diff}` };
@@ -334,11 +365,33 @@ ipcMain.handle('git:createPR', async (_event, { dir, title, body, base }: { dir:
   }
 });
 
+ipcMain.handle('app:getDefaultRepoPath', async () => {
+  try {
+    const envOverride = process.env.CONTEXT_REPO_PATH;
+    if (envOverride) {
+      return { ok: true, path: envOverride };
+    }
+
+    const appPath = app.getAppPath();
+    const candidates = [
+      path.resolve(appPath, '..', 'context-repo'),
+      path.resolve(appPath, '..', '..', 'context-repo'),
+      path.resolve(process.cwd(), 'context-repo')
+    ];
+
+    const matchingPath = candidates.find(candidate => existsSync(candidate));
+    return { ok: true, path: matchingPath ?? '' };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
 // Context Builder handlers
 ipcMain.handle('context:nextId', async (_event, { dir, entityType }: { dir: string; entityType: string }) => {
   try {
     // Map entity types to their directory names
     const typeDirMap: Record<string, string> = {
+      governance: 'governance',
       feature: 'features',
       userstory: 'userstories',
       spec: 'specs',
@@ -426,6 +479,7 @@ ipcMain.handle('context:createEntity', async (_event, { dir, entity, entityType 
   try {
     // Map entity types to their directory names
     const typeDirMap: Record<string, string> = {
+      governance: 'governance',
       feature: 'features',
       userstory: 'userstories',
       spec: 'specs',
@@ -676,10 +730,9 @@ ipcMain.handle('ai:testConnection', async (_event, { dir, provider, endpoint, mo
   }
 });
 
-ipcMain.handle('ai:generate', async (_event, { dir, entityType, userPrompt }: 
+ipcMain.handle('ai:generate', async (_event, { dir, entityType, userPrompt }:
   { dir: string; entityType: string; userPrompt: string }) => {
   try {
-    // Load AI config
     const configPath = path.join(dir, '.context', AI_CONFIG_FILE);
     let config;
     try {
@@ -693,7 +746,6 @@ ipcMain.handle('ai:generate', async (_event, { dir, entityType, userPrompt }:
       return { ok: false, error: 'AI assistance is disabled' };
     }
 
-    // Get API key if needed
     let apiKey = '';
     if (config.provider === 'azure-openai') {
       try {
@@ -705,14 +757,13 @@ ipcMain.handle('ai:generate', async (_event, { dir, entityType, userPrompt }:
       }
     }
 
-    // Call AI generator pipeline
     const args = [
       path.join(dir, '.context', 'pipelines', 'ai-generator.mjs'),
       'generate',
       config.provider,
       config.endpoint,
       config.model,
-      apiKey, // Will be empty for ollama
+      apiKey,
       entityType,
       userPrompt
     ];
@@ -721,7 +772,6 @@ ipcMain.handle('ai:generate', async (_event, { dir, entityType, userPrompt }:
       cwd: dir,
       env: {
         ...process.env,
-        // Ensure proxy variables are passed to child process
         HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || '',
         HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || '',
         NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || ''
@@ -731,14 +781,84 @@ ipcMain.handle('ai:generate', async (_event, { dir, entityType, userPrompt }:
     return JSON.parse(result.stdout);
   } catch (error: any) {
     console.error('AI generation failed:', error.stderr || error.stdout || error.message);
-    const errorMsg = error.stderr || error.stdout || 'AI generation failed. Check configuration.';
-    // Try to extract error from JSON if present
-    try {
-      const parsed = JSON.parse(errorMsg);
-      return parsed;
-    } catch {
-      return { ok: false, error: errorMsg };
+    const errorMsg = error.stdout || error.stderr || 'AI generation failed. Check configuration.';
+    if (error?.stdout) {
+      try {
+        return JSON.parse(error.stdout);
+      } catch {
+        // ignore JSON parsing errors and fall through
+      }
     }
+    return { ok: false, error: errorMsg };
+  }
+});
+
+ipcMain.handle('ai:assist', async (_event, { dir, question, mode, focusId }:
+  { dir: string; question: string; mode?: string; focusId?: string }) => {
+  try {
+    if (!question || !question.trim()) {
+      return { ok: false, error: 'Question is required' };
+    }
+
+    const configPath = path.join(dir, '.context', AI_CONFIG_FILE);
+    let config;
+    try {
+      const content = await readFile(configPath, 'utf-8');
+      config = JSON.parse(content);
+    } catch {
+      return { ok: false, error: 'AI not configured. Please configure AI settings first.' };
+    }
+
+    if (!config.enabled) {
+      return { ok: false, error: 'AI assistance is disabled' };
+    }
+
+    let apiKey = '';
+    if (config.provider === 'azure-openai') {
+      try {
+        const credPath = path.join(app.getPath('userData'), `${config.provider}-${CREDENTIALS_FILE}`);
+        const encrypted = await readFile(credPath);
+        apiKey = safeStorage.decryptString(encrypted);
+      } catch {
+        return { ok: false, error: 'API key not found. Please configure credentials.' };
+      }
+    }
+
+    const encodedQuestion = Buffer.from(question, 'utf-8').toString('base64');
+    const encodedOptions = Buffer.from(JSON.stringify({ mode, focusId }), 'utf-8').toString('base64');
+
+    const args = [
+      path.join(dir, '.context', 'pipelines', 'ai-assistant.mjs'),
+      config.provider,
+      config.endpoint,
+      config.model,
+      apiKey,
+      encodedQuestion,
+      encodedOptions
+    ];
+
+    const result = await execa('node', args, {
+      cwd: dir,
+      env: {
+        ...process.env,
+        HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || '',
+        HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || '',
+        NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || ''
+      }
+    });
+
+    return JSON.parse(result.stdout);
+  } catch (error: any) {
+    console.error('AI assistant failed:', error.stderr || error.stdout || error.message);
+    const errorMsg = error.stdout || error.stderr || 'AI assistant request failed. Check configuration.';
+    if (error?.stdout) {
+      try {
+        return JSON.parse(error.stdout);
+      } catch {
+        // fall through if not JSON
+      }
+    }
+    return { ok: false, error: errorMsg };
   }
 });
 

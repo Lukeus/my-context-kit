@@ -1,0 +1,178 @@
+id: CONST-CTX-SYNC
+name: "Context-Sync System Constitution"
+version: "1.1.0"
+status: "ratified"
+ratifiedOn: "2025-10-22"
+lastAmendedOn: "2025-10-22"
+checksum: "2a7f9d2b1c46108dfcbbcb1e1f908db8d2d5f1ef3ab9c4155a5d22443a4df366"
+summary: |
+  Governs the Context-Sync platform with principles that enforce spec-driven development,
+  Git-backed single source of truth, and disciplined validation workflows for every entity.
+layers:
+  - id: main
+    name: "Electron Main Process"
+    paths:
+      - "app/src/main/**"
+    description: "Node.js runtime responsible for IPC orchestration and secure pipeline execution."
+  - id: renderer
+    name: "Vue Renderer"
+    paths:
+      - "app/src/renderer/**"
+    description: "Front-end application built with Vue 3, Tailwind CSS, and Pinia state stores."
+  - id: context-repo
+    name: "Context Repository"
+    paths:
+      - "context-repo/contexts/**"
+      - "context-repo/.context/**"
+    description: "Git-versioned knowledge base containing YAML entities, schemas, and automation pipelines."
+principles:
+  - id: spec-driven-development
+    title: "Spec-Driven Development"
+    summary: "Every deliverable flows from a ratified specification to maintain architectural clarity."
+    details: |
+      Features, user stories, and tasks derive from an authoritative specification and must point back to
+      their knowledge source. Specifications act as the contract between planning and execution.
+    appliesTo:
+      - feature
+      - userstory
+      - spec
+      - task
+    tags:
+      - planning
+      - architecture
+    nonNegotiable: true
+    references:
+      - "docs/spec.md"
+    requirements:
+      - id: feature-domain
+        statement: "Features must declare a governing domain to preserve ownership boundaries."
+        severity: "high"
+        evidence:
+          - type: "document"
+            path: "docs/spec.md"
+            description: "Domain catalogue and ownership policy."
+  - id: git-single-source-of-truth
+    title: "Git as Source of Truth"
+    summary: "The context repository is the canonical record for every entity and rule."
+    details: |
+      All artifacts live in Git and changes are validated before merging. Automation uses repository state
+      as the single system of record.
+    appliesTo:
+      - service
+      - package
+      - task
+    tags:
+      - git
+      - governance
+    nonNegotiable: true
+    references:
+      - "docs/phase6-git-workflow-completion.md"
+    requirements:
+      - id: task-assignment
+        statement: "Each task must have a named owner to ensure accountability for Git-tracked work."
+        severity: "medium"
+  - id: validation-first
+    title: "Validation-First Workflows"
+    summary: "All context entities must include acceptance or done criteria that can be validated."
+    details: |
+      Work items include measurable acceptance or done criteria. Pipelines enforce the presence of
+      actionable validation checklists so quality gates remain automated.
+    appliesTo:
+      - userstory
+      - task
+    tags:
+      - quality
+      - automation
+    nonNegotiable: true
+    references:
+      - "docs/phase3-implementation.md"
+    requirements:
+      - id: userstory-acceptance
+        statement: "User stories provide at least one acceptance criterion before implementation begins."
+        severity: "high"
+  - id: observability-and-feedback
+    title: "Observability and Feedback"
+    summary: "Changes surface their impact immediately across UI and automation."
+    details: |
+      Automated analysis highlights downstream impact for every entity change, enabling fast feedback across
+      the engineering workflow.
+    appliesTo:
+      - feature
+      - userstory
+      - spec
+    tags:
+      - observability
+      - impact-analysis
+    nonNegotiable: false
+    references:
+      - "docs/phase5-implementation.md"
+    requirements: []
+  - id: secure-pipeline-execution
+    title: "Secure Pipeline Execution"
+    summary: "Automation must execute with least privilege and zero key exposure."
+    details: |
+      IPC invokes pipeline scripts in isolated processes. Secrets are stored securely and never exposed to
+      the renderer context.
+    appliesTo:
+      - service
+      - package
+      - layer
+    tags:
+      - security
+      - pipelines
+    nonNegotiable: true
+    references:
+      - "docs/phase4-implementation.md"
+    requirements: []
+governance:
+  owners:
+    - "@architecture-guild"
+    - "@lukeus"
+  reviewCadence: "per-release"
+  adrReferences:
+    - "docs/phase6-git-workflow-completion.md"
+    - "docs/phase7-cicd-documentation.md"
+  changeControl: "Updates require architecture guild approval and a corresponding ADR entry."
+compliance:
+  rules:
+    - id: feature-domain-required
+      description: "Features must declare a domain to align with ownership boundaries."
+      targets:
+        - "feature"
+      conditions:
+        - path: "domain"
+          operator: "exists"
+          message: "Feature must specify a domain to comply with spec-driven planning."
+      severity: "high"
+      references:
+        - "docs/spec.md"
+    - id: userstory-acceptance-required
+      description: "User stories require measurable acceptance criteria."
+      targets:
+        - "userstory"
+      conditions:
+        - path: "acceptanceCriteria"
+          operator: "exists"
+          message: "User story requires acceptanceCriteria section."
+        - path: "acceptanceCriteria"
+          operator: "greaterThan"
+          value: 0
+          message: "User story must define at least one acceptance criterion."
+      severity: "high"
+      references:
+        - "docs/spec.md"
+    - id: task-owner-required
+      description: "Tasks must have an accountable owner."
+      targets:
+        - "task"
+      conditions:
+        - path: "owner"
+          operator: "exists"
+          message: "Task must identify an owner."
+        - path: "status"
+          operator: "exists"
+          message: "Task status must be declared."
+      severity: "medium"
+      references:
+        - "docs/phase3-implementation.md"
+  exceptions: []

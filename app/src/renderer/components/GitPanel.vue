@@ -29,40 +29,40 @@ const changedEntities = computed(() => {
 
 const commitMessageTemplate = computed(() => {
   if (changedEntities.value.length === 0) return '';
-  
+
   const entities = changedEntities.value.slice(0, 3).join(', ');
   const more = changedEntities.value.length > 3 ? ` and ${changedEntities.value.length - 3} more` : '';
-  
+
   let template = `feat: Update ${entities}${more}\n\nChanges:\n- `;
-  
-  // Add impact info if available
-  if (impactStore.report && impactStore.report.stale?.length > 0) {
-    template += `\n\nImpact: ${impactStore.report.stale.slice(0, 5).join(', ')} need review`;
+
+  const report = impactStore.impactReport;
+  if (report?.staleIds && report.staleIds.length > 0) {
+    template += `\n\nImpact: ${report.staleIds.slice(0, 5).join(', ')} need review`;
   }
-  
+
   return template;
 });
 
 const prBodyTemplate = computed(() => {
   if (changedEntities.value.length === 0) return '';
-  
+
   const entities = changedEntities.value.join(', ');
   let body = `## Changes\n\nUpdated entities: ${entities}\n\n`;
-  
-  // Add impact analysis
-  if (impactStore.report) {
+
+  const report = impactStore.impactReport;
+  if (report) {
     body += `## Impact Analysis\n\n`;
-    if (impactStore.report.stale && impactStore.report.stale.length > 0) {
-      body += `**Stale items (${impactStore.report.stale.length}):** ${impactStore.report.stale.join(', ')}\n\n`;
+    if (report.staleIds && report.staleIds.length > 0) {
+      body += `**Stale items (${report.staleIds.length}):** ${report.staleIds.join(', ')}\n\n`;
     }
-    if (impactStore.report.issues && impactStore.report.issues.length > 0) {
+    if (report.issues && report.issues.length > 0) {
       body += `**Issues:**\n`;
-      impactStore.report.issues.forEach((issue: any) => {
+      report.issues.forEach((issue: any) => {
         body += `- ${issue.id}: ${issue.message}\n`;
       });
     }
   }
-  
+
   return body;
 });
 
@@ -152,6 +152,8 @@ function getFileStatus(file: string): string {
   if (gitStore.status?.modified.includes(file)) return 'M';
   if (gitStore.status?.created.includes(file)) return 'A';
   if (gitStore.status?.deleted.includes(file)) return 'D';
+  if (gitStore.status?.renamed.some(entry => entry.to === file || entry.from === file)) return 'R';
+  if (gitStore.status?.not_added?.includes(file)) return '?';
   return '?';
 }
 
@@ -160,6 +162,7 @@ function getFileStatusColor(file: string): string {
   if (status === 'M') return 'text-yellow-600 bg-yellow-100';
   if (status === 'A') return 'text-green-600 bg-green-100';
   if (status === 'D') return 'text-red-600 bg-red-100';
+  if (status === 'R') return 'text-blue-600 bg-blue-100';
   return 'text-gray-600 bg-gray-100';
 }
 

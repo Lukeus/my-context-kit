@@ -22,6 +22,7 @@ if (entityIds.length === 0) {
 
 // Entity type to directory mapping
 const entityDirs = {
+  governance: 'governance',
   feature: 'features',
   userstory: 'userstories',
   spec: 'specs',
@@ -29,6 +30,8 @@ const entityDirs = {
   service: 'services',
   package: 'packages'
 };
+
+const supportedPromptTypes = new Set(['feature', 'userstory', 'spec']);
 
 // Helper function to get all YAML files
 function getAllYamlFiles(dir) {
@@ -115,12 +118,10 @@ try {
     // Determine template based on entity type
     let templateName = entity._type;
     
-    // Map entity type to template name
-    if (entity._type === 'task') {
-      // Tasks don't have a specific template, skip or use a generic one
+    if (!supportedPromptTypes.has(entity._type)) {
       errors.push({
         id: entityId,
-        error: `No template available for entity type: ${entity._type}`
+        error: `Prompt generation not supported for entity type: ${entity._type}`
       });
       continue;
     }

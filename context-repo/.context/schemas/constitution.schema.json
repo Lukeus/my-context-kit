@@ -1,0 +1,368 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://context-sync.dev/schemas/constitution.schema.json",
+  "title": "Context Constitution",
+  "description": "Defines the governing principles, rules, and exceptions that other context artifacts must comply with.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "version",
+    "status",
+    "ratifiedOn",
+    "principles",
+    "governance",
+    "compliance"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9-]{2,}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "ratified", "deprecated"]
+    },
+    "ratifiedOn": {
+      "type": "string",
+      "format": "date"
+    },
+    "lastAmendedOn": {
+      "type": "string",
+      "format": "date"
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[A-Fa-f0-9]{64}$"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "layers": {
+      "type": "array",
+      "description": "Clean architecture or system layers that the constitution governs.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "paths"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{1,}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "principles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "summary", "appliesTo", "nonNegotiable"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,}$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          },
+          "appliesTo": {
+            "type": "array",
+            "description": "Entity types or layers governed by this principle.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "global",
+                "feature",
+                "userstory",
+                "spec",
+                "task",
+                "service",
+                "package",
+                "layer"
+              ]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "nonNegotiable": {
+            "type": "boolean"
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "requirements": {
+            "type": "array",
+            "description": "Specific measurable requirements derived from the principle.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "statement", "severity"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]{2,}$"
+                },
+                "statement": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": ["critical", "high", "medium", "low"]
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "path"],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["schema", "adr", "document", "url"]
+                      },
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "description": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owners", "reviewCadence"],
+      "properties": {
+        "owners": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^@?[A-Za-z0-9_.-]+$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "reviewCadence": {
+          "type": "string",
+          "enum": ["per-release", "quarterly", "annually", "ad-hoc"]
+        },
+        "adrReferences": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "changeControl": {
+          "type": "string"
+        }
+      }
+    },
+    "compliance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rules"],
+      "properties": {
+        "rules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "description", "targets", "conditions", "severity"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{2,}$"
+              },
+              "description": {
+                "type": "string"
+              },
+              "targets": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "global",
+                    "feature",
+                    "userstory",
+                    "spec",
+                    "task",
+                    "service",
+                    "package",
+                    "layer"
+                  ]
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "conditions": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["path", "operator"],
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "description": "JSON pointer or dot-notation path used during validation."
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "exists",
+                        "equals",
+                        "notEquals",
+                        "includes",
+                        "matches",
+                        "greaterThan",
+                        "lessThan"
+                      ]
+                    },
+                    "value": {},
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "severity": {
+                "type": "string",
+                "enum": ["critical", "high", "medium", "low"]
+              },
+              "remediation": {
+                "type": "string"
+              },
+              "references": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "uniqueItems": true
+              }
+            }
+          }
+        },
+        "exceptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "ruleId", "scope", "justification"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{2,}$"
+              },
+              "ruleId": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{2,}$"
+              },
+              "scope": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "entities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Z]{2,4}-[A-Za-z0-9-]+$"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true
+                  },
+                  "layers": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "uniqueItems": true
+                  }
+                }
+              },
+              "expiresOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "justification": {
+                "type": "string"
+              },
+              "mitigations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "uniqueItems": true
+              },
+              "approvers": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^@?[A-Za-z0-9_.-]+$"
+                },
+                "uniqueItems": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
