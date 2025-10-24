@@ -104,7 +104,8 @@ export const useBuilderStore = defineStore('builder', () => {
     entityType.value = type;
     partialEntity.value = { ...initialData };
     validationState.value = { valid: true };
-    if (repoPathValue) {
+    // Always set repo path if provided, even if empty string (allows override)
+    if (repoPathValue !== undefined) {
       repoPath.value = repoPathValue;
     }
   }
@@ -174,11 +175,12 @@ export const useBuilderStore = defineStore('builder', () => {
         console.warn('Domain suggestions failed:', domainResult.error);
       }
 
-      // Get related entity suggestions
+      // Get related entity suggestions - convert reactive object to plain object
+      const plainEntity = JSON.parse(JSON.stringify(partialEntity.value));
       const relatedResult = await window.api.context.getSuggestions(
         repoPath.value,
         'suggest-related',
-        [entityType.value, JSON.stringify(partialEntity.value)]
+        [entityType.value, plainEntity]
       );
       if (relatedResult && !relatedResult.error) {
         suggestions.value.features = relatedResult.features || [];

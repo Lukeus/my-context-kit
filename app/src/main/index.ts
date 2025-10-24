@@ -64,8 +64,7 @@ const createWindow = (): void => {
 ipcMain.handle('context:validate', async (_event, { dir }: { dir: string }) => {
   try {
     const result = await execa('node', [path.join(dir, '.context', 'pipelines', 'validate.mjs')], { 
-      cwd: dir,
-      shell: true
+      cwd: dir
     });
     return JSON.parse(result.stdout);
   } catch (error: any) {
@@ -76,8 +75,7 @@ ipcMain.handle('context:validate', async (_event, { dir }: { dir: string }) => {
 ipcMain.handle('context:buildGraph', async (_event, { dir }: { dir: string }) => {
   try {
     const result = await execa('node', [path.join(dir, '.context', 'pipelines', 'build-graph.mjs')], {
-      cwd: dir,
-      shell: true
+      cwd: dir
     });
     return JSON.parse(result.stdout);
   } catch (error: any) {
@@ -88,8 +86,7 @@ ipcMain.handle('context:buildGraph', async (_event, { dir }: { dir: string }) =>
 ipcMain.handle('context:impact', async (_event, { dir, changedIds }: { dir: string; changedIds: string[] }) => {
   try {
     const result = await execa('node', [path.join(dir, '.context', 'pipelines', 'impact.mjs'), ...changedIds], {
-      cwd: dir,
-      shell: true
+      cwd: dir
     });
     return JSON.parse(result.stdout);
   } catch (error: any) {
@@ -100,8 +97,7 @@ ipcMain.handle('context:impact', async (_event, { dir, changedIds }: { dir: stri
 ipcMain.handle('context:generate', async (_event, { dir, ids }: { dir: string; ids: string[] }) => {
   try {
     const result = await execa('node', [path.join(dir, '.context', 'pipelines', 'generate.mjs'), ...ids], {
-      cwd: dir,
-      shell: true
+      cwd: dir
     });
     return JSON.parse(result.stdout);
   } catch (error: any) {
@@ -329,8 +325,7 @@ ipcMain.handle('git:createPR', async (_event, { dir, title, body, base }: { dir:
     }
     
     const result = await execa('gh', args, {
-      cwd: projectRoot,
-      shell: true
+      cwd: projectRoot
     });
     
     return { ok: true, url: result.stdout };
@@ -472,10 +467,17 @@ ipcMain.handle('context:createEntity', async (_event, { dir, entity, entityType 
 
 ipcMain.handle('context:getSuggestions', async (_event, { dir, command, params }: { dir: string; command: string; params: any[] }) => {
   try {
-    const args = [path.join(dir, '.context', 'pipelines', 'context-builder.mjs'), command, ...params];
+    // Base64-encode any JSON objects to avoid Windows shell quote escaping issues
+    const encodedParams = params.map(param => {
+      if (typeof param === 'object') {
+        return Buffer.from(JSON.stringify(param)).toString('base64');
+      }
+      return param;
+    });
+    
+    const args = [path.join(dir, '.context', 'pipelines', 'context-builder.mjs'), command, ...encodedParams];
     const result = await execa('node', args, {
-      cwd: dir,
-      shell: true
+      cwd: dir
     });
     return JSON.parse(result.stdout);
   } catch (error: any) {
@@ -526,9 +528,47 @@ ipcMain.handle('context:getTemplates', async (_event, { dir, entityType }: { dir
   }
 });
 
-// AI Configuration and Secure Credential Storage
+// Configuration and Secure Credential Storage
+const APP_SETTINGS_FILE = 'app-settings.json';
 const AI_CONFIG_FILE = 'ai-config.json';
 const CREDENTIALS_FILE = 'ai-credentials.enc';
+
+// App Settings handlers
+ipcMain.handle('settings:get', async (_event, { key }: { key: string }) => {
+  try {
+    const settingsPath = path.join(app.getPath('userData'), APP_SETTINGS_FILE);
+    const content = await readFile(settingsPath, 'utf-8');
+    const settings = JSON.parse(content);
+    return { ok: true, value: settings[key] };
+  } catch (error: any) {
+    // Return default if file doesn't exist or key not found
+    return { ok: true, value: null };
+  }
+});
+
+ipcMain.handle('settings:set', async (_event, { key, value }: { key: string; value: any }) => {
+  try {
+    const settingsPath = path.join(app.getPath('userData'), APP_SETTINGS_FILE);
+    let settings: Record<string, any> = {};
+    
+    // Load existing settings if file exists
+    try {
+      const content = await readFile(settingsPath, 'utf-8');
+      settings = JSON.parse(content);
+    } catch {
+      // File doesn't exist yet, use empty object
+    }
+    
+    // Update setting
+    settings[key] = value;
+    
+    // Save back to file
+    await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+    return { ok: true };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
 
 ipcMain.handle('ai:getConfig', async (_event, { dir }: { dir: string }) => {
   try {
@@ -679,13 +719,26 @@ ipcMain.handle('ai:generate', async (_event, { dir, entityType, userPrompt }:
 
     const result = await execa('node', args, {
       cwd: dir,
-      shell: true
+      env: {
+        ...process.env,
+        // Ensure proxy variables are passed to child process
+        HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || '',
+        HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || '',
+        NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || ''
+      }
     });
 
     return JSON.parse(result.stdout);
   } catch (error: any) {
-    console.error('AI generation failed (error logged without sensitive data)');
-    return { ok: false, error: 'AI generation failed. Check configuration.' };
+    console.error('AI generation failed:', error.stderr || error.stdout || error.message);
+    const errorMsg = error.stderr || error.stdout || 'AI generation failed. Check configuration.';
+    // Try to extract error from JSON if present
+    try {
+      const parsed = JSON.parse(errorMsg);
+      return parsed;
+    } catch {
+      return { ok: false, error: errorMsg };
+    }
   }
 });
 

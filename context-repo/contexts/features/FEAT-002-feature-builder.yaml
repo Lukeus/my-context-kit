@@ -5,3 +5,5 @@ title: Feature builder
 domain: developer-tools
 status: proposed
 objective: a tool for building features
+userStories:
+  - "US-002"

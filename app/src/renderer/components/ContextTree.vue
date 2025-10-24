@@ -84,10 +84,14 @@ function hasIssue(entityId: string): boolean {
 }
 
 async function loadEntities() {
+  // Ensure store is initialized before loading
+  await contextStore.initializeStore();
   await contextStore.loadGraph();
 }
 
-function createNewEntity(entityType: string) {
+async function createNewEntity(entityType: string) {
+  // Ensure store is initialized before accessing repoPath
+  await contextStore.initializeStore();
   builderStore.initBuilder(entityType, {}, contextStore.repoPath);
 }
 

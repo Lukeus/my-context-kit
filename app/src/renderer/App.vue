@@ -67,16 +67,20 @@ function stopResize() {
 }
 
 // Keyboard shortcuts
-function handleKeyboard(e: KeyboardEvent) {
+async function handleKeyboard(e: KeyboardEvent) {
   // Ctrl+N or Cmd+N to create new entity
   if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
     e.preventDefault();
     // Open builder with default entity type (feature)
+    await contextStore.initializeStore();
     builderStore.initBuilder('feature', {}, contextStore.repoPath);
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Initialize context store on app mount
+  await contextStore.initializeStore();
+  
   window.addEventListener('mousemove', handleMouseMove);
   window.addEventListener('mouseup', stopResize);
   window.addEventListener('keydown', handleKeyboard);
