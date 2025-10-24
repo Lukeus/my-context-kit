@@ -4,9 +4,11 @@ A desktop application for managing GitHub-versioned context repositories for spe
 
 ## Project Status
 
-**MVP Development - Phase 2 Complete** ✅
+**MVP Development - Phase 7 Complete** ✅
 
-### Completed (Phase 1 & 2)
+### Completed Phases
+
+#### Phase 1-2: Foundation ✅
 - ✅ Electron Forge + Vite + TypeScript setup
 - ✅ Vue 3 + Pinia + Tailwind CSS configuration
 - ✅ IPC bridge between main and renderer processes
@@ -14,19 +16,48 @@ A desktop application for managing GitHub-versioned context repositories for spe
 - ✅ JSON Schemas for all 6 entity types
 - ✅ Validation pipeline with AJV
 - ✅ Sample YAML entities for testing
-- ✅ Build-graph pipeline (scan YAML, construct dependency graph)
-- ✅ Impact analysis pipeline (find affected entities)
-- ✅ Prompt generation pipeline (Handlebars templates)
-- ✅ ContextTree component (collapsible, searchable, status indicators)
-- ✅ Pinia stores (contextStore, impactStore)
-- ✅ Basic impact analysis UI
-- ✅ TypeScript 5.3+ with strict typing
 
-### In Progress (Phase 3)
-- ⏳ YAML editor component with live validation
-- ⏳ GraphView component with Cytoscape.js
-- ⏳ Enhanced impact panel with visual diff
-- ⏳ File system operations (save, create entities)
+#### Phase 3: Core UI ✅
+- ✅ YAML editor component with CodeMirror
+- ✅ Live schema validation in editor
+- ✅ File save/load operations
+- ✅ Enhanced ContextTree with filtering
+- ✅ Impact panel with real-time analysis
+
+#### Phase 4: Prompt Generation ✅
+- ✅ Handlebars template system
+- ✅ Prompt generation pipeline
+- ✅ Prompt modal with copy-to-clipboard
+- ✅ Template-based prompt rendering
+
+#### Phase 5: Graph Visualization ✅
+- ✅ Cytoscape.js integration
+- ✅ Interactive dependency graph
+- ✅ Node coloring by entity type
+- ✅ Path finding between nodes
+- ✅ Zoom, pan, and search functionality
+- ✅ Click to open entity in editor
+
+#### Phase 6: Git Integration ✅
+- ✅ Git status tracking (via simple-git)
+- ✅ Diff viewer for changed files
+- ✅ Commit UI with smart templates
+- ✅ Branch creation and switching
+- ✅ PR creation via GitHub CLI
+- ✅ Impact analysis in commit messages
+
+#### Phase 7: CI/CD ✅
+- ✅ GitHub Actions workflow for validation
+- ✅ Impact analysis on pull requests
+- ✅ PR comment bot with reports
+- ✅ Merge protection documentation
+- ✅ Complete CI/CD pipeline
+
+### In Progress (Phase 8)
+- ⏳ Error handling improvements
+- ⏳ Keyboard shortcuts
+- ⏳ User guide documentation
+- ⏳ Demo video
 
 ## Prerequisites
 
@@ -140,6 +171,8 @@ my-context-kit/
 | Type Safety | TypeScript (strict) | Static typing |
 | Schema Validation | AJV | YAML validation |
 | Templating | Handlebars | Prompt generation |
+| Graph Visualization | Cytoscape.js | Dependency graphs |
+| Git Integration | simple-git | Version control |
 | Package Manager | pnpm (exclusive) | Fast dependencies |
 
 ## Development Commands
@@ -162,10 +195,10 @@ pnpm typecheck      # TypeScript type checking
 ```powershell
 cd context-repo
 
-pnpm validate       # Validate all YAML entities
-pnpm build-graph    # Build dependency graph (coming soon)
-pnpm impact         # Run impact analysis (coming soon)
-pnpm generate       # Generate prompts (coming soon)
+node .context/pipelines/validate.mjs       # Validate all YAML entities
+node .context/pipelines/build-graph.mjs    # Build dependency graph
+node .context/pipelines/impact.mjs FEAT-001 # Run impact analysis
+node .context/pipelines/generate.mjs FEAT-001 # Generate prompts
 ```
 
 ## Entity Types
@@ -276,15 +309,24 @@ pnpm validate
 # Review error output for schema/cross-reference issues
 ```
 
-## Next Steps
+## Features
 
-1. Implement build-graph pipeline
-2. Implement impact analysis pipeline
-3. Implement prompt generation pipeline
-4. Build UI components (ContextTree, YamlEditor, ImpactPanel, GraphView)
-5. Set up Pinia stores
-6. Add Git integration
-7. Implement CI/CD with GitHub Actions
+### ✅ Implemented
+
+- **Context Management**: Browse, edit, and validate YAML entities
+- **Dependency Graph**: Visual representation of entity relationships
+- **Impact Analysis**: See what changes affect related entities
+- **Prompt Generation**: Create AI-ready context for coding agents
+- **Git Workflow**: Commit, branch, create PRs from within the app
+- **CI/CD**: Automated validation and impact analysis on PRs
+- **Schema Validation**: Ensure all entities comply with JSON schemas
+
+### 🚧 Coming Soon (Phase 8)
+
+- Enhanced error handling and user feedback
+- Keyboard shortcuts for common actions
+- Comprehensive user guide
+- Video tutorials
 
 ## Contributing
 
@@ -298,6 +340,9 @@ pnpm validate
 
 - [WARP.md](./WARP.md) - Complete build guide
 - [docs/spec.md](./docs/spec.md) - Technical specification
+- [docs/phase6-git-workflow-completion.md](./docs/phase6-git-workflow-completion.md) - Git integration
+- [docs/phase7-cicd-documentation.md](./docs/phase7-cicd-documentation.md) - CI/CD pipeline
+- [docs/merge-protection-setup.md](./docs/merge-protection-setup.md) - Branch protection guide
 - [.github/copilot-instructions.md](./.github/copilot-instructions.md) - AI assistant guidelines
 
 ## License
@@ -310,4 +355,4 @@ Luke Adams (@lukeu)
 
 ---
 
-**Status**: MVP Phase 1 Complete | **Version**: 0.1.0 | **Last Updated**: 2025-10-23
+**Status**: MVP Phase 7 Complete | **Version**: 0.7.0 | **Last Updated**: 2025-10-24
