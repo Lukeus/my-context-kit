@@ -206,7 +206,7 @@ function toggleRightPanel() {
       <Transition name="modal">
         <div
           v-if="showGitModal"
-          class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
           @click.self="showGitModal = false"
         >
           <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[600px] h-[80vh] flex flex-col overflow-hidden">
@@ -236,7 +236,7 @@ function toggleRightPanel() {
       <Transition name="modal">
         <div
           v-if="showGraphModal"
-          class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-30"
           @click.self="showGraphModal = false"
         >
           <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[95vw] h-[90vh] flex flex-col overflow-hidden">
