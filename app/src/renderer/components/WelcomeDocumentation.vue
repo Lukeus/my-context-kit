@@ -21,7 +21,7 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
           </div>
         </div>
         <p class="text-lg text-primary-50 max-w-2xl">
-          A powerful desktop application for managing GitHub context repositories, enabling spec-driven development workflows with impact analysis, version control integration, and intelligent context management.
+          An application for managing GitHub context repositories, enabling spec-driven development workflows with impact analysis, version control integration, and intelligent context management.
         </p>
       </div>
     </div>
@@ -71,7 +71,7 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
               Context-Sync is designed to manage context repositories for spec-driven development. It helps you maintain a structured repository of features, user stories, specifications, and tasks while analyzing the impact of changes across your project.
             </p>
             <p class="text-secondary-700">
-              Think of it as a central hub for your project's living documentation, where every entity (feature, spec, task) is interconnected, versioned, and validated automatically.
+              Think of it as a central hub for your project's living documentation, where every entity (feature, spec, task) is interconnected, versioned, and validated systematically.
             </p>
           </div>
 
