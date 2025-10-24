@@ -2,6 +2,21 @@
 
 A desktop application for managing GitHub-versioned context repositories for spec-driven software development.
 
+<img width="1943" height="1177" alt="image" src="https://github.com/user-attachments/assets/3135817a-749b-4ffb-b451-bbe3eea45c4c" />
+
+<img width="1949" height="1168" alt="image" src="https://github.com/user-attachments/assets/a86b0408-5200-4b7c-8e44-61e8db962a6d" />
+
+<img width="1946" height="1184" alt="image" src="https://github.com/user-attachments/assets/083e5111-9540-4618-b1c6-c8ef07892b40" />
+
+<img width="1879" height="1092" alt="image" src="https://github.com/user-attachments/assets/8ebd3773-869b-4301-b2e4-20701c93641b" />
+
+
+
+<img width="701" height="964" alt="image" src="https://github.com/user-attachments/assets/d6ab660d-d743-4e93-bc79-2352eaaa154d" />
+
+
+
+
 ## Project Status
 
 **MVP Development - Phase 7 Complete** ✅
