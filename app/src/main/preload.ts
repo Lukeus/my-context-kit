@@ -2,6 +2,10 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 // Expose IPC API to renderer process
 contextBridge.exposeInMainWorld('api', {
+  settings: {
+    get: (key: string) => ipcRenderer.invoke('settings:get', { key }),
+    set: (key: string, value: any) => ipcRenderer.invoke('settings:set', { key, value }),
+  },
   context: {
     validate: (dir: string) => ipcRenderer.invoke('context:validate', { dir }),
     buildGraph: (dir: string) => ipcRenderer.invoke('context:buildGraph', { dir }),
@@ -46,6 +50,10 @@ contextBridge.exposeInMainWorld('api', {
 declare global {
   interface Window {
     api: {
+      settings: {
+        get: (key: string) => Promise<{ ok: boolean; value?: any; error?: string }>;
+        set: (key: string, value: any) => Promise<{ ok: boolean; error?: string }>;
+      };
       context: {
         validate: (dir: string) => Promise<any>;
         buildGraph: (dir: string) => Promise<any>;

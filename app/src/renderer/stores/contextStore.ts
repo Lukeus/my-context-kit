@@ -31,12 +31,36 @@ interface Graph {
 
 export const useContextStore = defineStore('context', () => {
   // State
-  const repoPath = ref('C:\\Users\\lukeu\\source\\repos\\my-context-kit\\context-repo');
+  const repoPath = ref('');
   const entities = ref<Record<string, Entity>>({});
   const graph = ref<Graph | null>(null);
   const activeEntityId = ref<string | null>(null);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
+  const isInitialized = ref(false);
+
+  // Load saved repo path on initialization
+  async function initializeStore() {
+    if (isInitialized.value) return;
+    
+    try {
+      const result = await window.api.settings.get('repoPath');
+      if (result.ok && result.value) {
+        repoPath.value = result.value;
+      } else {
+        // Default fallback
+        repoPath.value = 'C:\\Users\\lukeu\\source\\repos\\my-context-kit\\context-repo';
+      }
+    } catch (err) {
+      // Use default on error
+      repoPath.value = 'C:\\Users\\lukeu\\source\\repos\\my-context-kit\\context-repo';
+    }
+    
+    isInitialized.value = true;
+  }
+
+  // Initialize on first access
+  initializeStore();
 
   // Computed
   const activeEntity = computed(() => {
@@ -76,6 +100,13 @@ export const useContextStore = defineStore('context', () => {
   // Actions
   async function setRepoPath(path: string) {
     repoPath.value = path;
+    
+    // Persist to settings
+    try {
+      await window.api.settings.set('repoPath', path);
+    } catch (err) {
+      console.error('Failed to save repo path setting:', err);
+    }
   }
 
   async function loadGraph() {
@@ -155,11 +186,13 @@ export const useContextStore = defineStore('context', () => {
     activeEntityId,
     isLoading,
     error,
+    isInitialized,
     // Computed
     activeEntity,
     entitiesByType,
     entityCount,
     // Actions
+    initializeStore,
     setRepoPath,
     loadGraph,
     validateRepo,

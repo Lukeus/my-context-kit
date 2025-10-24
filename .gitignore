@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 jspm_packages/
+/**/node_modules/
+context-repo/node_modules/
 
 # Build outputs
 out/
@@ -52,6 +54,7 @@ coverage/
 .cache/
 .eslintcache
 .npm
+.npmrc
 
 # Temporary files
 *.tmp

@@ -141,10 +141,13 @@ async function generateWithAI() {
       tokenUsage.value = result.usage;
       aiPrompt.value = ''; // Clear prompt after successful generation
     } else {
+      // Show detailed error message
       aiError.value = result.error || 'Failed to generate entity';
     }
-  } catch (error) {
-    aiError.value = 'AI generation failed. Please check your configuration.';
+  } catch (error: any) {
+    // Show the actual error message
+    aiError.value = error.message || 'AI generation failed. Please check your configuration.';
+    console.error('AI generation error:', error);
   } finally {
     isGenerating.value = false;
   }

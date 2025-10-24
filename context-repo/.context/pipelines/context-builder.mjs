@@ -292,7 +292,18 @@ if (process.argv[2]) {
       
       case 'suggest-related': {
         const entityType = process.argv[3];
-        const currentEntity = JSON.parse(process.argv[4] || '{}');
+        // Support both argv and base64-encoded argv for Windows compatibility
+        let currentEntity = {};
+        if (process.argv[4]) {
+          try {
+            // Try Base64 decoding first (for Windows compatibility)
+            const decoded = Buffer.from(process.argv[4], 'base64').toString('utf8');
+            currentEntity = JSON.parse(decoded);
+          } catch {
+            // Fallback to direct JSON parse
+            currentEntity = JSON.parse(process.argv[4]);
+          }
+        }
         result = suggestRelatedEntities(entityType, currentEntity, entities);
         break;
       }
