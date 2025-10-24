@@ -6,11 +6,17 @@ import { useImpactStore } from '../stores/impactStore';
 const gitStore = useGitStore();
 const impactStore = useImpactStore();
 
-const activeTab = ref<'status' | 'commit' | 'branches'>('status');
+const activeTab = ref<'status' | 'commit' | 'branches' | 'pr'>('status');
 const commitMessage = ref('');
 const selectedFiles = ref<string[]>([]);
 const newBranchName = ref('');
 const showBranchModal = ref(false);
+const showDiffModal = ref(false);
+const selectedFileForDiff = ref<string | null>(null);
+const prTitle = ref('');
+const prBody = ref('');
+const prBase = ref('main');
+const showPRModal = ref(false);
 
 const changedEntities = computed(() => {
   return gitStore.changedFiles
@@ -27,7 +33,37 @@ const commitMessageTemplate = computed(() => {
   const entities = changedEntities.value.slice(0, 3).join(', ');
   const more = changedEntities.value.length > 3 ? ` and ${changedEntities.value.length - 3} more` : '';
   
-  return `feat: Update ${entities}${more}\n\nChanges:\n- `;
+  let template = `feat: Update ${entities}${more}\n\nChanges:\n- `;
+  
+  // Add impact info if available
+  if (impactStore.report && impactStore.report.stale?.length > 0) {
+    template += `\n\nImpact: ${impactStore.report.stale.slice(0, 5).join(', ')} need review`;
+  }
+  
+  return template;
+});
+
+const prBodyTemplate = computed(() => {
+  if (changedEntities.value.length === 0) return '';
+  
+  const entities = changedEntities.value.join(', ');
+  let body = `## Changes\n\nUpdated entities: ${entities}\n\n`;
+  
+  // Add impact analysis
+  if (impactStore.report) {
+    body += `## Impact Analysis\n\n`;
+    if (impactStore.report.stale && impactStore.report.stale.length > 0) {
+      body += `**Stale items (${impactStore.report.stale.length}):** ${impactStore.report.stale.join(', ')}\n\n`;
+    }
+    if (impactStore.report.issues && impactStore.report.issues.length > 0) {
+      body += `**Issues:**\n`;
+      impactStore.report.issues.forEach((issue: any) => {
+        body += `- ${issue.id}: ${issue.message}\n`;
+      });
+    }
+  }
+  
+  return body;
 });
 
 function toggleFileSelection(file: string) {
@@ -84,6 +120,32 @@ async function handleCreateBranch() {
 
 async function handleCheckout(branchName: string) {
   await gitStore.checkout(branchName);
+}
+
+async function handleViewDiff(file: string) {
+  selectedFileForDiff.value = file;
+  await gitStore.loadDiff(file);
+  showDiffModal.value = true;
+}
+
+function usePRTemplate() {
+  prBody.value = prBodyTemplate.value;
+}
+
+async function handleCreatePR() {
+  if (!prTitle.value.trim()) {
+    alert('Please enter a PR title');
+    return;
+  }
+  
+  const result = await gitStore.createPR(prTitle.value, prBody.value, prBase.value);
+  
+  if (result.ok) {
+    alert(`PR created successfully: ${result.url}`);
+    prTitle.value = '';
+    prBody.value = '';
+    showPRModal.value = false;
+  }
 }
 
 function getFileStatus(file: string): string {
@@ -166,6 +228,13 @@ onMounted(async () => {
       >
         Branches
       </button>
+      <button
+        @click="activeTab = 'pr'"
+        class="px-4 py-3 text-sm font-medium border-b-2 transition-all hover:bg-surface-3"
+        :class="activeTab === 'pr' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'"
+      >
+        Pull Request
+      </button>
     </div>
 
     <!-- Content -->
@@ -186,7 +255,8 @@ onMounted(async () => {
             <div
               v-for="file in gitStore.changedFiles"
               :key="file"
-              class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded text-sm"
+              class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded text-sm cursor-pointer group"
+              @click="handleViewDiff(file)"
             >
               <span
                 class="px-1.5 py-0.5 text-xs font-mono rounded"
@@ -195,6 +265,10 @@ onMounted(async () => {
                 {{ getFileStatus(file) }}
               </span>
               <span class="flex-1 font-mono text-xs text-gray-700">{{ file }}</span>
+              <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
             </div>
           </div>
         </div>
@@ -307,13 +381,83 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+
+      <!-- PR Tab -->
+      <div v-if="activeTab === 'pr'" class="space-y-4">
+        <div v-if="!gitStore.hasUncommittedChanges" class="text-center py-8 text-gray-500">
+          <p>No changes available for PR creation</p>
+          <p class="text-sm mt-1">Commit your changes first</p>
+        </div>
+
+        <div v-else>
+          <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+            <p class="text-sm text-yellow-800">
+              <strong>Note:</strong> Make sure to commit and push your changes before creating a PR.
+            </p>
+          </div>
+
+          <!-- PR Title -->
+          <div class="mb-4">
+            <label class="text-sm font-semibold text-gray-700 block mb-2">PR Title</label>
+            <input
+              v-model="prTitle"
+              type="text"
+              placeholder="feat: Add new feature..."
+              class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <!-- PR Body -->
+          <div class="mb-4">
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-sm font-semibold text-gray-700">PR Description</label>
+              <button
+                @click="usePRTemplate"
+                class="text-xs text-blue-600 hover:underline"
+              >
+                Use Template
+              </button>
+            </div>
+            <textarea
+              v-model="prBody"
+              rows="10"
+              placeholder="Describe the changes..."
+              class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+            ></textarea>
+          </div>
+
+          <!-- Base Branch -->
+          <div class="mb-4">
+            <label class="text-sm font-semibold text-gray-700 block mb-2">Base Branch</label>
+            <input
+              v-model="prBase"
+              type="text"
+              placeholder="main"
+              class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <!-- Create PR Button -->
+          <button
+            @click="handleCreatePR"
+            :disabled="!prTitle.trim() || gitStore.isLoading"
+            class="w-full px-4 py-2.5 bg-green-600 text-white rounded-m3-lg hover:bg-green-700 active:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2 font-medium"
+          >
+            {{ gitStore.isLoading ? 'Creating PR...' : 'Create Pull Request' }}
+          </button>
+
+          <p class="text-xs text-gray-500 mt-2">
+            This will use GitHub CLI (gh) to create the PR
+          </p>
+        </div>
+      </div>
     </div>
 
     <!-- Branch Creation Modal -->
     <Teleport to="body">
       <div
         v-if="showBranchModal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
         @click.self="showBranchModal = false"
       >
         <div class="bg-white rounded-lg shadow-xl w-96 p-6">
@@ -338,6 +482,43 @@ onMounted(async () => {
               class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Create & Checkout
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Diff Viewer Modal -->
+    <Teleport to="body">
+      <div
+        v-if="showDiffModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
+        @click.self="showDiffModal = false"
+      >
+        <div class="bg-white rounded-lg shadow-xl w-3/4 h-3/4 flex flex-col">
+          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold">Diff: {{ selectedFileForDiff }}</h3>
+            <button
+              @click="showDiffModal = false"
+              class="p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="flex-1 overflow-auto p-6">
+            <pre v-if="gitStore.diff" class="text-xs font-mono bg-gray-50 p-4 rounded border border-gray-200 whitespace-pre-wrap">{{ gitStore.diff }}</pre>
+            <div v-else class="text-center py-8 text-gray-500">
+              <p>No changes to display</p>
+            </div>
+          </div>
+          <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+            <button
+              @click="showDiffModal = false"
+              class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+            >
+              Close
             </button>
           </div>
         </div>

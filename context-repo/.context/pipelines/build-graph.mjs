@@ -105,9 +105,7 @@ try {
     
     // User story relationships
     if (entity._type === 'userstory') {
-      if (entity.feature) {
-        edges.push({ from: entity.feature, to: id, rel: 'has-story' });
-      }
+      // Note: feature->story edge already created by feature, don't duplicate
       if (entity.impacts) {
         if (entity.impacts.services) {
           for (const svcId of entity.impacts.services) {
@@ -124,11 +122,7 @@ try {
     
     // Spec relationships
     if (entity._type === 'spec' && entity.related) {
-      if (entity.related.features) {
-        for (const featId of entity.related.features) {
-          edges.push({ from: featId, to: id, rel: 'has-spec' });
-        }
-      }
+      // Note: feature->spec edge already created by feature, don't duplicate
       if (entity.related.services) {
         for (const svcId of entity.related.services) {
           edges.push({ from: id, to: svcId, rel: 'relates-to' });
@@ -143,9 +137,7 @@ try {
     
     // Task relationships
     if (entity._type === 'task' && entity.related) {
-      if (entity.related.feature) {
-        edges.push({ from: entity.related.feature, to: id, rel: 'has-task' });
-      }
+      // Note: feature->task edge already created by feature, don't duplicate
       if (entity.related.spec) {
         edges.push({ from: entity.related.spec, to: id, rel: 'implements' });
       }

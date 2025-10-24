@@ -1,0 +1,177 @@
+name: Context Repository Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'context-repo/.context/**'
+      - 'context-repo/contexts/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'context-repo/.context/**'
+      - 'context-repo/contexts/**'
+
+jobs:
+  validate:
+    name: Validate YAML Schemas
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for impact analysis
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: context-repo/package.json
+      
+      - name: Install dependencies
+        run: |
+          cd context-repo
+          npm install
+        
+      - name: Validate schemas
+        id: validate
+        run: |
+          cd context-repo
+          node .context/pipelines/validate.mjs > validation-result.json
+          echo "validation_output=$(cat validation-result.json)" >> $GITHUB_OUTPUT
+        continue-on-error: true
+      
+      - name: Check validation result
+        run: |
+          cd context-repo
+          if [ ! -f validation-result.json ]; then
+            echo "❌ Validation failed to produce output"
+            exit 1
+          fi
+          
+          # Check if validation passed
+          if ! jq -e '.ok == true' validation-result.json > /dev/null; then
+            echo "❌ Schema validation failed"
+            echo "Errors:"
+            jq -r '.errors[]' validation-result.json || echo "No detailed errors available"
+            exit 1
+          fi
+          
+          echo "✅ All schemas validated successfully"
+      
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: context-repo/validation-result.json
+          retention-days: 30
+
+  build-graph:
+    name: Build Dependency Graph
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: context-repo/package.json
+      
+      - name: Install dependencies
+        run: |
+          cd context-repo
+          npm install
+      
+      - name: Build dependency graph
+        run: |
+          cd context-repo
+          node .context/pipelines/build-graph.mjs > graph.json
+      
+      - name: Validate graph output
+        run: |
+          cd context-repo
+          if [ ! -s graph.json ]; then
+            echo "❌ Graph build failed or produced empty output"
+            exit 1
+          fi
+          
+          # Check if graph has nodes
+          if ! jq -e '.nodes | length > 0' graph.json > /dev/null; then
+            echo "⚠️ Warning: Graph has no nodes"
+          else
+            NODE_COUNT=$(jq '.nodes | length' graph.json)
+            EDGE_COUNT=$(jq '.edges | length' graph.json)
+            echo "✅ Graph built successfully"
+            echo "   Nodes: $NODE_COUNT"
+            echo "   Edges: $EDGE_COUNT"
+          fi
+      
+      - name: Upload graph artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-graph
+          path: context-repo/graph.json
+          retention-days: 30
+
+  check-references:
+    name: Check Dangling References
+    runs-on: ubuntu-latest
+    needs: build-graph
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: context-repo/package.json
+      
+      - name: Install dependencies
+        run: |
+          cd context-repo
+          npm install
+      
+      - name: Download graph artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dependency-graph
+          path: context-repo
+      
+      - name: Check for dangling references
+        run: |
+          cd context-repo
+          
+          # Extract all entity IDs from graph
+          jq -r '.nodes[].id' graph.json | sort > all-ids.txt
+          
+          # Find all references in YAML files
+          find contexts -name "*.yaml" -o -name "*.yml" | while read file; do
+            # Extract references (simplified - would need more robust parsing)
+            grep -oE '(FEAT|US|SPEC|T|svc|pkg)-[A-Z0-9-]+' "$file" || true
+          done | sort -u > all-refs.txt
+          
+          # Find dangling references
+          comm -13 all-ids.txt all-refs.txt > dangling.txt
+          
+          if [ -s dangling.txt ]; then
+            echo "⚠️ Warning: Found potential dangling references:"
+            cat dangling.txt
+            echo ""
+            echo "These references may not exist as entities"
+          else
+            echo "✅ No dangling references found"
+          fi
