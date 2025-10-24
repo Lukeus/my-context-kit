@@ -1,0 +1,97 @@
+import type { Config } from 'tailwindcss';
+
+const config: Config = {
+  content: [
+    './index.html',
+    './src/renderer/**/*.{vue,js,ts,jsx,tsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        // Material 3 Color Scheme
+        primary: {
+          DEFAULT: '#6750A4',
+          50: '#F6F4FF',
+          100: '#E9E4FF',
+          200: '#D5CCFF',
+          300: '#B9A8FF',
+          400: '#9D7FFF',
+          500: '#6750A4',
+          600: '#5642A1',
+          700: '#463695',
+          800: '#372C7A',
+          900: '#2B2262',
+        },
+        secondary: {
+          DEFAULT: '#625B71',
+          50: '#F8F7FC',
+          100: '#EDE7F6',
+          200: '#D9D2E9',
+          300: '#B8B0CC',
+          400: '#9A91AF',
+          500: '#625B71',
+          600: '#4D4760',
+          700: '#3B3550',
+          800: '#2B2640',
+          900: '#1E1A2E',
+        },
+        tertiary: {
+          DEFAULT: '#7D5260',
+          50: '#FFF5F7',
+          100: '#FFE8ED',
+          200: '#FFCCD8',
+          300: '#FFADBE',
+          400: '#FF8FA7',
+          500: '#7D5260',
+          600: '#68424F',
+          700: '#53343F',
+          800: '#3E2730',
+          900: '#2B1B23',
+        },
+        surface: {
+          DEFAULT: '#FEF7FF',
+          variant: '#E7E0EC',
+          dim: '#DED8E1',
+          bright: '#FEF7FF',
+          '1': '#F5EEFA',
+          '2': '#F0E9F5',
+          '3': '#EBE3F0',
+          '4': '#E9E2ED',
+          '5': '#E6DEE9',
+        },
+        error: {
+          DEFAULT: '#B3261E',
+          50: '#FCEEEE',
+          100: '#F9DEDC',
+          200: '#F2B8B5',
+          300: '#EC928E',
+          400: '#E46962',
+          500: '#B3261E',
+          600: '#8C1D18',
+          700: '#681410',
+          800: '#410E0B',
+          900: '#370B0A',
+        },
+      },
+      boxShadow: {
+        'elevation-1': '0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15)',
+        'elevation-2': '0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15)',
+        'elevation-3': '0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.3)',
+        'elevation-4': '0 6px 10px 4px rgba(0, 0, 0, 0.15), 0 2px 3px 0 rgba(0, 0, 0, 0.3)',
+        'elevation-5': '0 8px 12px 6px rgba(0, 0, 0, 0.15), 0 4px 4px 0 rgba(0, 0, 0, 0.3)',
+      },
+      borderRadius: {
+        'm3-none': '0px',
+        'm3-xs': '4px',
+        'm3-sm': '8px',
+        'm3-md': '12px',
+        'm3-lg': '16px',
+        'm3-xl': '28px',
+        'm3-full': '9999px',
+      },
+    },
+  },
+  plugins: [],
+};
+
+export default config;

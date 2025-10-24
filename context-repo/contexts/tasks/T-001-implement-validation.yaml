@@ -1,0 +1,20 @@
+id: T-001
+title: "Implement validation pipeline script"
+status: "done"
+related:
+  feature: FEAT-001
+  spec: SPEC-001
+  service: svc-git
+owner: "@lukeu"
+steps:
+  - "Create validate.mjs script"
+  - "Load JSON schemas with AJV"
+  - "Parse YAML files"
+  - "Validate entities against schemas"
+  - "Check cross-references"
+  - "Return JSON results"
+doneCriteria:
+  - "Script runs without errors"
+  - "Returns ok:true for valid entities"
+  - "Returns ok:false with error details for invalid entities"
+  - "Detects missing cross-references"

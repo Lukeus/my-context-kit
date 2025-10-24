@@ -1,0 +1,13 @@
+id: pkg-context-sync
+name: "@context-sync/desktop-app"
+version: "0.1.0"
+type: "npm"
+repository: "https://github.com/lukeus/my-context-kit"
+dependencies:
+  - "electron@^38.0.0"
+  - "vue@^3.5.0"
+  - "pinia@^3.0.0"
+  - "tailwindcss@^4.0.0"
+uses:
+  services:
+    - "svc-git"

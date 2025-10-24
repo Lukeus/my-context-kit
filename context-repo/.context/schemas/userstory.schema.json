@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "userstory.schema.json",
+  "title": "User Story",
+  "description": "A user story describes functionality from an end-user perspective",
+  "type": "object",
+  "required": ["id", "feature", "asA", "iWant", "soThat"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^US-[0-9]{3,}$",
+      "description": "Unique user story identifier (e.g., US-101)"
+    },
+    "feature": {
+      "type": "string",
+      "pattern": "^FEAT-[0-9]{3,}$",
+      "description": "Parent feature ID"
+    },
+    "asA": {
+      "type": "string",
+      "description": "User role or persona"
+    },
+    "iWant": {
+      "type": "string",
+      "description": "What the user wants to do"
+    },
+    "soThat": {
+      "type": "string",
+      "description": "Why the user wants it (benefit)"
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Testable acceptance criteria"
+    },
+    "impacts": {
+      "type": "object",
+      "properties": {
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

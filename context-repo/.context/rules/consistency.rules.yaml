@@ -1,0 +1,85 @@
+# Consistency Rules for Context-Sync
+# These rules define automatic actions when entities change
+
+rules:
+  - id: US-acceptance-change-flags-tasks
+    description: User story acceptance criteria change flags related tasks and specs
+    severity: warning
+    when:
+      entity: userstory
+      fieldChanged: acceptanceCriteria
+    then:
+      markRelated:
+        types: [task, spec]
+        status: needs-review
+        reason: "User story acceptance criteria changed"
+
+  - id: feature-change-impacts-all
+    description: Feature changes impact all related entities
+    severity: warning
+    when:
+      entity: feature
+      fieldChanged: 
+        - title
+        - status
+        - prompts
+        - requires
+        - produces
+    then:
+      markRelated:
+        types: [userstory, spec, task, service, package]
+        status: needs-review
+        reason: "Parent feature requirements changed"
+
+  - id: service-version-bump-needs-consumer-review
+    description: Service API version changes require consumer review
+    severity: error
+    when:
+      entity: service
+      fieldChanged: 
+        - api.version
+        - api.spec
+    then:
+      markRelated:
+        types: [package, service]
+        rel: consumers
+        status: needs-review
+        reason: "Service API contract may have changed"
+
+  - id: spec-change-impacts-implementations
+    description: Specification changes impact implementing tasks
+    severity: warning
+    when:
+      entity: spec
+      fieldChanged: content
+    then:
+      markRelated:
+        types: [task]
+        rel: implements
+        status: needs-review
+        reason: "Technical specification changed"
+
+  - id: task-status-blocked-flags-feature
+    description: Blocked task status flags parent feature
+    severity: error
+    when:
+      entity: task
+      fieldChanged: status
+      newValue: blocked
+    then:
+      markRelated:
+        types: [feature]
+        status: needs-review
+        reason: "Related task is blocked"
+
+  - id: package-dependency-change-impacts-consumers
+    description: Package dependency changes impact consumers
+    severity: info
+    when:
+      entity: package
+      fieldChanged: dependencies
+    then:
+      markRelated:
+        types: [service, package]
+        status: needs-review
+        reason: "Package dependencies changed, may affect transitive deps"

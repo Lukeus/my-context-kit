@@ -1,0 +1,37 @@
+# Specification: {{title}} ({{id}})
+
+**Type**: {{type}}  
+**Status**: {{#if status}}{{status}}{{else}}draft{{/if}}
+
+{{#if related}}
+## Related Entities
+{{#if related.features}}
+- **Features**: {{#each related.features}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+{{#if related.services}}
+- **Services**: {{#each related.services}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+{{#if related.packages}}
+- **Packages**: {{#each related.packages}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+{{/if}}
+
+## Content
+{{content}}
+
+{{#if constraints}}
+## Constraints
+{{#each constraints}}
+- {{this}}
+{{/each}}
+{{/if}}
+
+{{#if examples}}
+## Examples
+{{examples}}
+{{/if}}
+
+---
+
+**Generated**: {{timestamp}}  
+**Context Source**: {{_file}}

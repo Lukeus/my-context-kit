@@ -1,0 +1,16 @@
+id: US-001
+feature: FEAT-001
+asA: "developer"
+iWant: "to validate my context repository against defined schemas"
+soThat: "I can ensure all entities are correctly formatted before committing"
+acceptanceCriteria:
+  - "User can select a context repository directory"
+  - "Validation runs automatically on directory selection"
+  - "Validation results are displayed in the UI"
+  - "Schema errors show file path and error details"
+  - "Cross-reference errors are identified"
+impacts:
+  services:
+    - "svc-git"
+  packages:
+    - "pkg-context-sync"
