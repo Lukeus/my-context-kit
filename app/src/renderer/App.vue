@@ -8,6 +8,7 @@ import GitPanel from './components/GitPanel.vue';
 import WelcomeDocumentation from './components/WelcomeDocumentation.vue';
 import ContextBuilderModal from './components/ContextBuilderModal.vue';
 import AISettingsModal from './components/AISettingsModal.vue';
+import AIAssistantModal from './components/AIAssistantModal.vue';
 import { useContextStore } from './stores/contextStore';
 import { useImpactStore } from './stores/impactStore';
 import { useBuilderStore } from './stores/builderStore';
@@ -19,6 +20,7 @@ const builderStore = useBuilderStore();
 const statusMessage = ref('Ready');
 const showGraphModal = ref(false);
 const showGitModal = ref(false);
+const showAIAssistant = ref(false);
 const showAISettings = ref(false);
 
 // Panel state
@@ -162,9 +164,9 @@ function toggleRightPanel() {
             Graph
           </button>
           <button
-            @click="showAISettings = true"
+            @click="showAIAssistant = true"
             class="px-4 py-2.5 bg-primary-700 hover:bg-primary-600 active:bg-primary-800 rounded-m3-lg transition-all shadow-elevation-2 hover:shadow-elevation-3 flex items-center gap-2 font-medium border border-primary-600 hover:border-primary-500"
-            title="AI Settings"
+            title="AI Assistant"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -296,6 +298,11 @@ function toggleRightPanel() {
     
     <!-- Context Builder Modal -->
     <ContextBuilderModal />
+    <AIAssistantModal
+      :show="showAIAssistant"
+      @close="showAIAssistant = false"
+      @open-settings="showAISettings = true"
+    />
     <AISettingsModal v-if="showAISettings" @close="showAISettings = false" />
   </div>
 </template>

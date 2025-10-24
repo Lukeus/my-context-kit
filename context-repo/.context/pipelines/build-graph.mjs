@@ -11,6 +11,7 @@ const REPO_ROOT = join(__dirname, '../..');
 
 // Entity type to directory mapping
 const entityDirs = {
+  governance: 'governance',
   feature: 'features',
   userstory: 'userstories',
   spec: 'specs',

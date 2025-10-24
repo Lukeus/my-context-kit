@@ -48,15 +48,27 @@ export const useContextStore = defineStore('context', () => {
       if (result.ok && result.value) {
         repoPath.value = result.value;
       } else {
-        // Default fallback
-        repoPath.value = 'C:\\Users\\lukeu\\source\\repos\\my-context-kit\\context-repo';
+        await applyDefaultRepoPath();
       }
     } catch (err) {
-      // Use default on error
-      repoPath.value = 'C:\\Users\\lukeu\\source\\repos\\my-context-kit\\context-repo';
+      await applyDefaultRepoPath();
     }
     
     isInitialized.value = true;
+  }
+
+  async function applyDefaultRepoPath() {
+    try {
+      const defaultResult = await window.api.app.getDefaultRepoPath();
+      if (defaultResult.ok && defaultResult.path) {
+        repoPath.value = defaultResult.path;
+        await window.api.settings.set('repoPath', defaultResult.path);
+      } else {
+        repoPath.value = '';
+      }
+    } catch (error) {
+      repoPath.value = '';
+    }
   }
 
   // Initialize on first access
@@ -70,6 +82,7 @@ export const useContextStore = defineStore('context', () => {
 
   const entitiesByType = computed(() => {
     const grouped: Record<string, Entity[]> = {
+      governance: [],
       feature: [],
       userstory: [],
       spec: [],

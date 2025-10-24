@@ -46,6 +46,9 @@ const entityDirs = {
 // Validate all YAML files
 const errors = [];
 const entities = {}; // Store all entities by ID for cross-reference validation
+const constitutionErrors = [];
+const complianceErrors = [];
+let constitution = null;
 
 function getAllYamlFiles(dir) {
   const files = [];
@@ -64,6 +67,97 @@ function getAllYamlFiles(dir) {
     // Directory doesn't exist or can't be read - skip it
   }
   return files;
+}
+
+function resolvePath(obj, path) {
+  if (!path) return undefined;
+  const segments = path.split('.');
+  let current = obj;
+
+  for (const segment of segments) {
+    if (current === undefined || current === null) {
+      return undefined;
+    }
+
+    if (segment === 'length') {
+      if (Array.isArray(current) || typeof current === 'string') {
+        current = current.length;
+      } else {
+        return undefined;
+      }
+      continue;
+    }
+
+    const indexMatch = segment.match(/(.+)\[(\d+)\]$/);
+    if (indexMatch) {
+      const [, prop, indexStr] = indexMatch;
+      const index = Number.parseInt(indexStr, 10);
+      current = current?.[prop];
+      if (!Array.isArray(current) || Number.isNaN(index)) {
+        return undefined;
+      }
+      current = current[index];
+      continue;
+    }
+
+    current = current?.[segment];
+  }
+
+  return current;
+}
+
+function evaluateCondition(value, operator, expected) {
+  switch (operator) {
+    case 'exists': {
+      if (value === undefined || value === null) return false;
+      if (typeof value === 'string') return value.trim().length > 0;
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === 'object') return Object.keys(value).length > 0;
+      return true;
+    }
+    case 'equals':
+      return value === expected;
+    case 'notEquals':
+      return value !== expected;
+    case 'includes':
+      if (Array.isArray(value)) return value.includes(expected);
+      if (typeof value === 'string') return value.includes(expected);
+      return false;
+    case 'matches':
+      if (typeof value !== 'string') return false;
+      try {
+        const regex = new RegExp(expected);
+        return regex.test(value);
+      } catch (error) {
+        return false;
+      }
+    case 'greaterThan': {
+      let comparable = value;
+      if (Array.isArray(comparable) || typeof comparable === 'string') {
+        comparable = comparable.length;
+      }
+      if (typeof comparable !== 'number') {
+        const parsed = Number(comparable);
+        if (Number.isNaN(parsed)) return false;
+        comparable = parsed;
+      }
+      return comparable > expected;
+    }
+    case 'lessThan': {
+      let comparable = value;
+      if (Array.isArray(comparable) || typeof comparable === 'string') {
+        comparable = comparable.length;
+      }
+      if (typeof comparable !== 'number') {
+        const parsed = Number(comparable);
+        if (Number.isNaN(parsed)) return false;
+        comparable = parsed;
+      }
+      return comparable < expected;
+    }
+    default:
+      return false;
+  }
 }
 
 // Load and validate entities
@@ -106,6 +200,35 @@ for (const [entityType, dirName] of Object.entries(entityDirs)) {
       });
     }
   }
+}
+
+// Load constitution
+const constitutionPath = join(REPO_ROOT, 'contexts', 'governance', 'constitution.yaml');
+try {
+  const constitutionSchema = ajv.getSchema('constitution');
+  if (!constitutionSchema) {
+    constitutionErrors.push({
+      file: constitutionPath,
+      error: 'Constitution schema not registered'
+    });
+  } else {
+    const constitutionContent = readFileSync(constitutionPath, 'utf8');
+    const constitutionData = parseYAML(constitutionContent);
+    const valid = constitutionSchema(constitutionData);
+    if (!valid) {
+      constitutionErrors.push({
+        file: constitutionPath,
+        errors: constitutionSchema.errors
+      });
+    } else {
+      constitution = constitutionData;
+    }
+  }
+} catch (error) {
+  constitutionErrors.push({
+    file: constitutionPath,
+    error: `Failed to load constitution: ${error.message}`
+  });
 }
 
 // Cross-reference validation
@@ -165,8 +288,70 @@ for (const [id, entity] of Object.entries(entities)) {
   }
 }
 
+let evaluatedRuleCount = 0;
+
+if (
+  constitution &&
+  constitution.compliance &&
+  Array.isArray(constitution.compliance.rules)
+) {
+  const supportedTargets = new Set([
+    'feature',
+    'userstory',
+    'spec',
+    'task',
+    'service',
+    'package'
+  ]);
+
+  for (const rule of constitution.compliance.rules) {
+    if (!rule || !Array.isArray(rule.targets) || !Array.isArray(rule.conditions)) {
+      continue;
+    }
+
+    const matchedEntities = Object.values(entities).filter(entity =>
+      rule.targets.some(target => supportedTargets.has(target) && target === entity._type)
+    );
+
+    if (matchedEntities.length === 0) {
+      continue;
+    }
+
+    evaluatedRuleCount += 1;
+
+    for (const entity of matchedEntities) {
+      for (const condition of rule.conditions) {
+        const path = condition.path;
+        const operator = condition.operator;
+        const expected = condition.value;
+        const value = resolvePath(entity, path);
+        const passed = evaluateCondition(value, operator, expected);
+
+        if (!passed) {
+          complianceErrors.push({
+            ruleId: rule.id,
+            entity: entity.id,
+            entityType: entity._type,
+            path,
+            severity: rule.severity || 'medium',
+            message:
+              condition.message ||
+              rule.description ||
+              `Entity ${entity.id} failed rule ${rule.id}`
+          });
+        }
+      }
+    }
+  }
+}
+
 // Output results
-if (errors.length === 0 && crossRefErrors.length === 0) {
+if (
+  errors.length === 0 &&
+  crossRefErrors.length === 0 &&
+  constitutionErrors.length === 0 &&
+  complianceErrors.length === 0
+) {
   console.log(JSON.stringify({ 
     ok: true, 
     message: 'All validations passed',
@@ -176,7 +361,15 @@ if (errors.length === 0 && crossRefErrors.length === 0) {
         acc[e._type] = (acc[e._type] || 0) + 1;
         return acc;
       }, {})
-    }
+    },
+    constitution: constitution
+      ? {
+          id: constitution.id,
+          version: constitution.version,
+          checksum: constitution.checksum,
+          evaluatedRules: evaluatedRuleCount
+        }
+      : null
   }));
   process.exit(0);
 } else {
@@ -184,7 +377,13 @@ if (errors.length === 0 && crossRefErrors.length === 0) {
     ok: false, 
     schemaErrors: errors,
     crossReferenceErrors: crossRefErrors,
-    totalErrors: errors.length + crossRefErrors.length
+    constitutionErrors,
+    complianceErrors,
+    totalErrors:
+      errors.length +
+      crossRefErrors.length +
+      constitutionErrors.length +
+      complianceErrors.length
   }));
   process.exit(1);
 }

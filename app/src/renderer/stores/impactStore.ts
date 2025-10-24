@@ -134,6 +134,11 @@ export const useImpactStore = defineStore('impact', () => {
         return result;
       }
 
+      if (!result.ok) {
+        const firstError = result.errors?.[0]?.error || 'Failed to generate prompts';
+        error.value = firstError;
+      }
+
       return result;
     } catch (err: any) {
       error.value = err.message || 'Failed to generate prompts';
