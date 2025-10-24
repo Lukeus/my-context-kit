@@ -1,0 +1,36 @@
+id: FEAT-001
+title: "Context-Sync MVP"
+domain: "developer-tools"
+status: "in-progress"
+owners:
+  - "@lukeus"
+objective: |
+  Build a desktop application that manages a GitHub-versioned context repository
+  for spec-driven software development with automated consistency checking.
+acceptance:
+  - "App launches and displays UI"
+  - "Can validate YAML entities against JSON schemas"
+  - "Can build dependency graph from entities"
+  - "UI shows validation status"
+requires:
+  - "svc-git"
+produces:
+  - "pkg-context-sync"
+userStories:
+  - "US-001"
+  - "US-002"
+specs:
+  - "SPEC-001"
+tasks:
+  - "T-001"
+  - "T-002"
+  - "T-003"
+prompts:
+  instructions:
+    - "Use TypeScript for all code"
+    - "Use Vue 3 Composition API"
+    - "Follow Tailwind utility conventions"
+    - "Ensure strict type safety"
+  contextRefs:
+    - "WARP.md"
+    - "docs/spec.md"

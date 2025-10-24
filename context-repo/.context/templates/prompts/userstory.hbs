@@ -1,0 +1,36 @@
+# User Story: {{id}}
+
+**Feature**: {{feature}}  
+**Status**: {{#if status}}{{status}}{{else}}active{{/if}}
+
+## Story
+**As a** {{asA}}  
+**I want** {{iWant}}  
+**So that** {{soThat}}
+
+{{#if acceptanceCriteria}}
+## Acceptance Criteria
+{{#each acceptanceCriteria}}
+- {{this}}
+{{/each}}
+{{/if}}
+
+{{#if impacts}}
+## Impact
+{{#if impacts.services}}
+**Services**: {{#each impacts.services}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+{{#if impacts.packages}}
+**Packages**: {{#each impacts.packages}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+{{/if}}
+
+{{#if notes}}
+## Additional Notes
+{{notes}}
+{{/if}}
+
+---
+
+**Generated**: {{timestamp}}  
+**Context Source**: {{_file}}

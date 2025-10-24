@@ -1,0 +1,17 @@
+id: T-003
+title: "Build core UI components"
+status: "todo"
+related:
+  feature: FEAT-001
+  service: svc-git
+owner: "@lukeu"
+steps:
+  - "Create ContextTree component"
+  - "Create YamlEditor component"
+  - "Create ImpactPanel component"
+  - "Create GraphView component"
+  - "Set up Pinia stores"
+doneCriteria:
+  - "All components render correctly"
+  - "Components communicate via Pinia"
+  - "UI is responsive"

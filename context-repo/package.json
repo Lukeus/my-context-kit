@@ -1,0 +1,19 @@
+{
+  "name": "context-repo",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Context repository for Context-Sync",
+  "private": true,
+  "scripts": {
+    "validate": "node .context/pipelines/validate.mjs",
+    "build-graph": "node .context/pipelines/build-graph.mjs",
+    "impact": "node .context/pipelines/impact.mjs",
+    "generate": "node .context/pipelines/generate.mjs"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "handlebars": "^4.7.8",
+    "yaml": "^2.8.1"
+  }
+}

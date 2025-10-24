@@ -1,0 +1,20 @@
+id: T-002
+title: "Set up Electron Forge app with Vue and Tailwind"
+status: "done"
+related:
+  feature: FEAT-001
+  service: svc-git
+owner: "@lukeu"
+steps:
+  - "Initialize Electron Forge with Vite template"
+  - "Add Vue 3 and Pinia"
+  - "Configure Tailwind CSS"
+  - "Set up TypeScript configuration"
+  - "Create main process with IPC handlers"
+  - "Create preload script"
+  - "Create Vue renderer"
+doneCriteria:
+  - "App launches successfully"
+  - "Vue components render"
+  - "Tailwind styles apply"
+  - "IPC communication works"

@@ -1,0 +1,16 @@
+id: US-002
+feature: FEAT-001
+asA: "developer"
+iWant: "to visualize the dependency graph of my context entities"
+soThat: "I can understand how features, specs, tasks, and services are related"
+acceptanceCriteria:
+  - "Graph displays all entities as nodes"
+  - "Relationships are shown as edges"
+  - "Different entity types have different colors"
+  - "User can zoom and pan the graph"
+  - "Clicking a node shows entity details"
+impacts:
+  services:
+    - "svc-git"
+  packages:
+    - "pkg-context-sync"

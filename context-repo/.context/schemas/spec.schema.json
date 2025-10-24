@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spec.schema.json",
+  "title": "Specification",
+  "description": "Technical specification document",
+  "type": "object",
+  "required": ["id", "title"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^SPEC-[0-9]{3,}$"
+    },
+    "title": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["technical", "api", "ui", "data"]
+    },
+    "related": {
+      "type": "object",
+      "properties": {
+        "features": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^FEAT-[0-9]{3,}$" }
+        },
+        "services": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "packages": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "content": {
+      "type": "string"
+    }
+  }
+}

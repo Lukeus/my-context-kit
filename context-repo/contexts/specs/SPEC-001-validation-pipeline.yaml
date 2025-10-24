@@ -1,0 +1,24 @@
+id: SPEC-001
+title: "Validation Pipeline Implementation"
+type: "technical"
+related:
+  features:
+    - "FEAT-001"
+  services:
+    - "svc-git"
+  packages:
+    - "pkg-context-sync"
+content: |
+  ## Overview
+  The validation pipeline validates YAML entity files against JSON schemas.
+  
+  ## Implementation
+  1. Load all JSON schemas from .context/schemas/
+  2. Parse YAML files from contexts/ directories
+  3. Validate each entity against its schema using AJV
+  4. Check cross-references between entities
+  5. Return validation results as JSON
+  
+  ## Exit Codes
+  - 0: All validations passed
+  - 1: Validation errors found

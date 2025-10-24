@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "feature.schema.json",
+  "title": "Feature",
+  "description": "A feature represents a high-level capability or functionality",
+  "type": "object",
+  "required": ["id", "title", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^FEAT-[0-9]{3,}$",
+      "description": "Unique feature identifier (e.g., FEAT-001)"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Brief title of the feature"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Domain or area this feature belongs to"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["proposed", "in-progress", "done", "blocked"],
+      "description": "Current status of the feature"
+    },
+    "owners": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of owners (e.g., @username)"
+    },
+    "objective": {
+      "type": "string",
+      "description": "Detailed objective of the feature"
+    },
+    "acceptance": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Acceptance criteria for the feature"
+    },
+    "requires": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Services or packages this feature depends on"
+    },
+    "produces": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Packages produced by this feature"
+    },
+    "userStories": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^US-[0-9]{3,}$"
+      },
+      "description": "Related user story IDs"
+    },
+    "specs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^SPEC-[0-9]{3,}$"
+      },
+      "description": "Related specification IDs"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^T-[0-9]{3,}$"
+      },
+      "description": "Related task IDs"
+    },
+    "prompts": {
+      "type": "object",
+      "properties": {
+        "instructions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Coding constraints and instructions"
+        },
+        "contextRefs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "References to context files"
+        }
+      }
+    }
+  }
+}

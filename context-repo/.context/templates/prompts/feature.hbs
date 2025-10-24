@@ -1,0 +1,55 @@
+# Feature Context: {{title}} ({{id}})
+
+**Domain**: {{domain}}  
+**Status**: {{status}}  
+**Owners**: {{#each owners}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+
+## Objective
+{{objective}}
+
+{{#if acceptance}}
+## Acceptance Criteria
+{{#each acceptance}}
+- {{this}}
+{{/each}}
+{{/if}}
+
+## Dependencies
+{{#if requires}}
+**Requires**: {{#each requires}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}  
+{{/if}}
+{{#if produces}}
+**Produces**: {{#each produces}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+
+## Linked Artifacts
+{{#if userStories}}
+- **Stories**: {{#each userStories}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+{{#if specs}}
+- **Specs**: {{#each specs}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+{{#if tasks}}
+- **Tasks**: {{#each tasks}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+
+{{#if prompts}}
+{{#if prompts.instructions}}
+## Coding Constraints
+{{#each prompts.instructions}}
+- {{this}}
+{{/each}}
+{{/if}}
+
+{{#if prompts.contextRefs}}
+## Attached References
+{{#each prompts.contextRefs}}
+- {{this}}
+{{/each}}
+{{/if}}
+{{/if}}
+
+---
+
+**Generated**: {{timestamp}}  
+**Context Source**: {{_file}}
