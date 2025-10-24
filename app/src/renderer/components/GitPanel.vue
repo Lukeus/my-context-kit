@@ -163,6 +163,33 @@ function getFileStatusColor(file: string): string {
   return 'text-gray-600 bg-gray-100';
 }
 
+function parseDiff(diffText: string) {
+  if (!diffText) return [];
+  
+  const lines = diffText.split('\n');
+  return lines.map(line => {
+    // Additions
+    if (line.startsWith('+') && !line.startsWith('+++')) {
+      return { type: 'add', content: line };
+    }
+    // Deletions
+    if (line.startsWith('-') && !line.startsWith('---')) {
+      return { type: 'remove', content: line };
+    }
+    // Diff headers (diff --git, index, +++, ---)
+    if (line.startsWith('diff --git') || line.startsWith('index ') || 
+        line.startsWith('---') || line.startsWith('+++')) {
+      return { type: 'header', content: line };
+    }
+    // Range info (@@ -1,5 +1,5 @@)
+    if (line.startsWith('@@')) {
+      return { type: 'info', content: line };
+    }
+    // Normal context lines
+    return { type: 'normal', content: line };
+  });
+}
+
 onMounted(async () => {
   await gitStore.loadStatus();
   await gitStore.loadBranches();
@@ -457,7 +484,7 @@ onMounted(async () => {
     <Teleport to="body">
       <div
         v-if="showBranchModal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20"
         @click.self="showBranchModal = false"
       >
         <div class="bg-white rounded-lg shadow-xl w-96 p-6">
@@ -492,25 +519,55 @@ onMounted(async () => {
     <Teleport to="body">
       <div
         v-if="showDiffModal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20"
         @click.self="showDiffModal = false"
       >
-        <div class="bg-white rounded-lg shadow-xl w-3/4 h-3/4 flex flex-col">
-          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-lg font-semibold">Diff: {{ selectedFileForDiff }}</h3>
+        <div class="bg-white rounded-xl shadow-2xl w-3/4 h-3/4 flex flex-col overflow-hidden">
+          <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <svg class="w-6 h-6 text-blue-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <div>
+                <h3 class="text-lg font-semibold text-white">File Changes</h3>
+                <p class="text-xs text-blue-100 font-mono truncate max-w-2xl">{{ selectedFileForDiff }}</p>
+              </div>
+            </div>
             <button
               @click="showDiffModal = false"
-              class="p-1 hover:bg-gray-100 rounded transition-colors"
+              class="p-2 hover:bg-blue-800 rounded-lg transition-colors"
+              title="Close"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <div class="flex-1 overflow-auto p-6">
-            <pre v-if="gitStore.diff" class="text-xs font-mono bg-gray-50 p-4 rounded border border-gray-200 whitespace-pre-wrap">{{ gitStore.diff }}</pre>
-            <div v-else class="text-center py-8 text-gray-500">
-              <p>No changes to display</p>
+          <div class="flex-1 overflow-auto bg-slate-50">
+            <div v-if="gitStore.diff" class="font-mono text-sm">
+              <!-- Parse and render diff lines with syntax highlighting -->
+              <div 
+                v-for="(line, index) in parseDiff(gitStore.diff)"
+                :key="index"
+                :class="[
+                  'px-6 py-1 leading-relaxed',
+                  line.type === 'add' && 'bg-green-50 text-green-800 border-l-4 border-green-500',
+                  line.type === 'remove' && 'bg-red-50 text-red-800 border-l-4 border-red-500',
+                  line.type === 'header' && 'bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-400',
+                  line.type === 'info' && 'bg-gray-100 text-gray-600 border-l-4 border-gray-400',
+                  line.type === 'normal' && 'bg-white text-gray-700'
+                ]"
+              >
+                <span class="select-text whitespace-pre-wrap break-all">{{ line.content }}</span>
+              </div>
+            </div>
+            <div v-else class="flex items-center justify-center h-full text-gray-500">
+              <div class="text-center">
+                <svg class="w-16 h-16 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="font-medium">No changes to display</p>
+              </div>
             </div>
           </div>
           <div class="px-6 py-4 border-t border-gray-200 flex justify-end">

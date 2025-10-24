@@ -38,11 +38,17 @@ export const useGitStore = defineStore('git', () => {
 
   const changedFiles = computed(() => {
     if (!status.value) return [];
+    
+    // Filter to only show files in context-repo directory
+    const filterContextRepo = (files: string[]) => {
+      return files.filter(f => f.startsWith('context-repo/'));
+    };
+    
     return [
-      ...status.value.modified,
-      ...status.value.created,
-      ...status.value.deleted,
-      ...status.value.renamed
+      ...filterContextRepo(status.value.modified),
+      ...filterContextRepo(status.value.created),
+      ...filterContextRepo(status.value.deleted),
+      ...filterContextRepo(status.value.renamed)
     ];
   });
 

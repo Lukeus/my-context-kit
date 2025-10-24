@@ -173,7 +173,9 @@ ipcMain.handle('fs:findEntityFile', async (_event, { dir, entityType, entityId }
 // Git handlers
 ipcMain.handle('git:status', async (_event, { dir }: { dir: string }) => {
   try {
-    const git = simpleGit(dir);
+    // Git should run from parent directory (project root) not context-repo
+    const projectRoot = path.dirname(dir);
+    const git = simpleGit(projectRoot);
     const status = await git.status();
     
     // Serialize status object for IPC (remove non-serializable properties)
@@ -198,11 +200,43 @@ ipcMain.handle('git:status', async (_event, { dir }: { dir: string }) => {
 
 ipcMain.handle('git:diff', async (_event, { dir, filePath }: { dir: string; filePath?: string }) => {
   try {
-    const git = simpleGit(dir);
-    const diff = filePath
-      ? await git.diff([filePath])
-      : await git.diff();
-    return { ok: true, diff };
+    // Git should run from parent directory (project root)
+    const projectRoot = path.dirname(dir);
+    const git = simpleGit(projectRoot);
+    
+    if (filePath) {
+      // Check file status
+      const status = await git.status();
+      const isNewFile = status.created.includes(filePath) || 
+                        status.not_added.includes(filePath);
+      const isStaged = status.staged.includes(filePath);
+      
+      if (isNewFile && !isStaged) {
+        // For new untracked files, show the entire file content as "added"
+        try {
+          const content = await readFile(path.join(dir, filePath), 'utf-8');
+          const lines = content.split('\n');
+          const diff = lines.map(line => `+${line}`).join('\n');
+          return { ok: true, diff: `New file: ${filePath}\n\n${diff}` };
+        } catch (readError) {
+          return { ok: true, diff: 'New file (unable to read content)' };
+        }
+      }
+      
+      // For staged files, use --cached flag
+      if (isStaged) {
+        const diff = await git.diff(['--cached', filePath]);
+        return { ok: true, diff: diff || 'No changes in staged file' };
+      }
+      
+      // For modified tracked files, use normal diff
+      const diff = await git.diff([filePath]);
+      return { ok: true, diff: diff || 'No changes' };
+    } else {
+      // Diff all changes
+      const diff = await git.diff();
+      return { ok: true, diff };
+    }
   } catch (error: any) {
     return { ok: false, error: error.message };
   }
@@ -210,7 +244,9 @@ ipcMain.handle('git:diff', async (_event, { dir, filePath }: { dir: string; file
 
 ipcMain.handle('git:commit', async (_event, { dir, message, files }: { dir: string; message: string; files?: string[] }) => {
   try {
-    const git = simpleGit(dir);
+    // Git should run from parent directory (project root)
+    const projectRoot = path.dirname(dir);
+    const git = simpleGit(projectRoot);
     
     // Add files (or all if not specified)
     if (files && files.length > 0) {
@@ -229,7 +265,9 @@ ipcMain.handle('git:commit', async (_event, { dir, message, files }: { dir: stri
 
 ipcMain.handle('git:branch', async (_event, { dir }: { dir: string }) => {
   try {
-    const git = simpleGit(dir);
+    // Git should run from parent directory (project root)
+    const projectRoot = path.dirname(dir);
+    const git = simpleGit(projectRoot);
     const branch = await git.branchLocal();
     return { ok: true, current: branch.current, branches: branch.all };
   } catch (error: any) {
@@ -239,7 +277,9 @@ ipcMain.handle('git:branch', async (_event, { dir }: { dir: string }) => {
 
 ipcMain.handle('git:createBranch', async (_event, { dir, branchName, checkout }: { dir: string; branchName: string; checkout?: boolean }) => {
   try {
-    const git = simpleGit(dir);
+    // Git should run from parent directory (project root)
+    const projectRoot = path.dirname(dir);
+    const git = simpleGit(projectRoot);
     
     if (checkout) {
       await git.checkoutLocalBranch(branchName);
@@ -255,7 +295,9 @@ ipcMain.handle('git:createBranch', async (_event, { dir, branchName, checkout }:
 
 ipcMain.handle('git:checkout', async (_event, { dir, branchName }: { dir: string; branchName: string }) => {
   try {
-    const git = simpleGit(dir);
+    // Git should run from parent directory (project root)
+    const projectRoot = path.dirname(dir);
+    const git = simpleGit(projectRoot);
     await git.checkout(branchName);
     return { ok: true, branch: branchName };
   } catch (error: any) {
@@ -265,7 +307,9 @@ ipcMain.handle('git:checkout', async (_event, { dir, branchName }: { dir: string
 
 ipcMain.handle('git:push', async (_event, { dir, remote, branch }: { dir: string; remote?: string; branch?: string }) => {
   try {
-    const git = simpleGit(dir);
+    // Git should run from parent directory (project root)
+    const projectRoot = path.dirname(dir);
+    const git = simpleGit(projectRoot);
     await git.push(remote || 'origin', branch);
     return { ok: true };
   } catch (error: any) {
@@ -275,6 +319,9 @@ ipcMain.handle('git:push', async (_event, { dir, remote, branch }: { dir: string
 
 ipcMain.handle('git:createPR', async (_event, { dir, title, body, base }: { dir: string; title: string; body: string; base?: string }) => {
   try {
+    // Git should run from parent directory (project root)
+    const projectRoot = path.dirname(dir);
+    
     // Use GitHub CLI to create PR
     const args = ['pr', 'create', '--title', title, '--body', body];
     if (base) {
@@ -282,7 +329,7 @@ ipcMain.handle('git:createPR', async (_event, { dir, title, body, base }: { dir:
     }
     
     const result = await execa('gh', args, {
-      cwd: dir,
+      cwd: projectRoot,
       shell: true
     });
     
