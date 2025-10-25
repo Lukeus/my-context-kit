@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useContextStore } from '../stores/contextStore';
 import { useImpactStore } from '../stores/impactStore';
 import { useBuilderStore } from '../stores/builderStore';
@@ -42,6 +42,8 @@ const entityTypeLabels: Record<string, string> = {
 };
 
 const typesWithCreation = new Set(['feature', 'userstory', 'spec', 'task', 'service', 'package']);
+
+const hasRepoConfigured = computed(() => Boolean(contextStore.repoPath && contextStore.repoPath.trim().length > 0));
 
 // Methods
 function toggleType(type: string) {
@@ -92,8 +94,14 @@ function hasIssue(entityId: string): boolean {
 }
 
 async function loadEntities() {
-  // Ensure store is initialized before loading
   await contextStore.initializeStore();
+  if (!hasRepoConfigured.value) {
+    impactStore.clearChangedEntities();
+    return;
+  }
+  if (contextStore.isLoading) {
+    return;
+  }
   await contextStore.loadGraph();
 }
 
@@ -104,6 +112,10 @@ async function createNewEntity(entityType: string) {
 }
 
 onMounted(() => {
+  loadEntities();
+});
+
+watch(() => contextStore.repoPath, () => {
   loadEntities();
 });
 </script>
@@ -128,8 +140,14 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Missing repo state -->
+    <div v-if="!hasRepoConfigured" class="flex-1 flex flex-col items-center justify-center text-center px-4">
+      <h3 class="text-sm font-semibold text-secondary-700 mb-2">No repository selected</h3>
+      <p class="text-xs text-secondary-600">Choose or add a context repository to load entities.</p>
+    </div>
+
     <!-- Loading state -->
-    <div v-if="contextStore.isLoading" class="flex-1 flex items-center justify-center">
+    <div v-else-if="contextStore.isLoading" class="flex-1 flex items-center justify-center">
       <div class="text-sm text-secondary-600">Loading...</div>
     </div>
 

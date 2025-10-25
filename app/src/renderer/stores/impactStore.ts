@@ -99,6 +99,11 @@ export const useImpactStore = defineStore('impact', () => {
     resolvedIssues.value.clear();
 
     try {
+      if (!contextStore.repoPath) {
+        error.value = 'Repository path is not configured';
+        return false;
+      }
+
       const result = await window.api.context.impact(
         contextStore.repoPath,
         entityIds
@@ -124,6 +129,11 @@ export const useImpactStore = defineStore('impact', () => {
     const contextStore = useContextStore();
     
     try {
+      if (!contextStore.repoPath) {
+        error.value = 'Repository path is not configured';
+        return { ok: false, error: error.value };
+      }
+
       const result = await window.api.context.generate(
         contextStore.repoPath,
         entityIds

@@ -16,6 +16,15 @@ interface AssistantReference {
   note?: string;
 }
 
+interface AssistantEdit {
+  targetId?: string;
+  filePath: string;
+  summary: string;
+  updatedContent: string;
+  status?: 'pending' | 'applying' | 'applied' | 'failed';
+  error?: string;
+}
+
 interface AssistantMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -27,6 +36,7 @@ interface AssistantMessage {
   clarifications?: string[];
   followUps?: string[];
   references?: AssistantReference[];
+  edits?: AssistantEdit[];
 }
 
 interface AssistantUsage {
@@ -167,6 +177,7 @@ interface AssistantResponse {
   snapshot?: AssistantSnapshot;
   error?: string;
   rawContent?: string;
+  edits?: AssistantEdit[];
 }
 
 function generateId(prefix: string) {
@@ -237,6 +248,133 @@ export const useAIStore = defineStore('ai', () => {
     });
   }
 
+  function findLatestAssistantWithPendingEdits() {
+    for (let i = conversation.value.length - 1; i >= 0; i -= 1) {
+      const message = conversation.value[i];
+      if (message.role !== 'assistant') {
+        continue;
+      }
+      if (!message.edits || message.edits.length === 0) {
+        continue;
+      }
+      const hasPending = message.edits.some(edit => edit.status === 'pending' || edit.status === 'failed');
+      if (hasPending) {
+        return message;
+      }
+    }
+    return null;
+  }
+
+  async function handleLocalCommand(rawCommand: string, options: AskOptions): Promise<boolean> {
+    const normalized = rawCommand.toLowerCase();
+    const applyPattern = /^(apply|accept)(?:\s+all)?\s+(?:the\s+)?(edits|changes)$/;
+
+    if (!applyPattern.test(normalized)) {
+      return false;
+    }
+
+    const userMessageId = generateId('user');
+    appendMessage({
+      id: userMessageId,
+      role: 'user',
+      content: rawCommand,
+      createdAt: new Date().toISOString(),
+      mode: options.mode,
+      focusId: options.focusId,
+      suggestions: [],
+      clarifications: [],
+      followUps: [],
+      references: [],
+      edits: []
+    });
+
+    const targetAssistant = findLatestAssistantWithPendingEdits();
+
+    if (!targetAssistant) {
+      const assistantMessageId = generateId('assistant');
+      appendMessage({
+        id: assistantMessageId,
+        role: 'assistant',
+        content: 'There are no pending edits to apply right now.',
+        createdAt: new Date().toISOString(),
+        mode: options.mode,
+        focusId: options.focusId,
+        suggestions: [],
+        clarifications: [],
+        followUps: [],
+        references: [],
+        edits: []
+      });
+      return true;
+    }
+
+    const pendingIndexes = targetAssistant.edits
+      ?.map((edit, index) => ({ edit, index }))
+      .filter(item => item.edit.status === 'pending' || item.edit.status === 'failed') ?? [];
+
+    if (pendingIndexes.length === 0) {
+      const assistantMessageId = generateId('assistant');
+      appendMessage({
+        id: assistantMessageId,
+        role: 'assistant',
+        content: 'All suggested edits have already been applied.',
+        createdAt: new Date().toISOString(),
+        mode: options.mode,
+        focusId: options.focusId,
+        suggestions: [],
+        clarifications: [],
+        followUps: [],
+        references: [],
+        edits: []
+      });
+      return true;
+    }
+
+    const summaryMessageId = generateId('assistant');
+    appendMessage({
+      id: summaryMessageId,
+      role: 'assistant',
+      content: `Applying ${pendingIndexes.length} pending edit(s)...`,
+      createdAt: new Date().toISOString(),
+      mode: options.mode,
+      focusId: options.focusId,
+      suggestions: [],
+      clarifications: [],
+      followUps: [],
+      references: [],
+      edits: []
+    });
+
+    for (const { index } of pendingIndexes) {
+      // eslint-disable-next-line no-await-in-loop -- Applying edits sequentially to avoid conflicting writes.
+      await applyEdit(targetAssistant.id, index);
+    }
+
+    const refreshedAssistant = conversation.value.find(message => message.id === targetAssistant.id);
+    const attemptedIndexes = new Set(pendingIndexes.map(item => item.index));
+    const appliedCount = refreshedAssistant?.edits
+      ?.filter((edit, idx) => attemptedIndexes.has(idx) && edit.status === 'applied').length ?? 0;
+    const failedCount = refreshedAssistant?.edits
+      ?.filter((edit, idx) => attemptedIndexes.has(idx) && edit.status === 'failed').length ?? 0;
+    const stillPending = refreshedAssistant?.edits
+      ?.some((edit, idx) => attemptedIndexes.has(idx) && edit.status === 'pending') ?? false;
+
+    let summary = `Finished applying edits. Applied ${appliedCount} item(s)`;
+    if (failedCount > 0) {
+      summary += `, ${failedCount} failed`;
+    }
+    summary += '.';
+    if (stillPending) {
+      summary += ' Some edits remain pending.';
+    }
+
+    updateAssistantMessage(summaryMessageId, {
+      content: summary
+    });
+
+    return true;
+  }
+
   async function ask(question: string, options: AskOptions) {
     await initialize();
 
@@ -256,10 +394,15 @@ export const useAIStore = defineStore('ai', () => {
       return;
     }
 
-    isLoading.value = true;
+    const trimmedQuestion = question.trim();
     error.value = null;
 
-    const trimmedQuestion = question.trim();
+    const handledLocally = await handleLocalCommand(trimmedQuestion, options);
+    if (handledLocally) {
+      return;
+    }
+
+    isLoading.value = true;
     const userMessageId = generateId('user');
     const assistantMessageId = generateId('assistant');
 
@@ -269,7 +412,8 @@ export const useAIStore = defineStore('ai', () => {
       content: trimmedQuestion,
       createdAt: new Date().toISOString(),
       mode: options.mode,
-      focusId: options.focusId
+      focusId: options.focusId,
+      edits: []
     });
 
     appendMessage({
@@ -283,7 +427,8 @@ export const useAIStore = defineStore('ai', () => {
       suggestions: [],
       clarifications: [],
       followUps: [],
-      references: []
+      references: [],
+      edits: []
     });
 
     try {
@@ -296,7 +441,8 @@ export const useAIStore = defineStore('ai', () => {
           suggestions: [],
           clarifications: result.error ? [result.error] : [],
           followUps: [],
-          references: []
+          references: [],
+          edits: []
         });
         return;
       }
@@ -309,7 +455,13 @@ export const useAIStore = defineStore('ai', () => {
         suggestions: Array.isArray(result.improvements) ? result.improvements : [],
         clarifications: Array.isArray(result.clarifications) ? result.clarifications : [],
         followUps: Array.isArray(result.followUps) ? result.followUps : [],
-        references: Array.isArray(result.references) ? result.references : []
+        references: Array.isArray(result.references) ? result.references : [],
+        edits: Array.isArray(result.edits)
+          ? result.edits.map(edit => ({
+              ...edit,
+              status: 'pending'
+            }))
+          : []
       });
     } catch (err: any) {
       const message = err?.message || 'Assistant request failed. Please check the console for details.';
@@ -319,10 +471,72 @@ export const useAIStore = defineStore('ai', () => {
         suggestions: [],
         clarifications: [message],
         followUps: [],
-        references: []
+        references: [],
+        edits: []
       });
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  async function applyEdit(messageId: string, editIndex: number) {
+    const targetMessage = conversation.value.find(item => item.id === messageId && item.role === 'assistant');
+    if (!targetMessage || !targetMessage.edits || !targetMessage.edits[editIndex]) {
+      return;
+    }
+
+    const edit = targetMessage.edits[editIndex];
+    if (edit.status === 'applying') {
+      return;
+    }
+
+    const repoPath = contextStore.repoPath;
+    if (!repoPath) {
+      error.value = 'Repository path unavailable. Configure a repository before applying edits.';
+      return;
+    }
+
+    updateAssistantMessage(messageId, {
+      edits: targetMessage.edits.map((current, idx) =>
+        idx === editIndex
+          ? { ...current, status: 'applying', error: undefined }
+          : current
+      )
+    });
+
+    try {
+      const result = await window.api.ai.applyEdit(repoPath, edit.filePath, edit.updatedContent, edit.summary);
+      if (!result?.ok) {
+        const failureReason = result?.error || 'Edit failed without error details.';
+        updateAssistantMessage(messageId, {
+          edits: targetMessage.edits.map((current, idx) =>
+            idx === editIndex
+              ? { ...current, status: 'failed', error: failureReason }
+              : current
+          )
+        });
+        error.value = failureReason;
+        return;
+      }
+
+      await contextStore.loadGraph();
+      updateAssistantMessage(messageId, {
+        edits: targetMessage.edits.map((current, idx) =>
+          idx === editIndex
+            ? { ...current, status: 'applied' }
+            : current
+        )
+      });
+    } catch (err: any) {
+      const failureReason = err?.message || 'Failed to apply edit.';
+      updateAssistantMessage(messageId, {
+        edits: targetMessage.edits.map((current, idx) =>
+          idx === editIndex
+            ? { ...current, status: 'failed', error: failureReason }
+            : current
+        )
+      });
+      error.value = failureReason;
     }
   }
 
@@ -348,6 +562,7 @@ export const useAIStore = defineStore('ai', () => {
     initialize,
     ask,
     clearConversation,
-    acknowledgeError
+    acknowledgeError,
+    applyEdit
   };
 });

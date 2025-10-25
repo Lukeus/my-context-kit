@@ -78,6 +78,11 @@ export const useGitStore = defineStore('git', () => {
     error.value = null;
 
     try {
+      if (!contextStore.repoPath) {
+        error.value = 'Repository path is not configured';
+        return false;
+      }
+
       const result = await window.api.git.status(contextStore.repoPath);
       
       if (!result.ok) {
@@ -98,6 +103,11 @@ export const useGitStore = defineStore('git', () => {
 
   async function loadBranches() {
     try {
+      if (!contextStore.repoPath) {
+        error.value = 'Repository path is not configured';
+        return false;
+      }
+
       const result = await window.api.git.branch(contextStore.repoPath);
       
       if (!result.ok) {
@@ -119,6 +129,11 @@ export const useGitStore = defineStore('git', () => {
     error.value = null;
 
     try {
+      if (!contextStore.repoPath) {
+        error.value = 'Repository path is not configured';
+        return false;
+      }
+
       const result = await window.api.git.diff(contextStore.repoPath, filePath);
       
       if (!result.ok) {
@@ -141,6 +156,11 @@ export const useGitStore = defineStore('git', () => {
     error.value = null;
 
     try {
+      if (!contextStore.repoPath) {
+        error.value = 'Repository path is not configured';
+        return false;
+      }
+
       const result = await window.api.git.commit(contextStore.repoPath, message, files);
       
       if (!result.ok) {
@@ -164,6 +184,11 @@ export const useGitStore = defineStore('git', () => {
     error.value = null;
 
     try {
+      if (!contextStore.repoPath) {
+        error.value = 'Repository path is not configured';
+        return false;
+      }
+
       const result = await window.api.git.createBranch(contextStore.repoPath, branchName, checkout);
       
       if (!result.ok) {
@@ -188,6 +213,11 @@ export const useGitStore = defineStore('git', () => {
     error.value = null;
 
     try {
+      if (!contextStore.repoPath) {
+        error.value = 'Repository path is not configured';
+        return false;
+      }
+
       const result = await window.api.git.checkout(contextStore.repoPath, branchName);
       
       if (!result.ok) {
@@ -211,6 +241,11 @@ export const useGitStore = defineStore('git', () => {
     error.value = null;
 
     try {
+      if (!contextStore.repoPath) {
+        error.value = 'Repository path is not configured';
+        return false;
+      }
+
       const result = await window.api.git.push(contextStore.repoPath, remote, branch);
       
       if (!result.ok) {
@@ -233,6 +268,11 @@ export const useGitStore = defineStore('git', () => {
     error.value = null;
 
     try {
+      if (!contextStore.repoPath) {
+        error.value = 'Repository path is not configured';
+        return { ok: false, error: error.value };
+      }
+
       const result = await window.api.git.createPR(contextStore.repoPath, title, body, base);
       
       if (!result.ok) {
