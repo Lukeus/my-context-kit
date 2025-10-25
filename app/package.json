@@ -17,7 +17,8 @@
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
     "format": "eslint --ext .ts,.tsx . --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "keywords": [],
   "author": {
@@ -51,10 +52,12 @@
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "@vitejs/plugin-vue": "^6.0.1",
+    "@vitest/coverage-v8": "^2.1.4",
     "autoprefixer": "^10.4.21",
     "electron": "38.4.0",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
+    "vitest": "^2.1.4",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.16",
     "typescript": "^5.3.3",

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch, ref } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { useBuilderStore } from '../stores/builderStore';
 import { useContextStore } from '../stores/contextStore';
 import { EditorView, basicSetup } from 'codemirror';
@@ -72,26 +72,10 @@ async function handleSave() {
   }
 }
 
-// Generate ID on mount
-onMounted(async () => {
-  if (builderStore.isOpen && !builderStore.partialEntity.id) {
-    builderStore.repoPath = contextStore.repoPath;
-    await builderStore.generateNextId();
-  }
-});
-
 // Watch for modal open and generate ID
 watch(() => builderStore.isOpen, async (isOpen) => {
-  if (isOpen && !builderStore.partialEntity.id) {
-    builderStore.repoPath = contextStore.repoPath;
-    await builderStore.generateNextId();
-    // Initialize arrays for certain entity types
-    if (builderStore.entityType === 'feature' && !builderStore.partialEntity.requires) {
-      builderStore.partialEntity.requires = [];
-    }
-    // Load templates and get initial suggestions
-    await builderStore.loadTemplates();
-    await builderStore.getSuggestions();
+  if (isOpen) {
+    await builderStore.prepareForOpen(contextStore.repoPath);
   }
 });
 
@@ -206,11 +190,11 @@ watch(() => builderStore.partialEntity.feature, async () => {
       <!-- Content Area -->
       <div class="flex-1 overflow-y-auto px-6 py-6 bg-surface">
         <!-- Loading Overlay -->
-        <div v-if="builderStore.isLoadingTemplates || builderStore.isLoadingSuggestions" 
+        <div v-if="builderStore.isBusy"
              class="absolute inset-0 bg-surface bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-10">
           <div class="text-center">
             <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-surface-variant border-t-primary-600"></div>
-            <p class="text-sm text-secondary-700 font-medium mt-3">{{ builderStore.isLoadingTemplates ? 'Loading templates...' : 'Loading suggestions...' }}</p>
+            <p class="text-sm text-secondary-700 font-medium mt-3">{{ builderStore.busyMessage }}</p>
           </div>
         </div>
         

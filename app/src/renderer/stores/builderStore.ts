@@ -66,6 +66,8 @@ export const useBuilderStore = defineStore('builder', () => {
   const isLoadingTemplates = ref(false);
   const createRelatedEntities = ref(false);
   const relatedEntitiesToCreate = ref<Array<{ type: string; count: number }>>([]);
+  const loadingState = ref<'idle' | 'preparing' | 'loading'>('idle');
+  const loadingMessage = ref('');
 
   // Computed
   const totalSteps = computed(() => 4); // Basic Info, Relationships, Details, Review
@@ -95,6 +97,35 @@ export const useBuilderStore = defineStore('builder', () => {
     } catch (error) {
       return '# Error generating YAML preview';
     }
+  });
+
+  const isBusy = computed(() => {
+    if (loadingState.value !== 'idle') {
+      return true;
+    }
+    if (isLoadingSuggestions.value) {
+      return true;
+    }
+    if (isLoadingTemplates.value) {
+      return true;
+    }
+    return isGenerating.value;
+  });
+
+  const busyMessage = computed(() => {
+    if (loadingState.value !== 'idle') {
+      return loadingMessage.value;
+    }
+    if (isGenerating.value) {
+      return 'Creating entity...';
+    }
+    if (isLoadingSuggestions.value) {
+      return 'Updating suggestions...';
+    }
+    if (isLoadingTemplates.value) {
+      return 'Loading templates...';
+    }
+    return '';
   });
 
   // Actions
@@ -237,6 +268,40 @@ export const useBuilderStore = defineStore('builder', () => {
       // Templates are optional, so don't block the workflow
     } finally {
       isLoadingTemplates.value = false;
+    }
+  }
+
+  async function prepareForOpen(repoPathValue: string) {
+    if (!repoPathValue) {
+      return;
+    }
+
+    repoPath.value = repoPathValue;
+    loadingState.value = 'preparing';
+    loadingMessage.value = 'Preparing builder workspace...';
+
+    try {
+      availableTemplates.value = [];
+      selectedTemplate.value = null;
+
+      if (!partialEntity.value.id) {
+        await generateNextId();
+      }
+
+      if (entityType.value === 'feature' && !Array.isArray(partialEntity.value.requires)) {
+        partialEntity.value.requires = [];
+      }
+
+      loadingState.value = 'loading';
+      loadingMessage.value = 'Loading templates and suggestions...';
+
+      await Promise.all([loadTemplates(), getSuggestions()]);
+    } catch (error) {
+      const message = (error as Error).message || 'Failed to prepare builder';
+      errorMessage.value = message;
+    } finally {
+      loadingState.value = 'idle';
+      loadingMessage.value = '';
     }
   }
 
@@ -441,10 +506,14 @@ export const useBuilderStore = defineStore('builder', () => {
     isLoadingTemplates,
     createRelatedEntities,
     relatedEntitiesToCreate,
+    loadingState,
+    loadingMessage,
     // Computed
     totalSteps,
     canProceed,
     yamlPreview,
+    isBusy,
+    busyMessage,
     // Actions
     initBuilder,
     closeBuilder,
@@ -458,6 +527,7 @@ export const useBuilderStore = defineStore('builder', () => {
     getSuggestions,
     checkIdConflict,
     loadTemplates,
+    prepareForOpen,
     applyTemplate,
     clearTemplate
   };

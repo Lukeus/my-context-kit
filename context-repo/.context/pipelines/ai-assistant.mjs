@@ -116,6 +116,7 @@ function mapFeature(entity, entitiesById) {
     specs,
     tasks,
     requires,
+    filePath: entity._file,
     linkedUserStories: userStories.map(id => ({
       id,
       title: entitiesById[id]?.title || entitiesById[id]?.iWant || '',
@@ -143,7 +144,8 @@ function mapUserStory(entity) {
     asA: entity.asA || '',
     iWant: entity.iWant || '',
     soThat: entity.soThat || '',
-    acceptanceCriteria: Array.isArray(entity.acceptanceCriteria) ? entity.acceptanceCriteria : []
+    acceptanceCriteria: Array.isArray(entity.acceptanceCriteria) ? entity.acceptanceCriteria : [],
+    filePath: entity._file
   };
 }
 
@@ -153,7 +155,8 @@ function mapSpec(entity) {
     title: entity.title || '',
     status: entity.status || '',
     type: entity.type || '',
-    related: entity.related || {}
+    related: entity.related || {},
+    filePath: entity._file
   };
 }
 
@@ -164,7 +167,8 @@ function mapTask(entity) {
     status: entity.status || '',
     owner: entity.owner || '',
     doneCriteria: Array.isArray(entity.doneCriteria) ? entity.doneCriteria : [],
-    acceptanceCriteria: Array.isArray(entity.acceptanceCriteria) ? entity.acceptanceCriteria : []
+    acceptanceCriteria: Array.isArray(entity.acceptanceCriteria) ? entity.acceptanceCriteria : [],
+    filePath: entity._file
   };
 }
 
@@ -174,7 +178,8 @@ function mapService(entity) {
     name: entity.name || '',
     status: entity.status || '',
     dependencies: Array.isArray(entity.dependencies) ? entity.dependencies : [],
-    consumers: Array.isArray(entity.consumers) ? entity.consumers : []
+    consumers: Array.isArray(entity.consumers) ? entity.consumers : [],
+    filePath: entity._file
   };
 }
 
@@ -183,7 +188,8 @@ function mapPackage(entity) {
     id: entity.id,
     name: entity.name || '',
     status: entity.status || '',
-    uses: entity.uses || {}
+    uses: entity.uses || {},
+    filePath: entity._file
   };
 }
 
@@ -201,7 +207,8 @@ function mapGovernance(entity) {
           appliesTo: principle.appliesTo || []
         }))
       : [],
-    complianceRules: entity.compliance?.rules || []
+    complianceRules: entity.compliance?.rules || [],
+    filePath: entity._file
   };
 }
 
@@ -259,9 +266,19 @@ Always respond with JSON using this exact shape:
   "followUps": ["recommended next actions"],
   "references": [
     {"type": "feature|userstory|spec|task|service|package|governance", "id": "entity id", "note": "short justification"}
+  ],
+  "edits": [
+    {
+      "targetId": "optional entity id",
+      "filePath": "relative path under repo root, e.g. contexts/features/FEAT-001.yaml",
+      "summary": "short description of the change",
+      "updatedContent": "complete YAML document to overwrite the file with"
+    }
   ]
 }
-Always include all keys even if arrays are empty. Do not invent entities or assumptions beyond the snapshot.`;
+Always include all keys even if arrays are empty. Do not invent entities or assumptions beyond the snapshot.
+When suggesting edits, use the exact filePath provided in the snapshot metadata for that entity; never guess new paths.
+Only include edits when you are confident in the full YAML replacement.`;
 
   const userPrompt = `Repository snapshot (trimmed to relevant details):
 
@@ -317,6 +334,7 @@ async function assistWithContext(provider, endpoint, model, apiKey, question, op
       clarifications: Array.isArray(parsed.clarifications) ? parsed.clarifications : [],
       followUps: Array.isArray(parsed.followUps) ? parsed.followUps : [],
       references: Array.isArray(parsed.references) ? parsed.references : [],
+      edits: Array.isArray(parsed.edits) ? parsed.edits : [],
       snapshot,
       usage: response.usage
     };

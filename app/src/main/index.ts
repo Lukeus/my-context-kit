@@ -1,11 +1,13 @@
 import { app, BrowserWindow, ipcMain, clipboard, safeStorage } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { readFile, writeFile, readdir, rename } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import started from 'electron-squirrel-startup';
 import { execa } from 'execa';
 import { simpleGit } from 'simple-git';
+import { parse as parseYAML } from 'yaml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,13 +76,28 @@ ipcMain.handle('context:validate', async (_event, { dir }: { dir: string }) => {
 });
 
 ipcMain.handle('context:buildGraph', async (_event, { dir }: { dir: string }) => {
+  const pipelinePath = path.join(dir, '.context', 'pipelines', 'build-graph.mjs');
+
+  if (!existsSync(pipelinePath)) {
+    return {
+      error: 'Selected repository is missing .context/pipelines/build-graph.mjs. Choose a valid context repo or generate the required pipeline files.'
+    };
+  }
+
   try {
-    const result = await execa('node', [path.join(dir, '.context', 'pipelines', 'build-graph.mjs')], {
+    const result = await execa('node', [pipelinePath], {
       cwd: dir
     });
     return JSON.parse(result.stdout);
   } catch (error: any) {
-    return { error: error.message };
+    const message = typeof error?.message === 'string' ? error.message : 'Failed to run build graph pipeline.';
+    if (message.includes('Cannot find module')) {
+      return {
+        error: 'build-graph.mjs failed to execute. Ensure all pipeline dependencies are installed inside the selected repository.'
+      };
+    }
+
+    return { error: message };
   }
 });
 
@@ -368,8 +385,14 @@ ipcMain.handle('git:createPR', async (_event, { dir, title, body, base }: { dir:
 ipcMain.handle('app:getDefaultRepoPath', async () => {
   try {
     const envOverride = process.env.CONTEXT_REPO_PATH;
-    if (envOverride) {
+    if (envOverride && existsSync(envOverride)) {
+      await upsertRepoEntry(envOverride, { setActive: true, label: path.basename(envOverride) });
       return { ok: true, path: envOverride };
+    }
+
+    const activePath = await ensureRepoRegistryActivePath();
+    if (activePath) {
+      return { ok: true, path: activePath };
     }
 
     const appPath = app.getAppPath();
@@ -380,7 +403,108 @@ ipcMain.handle('app:getDefaultRepoPath', async () => {
     ];
 
     const matchingPath = candidates.find(candidate => existsSync(candidate));
-    return { ok: true, path: matchingPath ?? '' };
+    if (matchingPath) {
+      await upsertRepoEntry(matchingPath, {
+        setActive: true,
+        autoDetected: true,
+        label: path.basename(matchingPath)
+      });
+      return { ok: true, path: matchingPath };
+    }
+
+    return { ok: true, path: '' };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('repos:list', async () => {
+  try {
+    const registry = await loadRepoRegistry();
+    return { ok: true, registry };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('repos:add', async (_event, { label, path: repoPath, setActive, autoDetected }: { label: string; path: string; setActive?: boolean; autoDetected?: boolean }) => {
+  try {
+    if (!repoPath || !label) {
+      return { ok: false, error: 'Repository label and path are required' };
+    }
+    if (!existsSync(repoPath)) {
+      return { ok: false, error: 'Repository path does not exist' };
+    }
+
+    const registry = await upsertRepoEntry(repoPath, {
+      label,
+      setActive: setActive ?? true,
+      autoDetected
+    });
+
+    return { ok: true, registry };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('repos:update', async (_event, { id, label, path: repoPath, autoDetected }: { id: string; label?: string; path?: string; autoDetected?: boolean }) => {
+  try {
+    const registry = await loadRepoRegistry();
+    const repo = registry.repos.find(entry => entry.id === id);
+    if (!repo) {
+      return { ok: false, error: 'Repository not found' };
+    }
+
+    if (label) {
+      repo.label = label;
+    }
+
+    if (repoPath) {
+      if (!existsSync(repoPath)) {
+        return { ok: false, error: 'Repository path does not exist' };
+      }
+      const canonicalNew = canonicalizeRepoPath(repoPath);
+      const collision = registry.repos.find(entry => entry.id !== id && canonicalizeRepoPath(entry.path) === canonicalNew);
+      if (collision) {
+        return { ok: false, error: 'Another repository already uses this path' };
+      }
+      repo.path = path.normalize(path.resolve(repoPath));
+    }
+
+    if (autoDetected !== undefined) {
+      repo.autoDetected = autoDetected;
+    }
+
+    await saveRepoRegistry(registry);
+    return { ok: true, registry };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('repos:remove', async (_event, { id }: { id: string }) => {
+  try {
+    const registry = await removeRepoEntry(id);
+    return { ok: true, registry };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('repos:setActive', async (_event, { id }: { id: string }) => {
+  try {
+    const registry = await loadRepoRegistry();
+    const repo = registry.repos.find(entry => entry.id === id);
+    if (!repo) {
+      return { ok: false, error: 'Repository not found' };
+    }
+
+    registry.activeRepoId = id;
+    repo.lastUsed = new Date().toISOString();
+    await saveRepoRegistry(registry);
+
+    return { ok: true, registry };
   } catch (error: any) {
     return { ok: false, error: error.message };
   }
@@ -586,6 +710,220 @@ ipcMain.handle('context:getTemplates', async (_event, { dir, entityType }: { dir
 const APP_SETTINGS_FILE = 'app-settings.json';
 const AI_CONFIG_FILE = 'ai-config.json';
 const CREDENTIALS_FILE = 'ai-credentials.enc';
+const REPO_REGISTRY_FILE = 'repo-registry.json';
+const REGISTRY_BACKUP_PREFIX = 'repo-registry.invalid';
+
+type RepoEntry = {
+  id: string;
+  label: string;
+  path: string;
+  createdAt: string;
+  lastUsed: string;
+  autoDetected?: boolean;
+};
+
+type RepoRegistry = {
+  activeRepoId: string | null;
+  repos: RepoEntry[];
+};
+
+const getRegistryPath = (): string => path.join(app.getPath('userData'), REPO_REGISTRY_FILE);
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+const sanitizeRepoEntry = (value: unknown): RepoEntry | null => {
+  if (!isPlainObject(value)) {
+    return null;
+  }
+
+  const idValue = value.id;
+  const labelValue = value.label;
+  const pathValue = value.path;
+  const createdAtValue = value.createdAt;
+  const lastUsedValue = value.lastUsed;
+  const autoDetectedValue = value.autoDetected;
+
+  if (typeof idValue !== 'string' || idValue.trim().length === 0) {
+    return null;
+  }
+
+  if (typeof pathValue !== 'string' || pathValue.trim().length === 0) {
+    return null;
+  }
+
+  const normalizeDate = (input: unknown): string => {
+    if (typeof input === 'string' && !Number.isNaN(Date.parse(input))) {
+      return input;
+    }
+    return new Date().toISOString();
+  };
+
+  const normalizedPath = pathValue;
+  const normalizedLabel = typeof labelValue === 'string' && labelValue.trim().length > 0
+    ? labelValue
+    : path.basename(normalizedPath) || normalizedPath;
+  const normalizedCreated = normalizeDate(createdAtValue);
+  const normalizedLastUsed = normalizeDate(lastUsedValue);
+  const normalizedAutoDetected = typeof autoDetectedValue === 'boolean' ? autoDetectedValue : undefined;
+
+  return {
+    id: idValue,
+    label: normalizedLabel,
+    path: normalizedPath,
+    createdAt: normalizedCreated,
+    lastUsed: normalizedLastUsed,
+    autoDetected: normalizedAutoDetected
+  };
+};
+
+const sanitizeRepoRegistry = (value: unknown): RepoRegistry | null => {
+  if (!isPlainObject(value)) {
+    return null;
+  }
+
+  const rawRepos = value.repos;
+  if (!Array.isArray(rawRepos)) {
+    return null;
+  }
+
+  const sanitizedRepos = rawRepos
+    .map(sanitizeRepoEntry)
+    .filter((repo): repo is RepoEntry => repo !== null);
+
+  if (sanitizedRepos.length === 0 && rawRepos.length > 0) {
+    return null;
+  }
+
+  let activeRepoId: string | null = null;
+  if (typeof value.activeRepoId === 'string' && sanitizedRepos.some(repo => repo.id === value.activeRepoId)) {
+    activeRepoId = value.activeRepoId;
+  } else if (sanitizedRepos.length > 0) {
+    activeRepoId = sanitizedRepos[0].id;
+  }
+
+  return {
+    activeRepoId,
+    repos: sanitizedRepos
+  };
+};
+
+const quarantineCorruptRegistry = async (registryPath: string): Promise<void> => {
+  try {
+    if (!existsSync(registryPath)) {
+      return;
+    }
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupName = `${REGISTRY_BACKUP_PREFIX}-${timestamp}.json`;
+    const backupPath = path.join(path.dirname(registryPath), backupName);
+    await rename(registryPath, backupPath);
+    console.warn(`Repository registry was invalid and has been quarantined as ${backupName}`);
+  } catch (error) {
+    console.warn('Failed to quarantine invalid repository registry.', error);
+  }
+};
+
+const canonicalizeRepoPath = (input: string): string => {
+  const normalizedPath = path.normalize(path.resolve(input));
+  return process.platform === 'win32' ? normalizedPath.toLowerCase() : normalizedPath;
+};
+
+const loadRepoRegistry = async (): Promise<RepoRegistry> => {
+  const registryPath = getRegistryPath();
+  try {
+    const content = await readFile(registryPath, 'utf-8');
+    const parsed = JSON.parse(content);
+    const sanitized = sanitizeRepoRegistry(parsed);
+    if (sanitized) {
+      return sanitized;
+    }
+    await quarantineCorruptRegistry(registryPath);
+  } catch (error: any) {
+    if (error?.code && error.code !== 'ENOENT') {
+      console.warn('Failed to load repository registry; falling back to defaults.', error);
+    }
+  }
+  return { activeRepoId: null, repos: [] };
+};
+
+const saveRepoRegistry = async (registry: RepoRegistry): Promise<void> => {
+  await writeFile(getRegistryPath(), JSON.stringify(registry, null, 2), 'utf-8');
+};
+
+const upsertRepoEntry = async (
+  repoPath: string,
+  options: { label?: string; setActive?: boolean; autoDetected?: boolean } = {}
+): Promise<RepoRegistry> => {
+  const normalizedPath = path.normalize(path.resolve(repoPath));
+  const canonicalPath = canonicalizeRepoPath(normalizedPath);
+  const registry = await loadRepoRegistry();
+  const existing = registry.repos.find(entry => canonicalizeRepoPath(entry.path) === canonicalPath);
+  const nowIso = new Date().toISOString();
+
+  if (existing) {
+    if (options.label && existing.label !== options.label) {
+      existing.label = options.label;
+    }
+    if (options.autoDetected !== undefined) {
+      existing.autoDetected = options.autoDetected;
+    }
+    if (options.setActive) {
+      registry.activeRepoId = existing.id;
+      existing.lastUsed = nowIso;
+    }
+  } else {
+    const entry: RepoEntry = {
+      id: randomUUID(),
+      label: options.label || path.basename(normalizedPath) || normalizedPath,
+      path: normalizedPath,
+      createdAt: nowIso,
+      lastUsed: nowIso,
+      autoDetected: options.autoDetected
+    };
+    registry.repos.push(entry);
+    if (options.setActive ?? true) {
+      registry.activeRepoId = entry.id;
+    }
+  }
+
+  await saveRepoRegistry(registry);
+  return registry;
+};
+
+const removeRepoEntry = async (id: string): Promise<RepoRegistry> => {
+  const registry = await loadRepoRegistry();
+  registry.repos = registry.repos.filter(entry => entry.id !== id);
+  if (registry.activeRepoId === id) {
+    registry.activeRepoId = registry.repos[0]?.id ?? null;
+    if (registry.activeRepoId) {
+      const nextActive = registry.repos.find(entry => entry.id === registry.activeRepoId);
+      if (nextActive) {
+        nextActive.lastUsed = new Date().toISOString();
+      }
+    }
+  }
+  await saveRepoRegistry(registry);
+  return registry;
+};
+
+const ensureRepoRegistryActivePath = async (): Promise<string | null> => {
+  const registry = await loadRepoRegistry();
+  const activeRepo = registry.repos.find(entry => entry.id === registry.activeRepoId);
+  if (activeRepo && existsSync(activeRepo.path)) {
+    return activeRepo.path;
+  }
+
+  const firstExisting = registry.repos.find(entry => existsSync(entry.path));
+  if (firstExisting) {
+    registry.activeRepoId = firstExisting.id;
+    firstExisting.lastUsed = new Date().toISOString();
+    await saveRepoRegistry(registry);
+    return firstExisting.path;
+  }
+
+  return null;
+};
 
 // App Settings handlers
 ipcMain.handle('settings:get', async (_event, { key }: { key: string }) => {
@@ -859,6 +1197,39 @@ ipcMain.handle('ai:assist', async (_event, { dir, question, mode, focusId }:
       }
     }
     return { ok: false, error: errorMsg };
+  }
+});
+
+ipcMain.handle('ai:applyEdit', async (_event, { dir, filePath, updatedContent, summary }:
+  { dir: string; filePath: string; updatedContent: string; summary?: string }) => {
+  try {
+    if (!dir || !filePath) {
+      return { ok: false, error: 'Repository path and file path are required.' };
+    }
+
+    const repoRoot = path.resolve(dir);
+    const targetPath = path.resolve(repoRoot, filePath);
+
+    if (!targetPath.startsWith(repoRoot)) {
+      return { ok: false, error: 'Edit rejected because the target is outside the repository.' };
+    }
+
+    if (!existsSync(targetPath)) {
+      return { ok: false, error: `Target file does not exist: ${filePath}` };
+    }
+
+    try {
+      parseYAML(updatedContent);
+    } catch (error: any) {
+      return { ok: false, error: `Updated content is not valid YAML: ${error.message}` };
+    }
+
+    await writeFile(targetPath, updatedContent, 'utf-8');
+
+    // TODO: capture summary in an activity log once telemetry module is available.
+    return { ok: true };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
   }
 });
 

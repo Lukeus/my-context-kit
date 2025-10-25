@@ -29,9 +29,31 @@ interface Graph {
   };
 }
 
+interface RepoRegistryEntry {
+  id: string;
+  label: string;
+  path: string;
+  createdAt: string;
+  lastUsed: string;
+  autoDetected?: boolean;
+}
+
+interface RepoRegistryPayload {
+  activeRepoId: string | null;
+  repos: RepoRegistryEntry[];
+}
+
+interface RepoRegistryResult {
+  ok: boolean;
+  registry?: RepoRegistryPayload;
+  error?: string;
+}
+
 export const useContextStore = defineStore('context', () => {
   // State
   const repoPath = ref('');
+  const availableRepos = ref<RepoRegistryEntry[]>([]);
+  const activeRepoId = ref<string | null>(null);
   const entities = ref<Record<string, Entity>>({});
   const graph = ref<Graph | null>(null);
   const activeEntityId = ref<string | null>(null);
@@ -44,11 +66,24 @@ export const useContextStore = defineStore('context', () => {
     if (isInitialized.value) return;
     
     try {
-      const result = await window.api.settings.get('repoPath');
-      if (result.ok && result.value) {
-        repoPath.value = result.value;
+      await refreshRepoRegistry();
+
+      if (activeRepoId.value) {
+        const activeRepo = availableRepos.value.find(repo => repo.id === activeRepoId.value);
+        if (activeRepo) {
+          repoPath.value = activeRepo.path;
+          await window.api.settings.set('repoPath', activeRepo.path);
+        } else {
+          await applyDefaultRepoPath();
+        }
       } else {
-        await applyDefaultRepoPath();
+        const settingsPath = await window.api.settings.get('repoPath');
+        if (settingsPath.ok && settingsPath.value) {
+          repoPath.value = settingsPath.value;
+          await ensureRepoInRegistry(settingsPath.value, { setActive: true });
+        } else {
+          await applyDefaultRepoPath();
+        }
       }
     } catch (err) {
       await applyDefaultRepoPath();
@@ -61,8 +96,10 @@ export const useContextStore = defineStore('context', () => {
     try {
       const defaultResult = await window.api.app.getDefaultRepoPath();
       if (defaultResult.ok && defaultResult.path) {
-        repoPath.value = defaultResult.path;
-        await window.api.settings.set('repoPath', defaultResult.path);
+        const normalized = defaultResult.path.trim();
+        repoPath.value = normalized;
+        await window.api.settings.set('repoPath', normalized);
+        await refreshRepoRegistry();
       } else {
         repoPath.value = '';
       }
@@ -110,13 +147,22 @@ export const useContextStore = defineStore('context', () => {
     return Object.keys(entities.value).length;
   });
 
+  const repoOptions = computed(() => {
+    return availableRepos.value
+      .slice()
+      .sort((a, b) => new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime());
+  });
+
   // Actions
   async function setRepoPath(path: string) {
-    repoPath.value = path;
+    const normalizedPath = path.trim();
+    repoPath.value = normalizedPath;
     
     // Persist to settings
     try {
-      await window.api.settings.set('repoPath', path);
+      await window.api.settings.set('repoPath', normalizedPath);
+      await ensureRepoInRegistry(normalizedPath, { setActive: true });
+      await refreshRepoRegistry();
     } catch (err) {
       console.error('Failed to save repo path setting:', err);
     }
@@ -127,6 +173,11 @@ export const useContextStore = defineStore('context', () => {
     error.value = null;
 
     try {
+      if (!repoPath.value) {
+        error.value = 'Repository path is not configured';
+        return false;
+      }
+
       const result = await window.api.context.buildGraph(repoPath.value);
       
       if (result.error) {
@@ -163,6 +214,11 @@ export const useContextStore = defineStore('context', () => {
     error.value = null;
 
     try {
+      if (!repoPath.value) {
+        error.value = 'Repository path is not configured';
+        return { ok: false, error: error.value };
+      }
+
       const result = await window.api.context.validate(repoPath.value);
       
       if (!result.ok) {
@@ -191,9 +247,131 @@ export const useContextStore = defineStore('context', () => {
     error.value = null;
   }
 
+  async function refreshRepoRegistry() {
+    try {
+      const result = await window.api.repos.list() as RepoRegistryResult;
+      if (result.ok && result.registry) {
+        availableRepos.value = result.registry.repos;
+        activeRepoId.value = result.registry.activeRepoId;
+      }
+    } catch {
+      // Ignore registry errors silently
+    }
+  }
+
+  async function ensureRepoInRegistry(pathToEnsure: string, options: { setActive?: boolean; label?: string } = {}) {
+    try {
+      const normalizedPath = pathToEnsure.trim();
+      if (!normalizedPath) {
+        return;
+      }
+      const label = options.label || normalizedPath.split(/[/\\]/).pop() || normalizedPath;
+      await window.api.repos.add({
+        label,
+        path: normalizedPath,
+        setActive: options.setActive ?? false,
+      }) as RepoRegistryResult;
+    } catch {
+      // Duplicate path errors should not interrupt user flow
+    }
+  }
+
+  async function selectActiveRepo(id: string) {
+    const repo = availableRepos.value.find(entry => entry.id === id);
+    if (!repo) {
+      return;
+    }
+
+    try {
+      await window.api.repos.setActive(id) as RepoRegistryResult;
+      await window.api.settings.set('repoPath', repo.path);
+      repoPath.value = repo.path;
+      activeRepoId.value = id;
+      await refreshRepoRegistry();
+      await loadGraph();
+    } catch (err) {
+      console.error('Failed to activate repository:', err);
+    }
+  }
+
+  async function addRepository(entry: { label: string; path: string }) {
+    const trimmedLabel = entry.label.trim();
+    const trimmedPath = entry.path.trim();
+    if (!trimmedLabel || !trimmedPath) {
+      return { ok: false, error: 'Label and path are required' };
+    }
+
+    try {
+      const result = await window.api.repos.add({
+        label: trimmedLabel,
+        path: trimmedPath,
+        setActive: true,
+      }) as RepoRegistryResult;
+
+      if (result.ok && result.registry) {
+        const registry = result.registry;
+        availableRepos.value = registry.repos;
+        activeRepoId.value = registry.activeRepoId;
+        const activeRepo = registry.repos.find(repo => repo.id === registry.activeRepoId);
+        if (activeRepo) {
+          repoPath.value = activeRepo.path;
+          await window.api.settings.set('repoPath', activeRepo.path);
+          await loadGraph();
+        }
+      }
+
+      return result;
+    } catch (err: any) {
+      return { ok: false, error: err.message || 'Failed to add repository' };
+    }
+  }
+
+  async function removeRepository(id: string) {
+    try {
+      const result = await window.api.repos.remove(id) as RepoRegistryResult;
+      if (result.ok && result.registry) {
+        const registry = result.registry;
+        availableRepos.value = registry.repos;
+        activeRepoId.value = registry.activeRepoId;
+        const activeRepo = registry.repos.find(repo => repo.id === registry.activeRepoId);
+        if (activeRepo) {
+          repoPath.value = activeRepo.path;
+          await window.api.settings.set('repoPath', activeRepo.path);
+        } else {
+          repoPath.value = '';
+          await window.api.settings.set('repoPath', '');
+        }
+        if (repoPath.value) {
+          await loadGraph();
+        } else {
+          graph.value = null;
+          entities.value = {};
+        }
+      }
+
+      return result;
+    } catch (err: any) {
+      return { ok: false, error: err.message || 'Failed to remove repository' };
+    }
+  }
+
+  function getActiveRepoMeta(): RepoRegistryEntry | null {
+    if (!activeRepoId.value) {
+      return null;
+    }
+    return availableRepos.value.find(repo => repo.id === activeRepoId.value) || null;
+  }
+
+  function isRepoRegistered(repoDir: string): boolean {
+    const normalized = repoDir.trim();
+    return availableRepos.value.some(repo => repo.path === normalized);
+  }
+
   return {
     // State
     repoPath,
+    availableRepos,
+    activeRepoId,
     entities,
     graph,
     activeEntityId,
@@ -204,6 +382,7 @@ export const useContextStore = defineStore('context', () => {
     activeEntity,
     entitiesByType,
     entityCount,
+    repoOptions,
     // Actions
     initializeStore,
     setRepoPath,
@@ -211,6 +390,13 @@ export const useContextStore = defineStore('context', () => {
     validateRepo,
     setActiveEntity,
     getEntity,
-    clearError
+    clearError,
+    refreshRepoRegistry,
+    ensureRepoInRegistry,
+    selectActiveRepo,
+    addRepository,
+    removeRepository,
+    getActiveRepoMeta,
+    isRepoRegistered
   };
 });

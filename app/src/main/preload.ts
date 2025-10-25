@@ -5,6 +5,15 @@ contextBridge.exposeInMainWorld('api', {
   app: {
     getDefaultRepoPath: () => ipcRenderer.invoke('app:getDefaultRepoPath'),
   },
+  repos: {
+    list: () => ipcRenderer.invoke('repos:list'),
+    add: (payload: { label: string; path: string; setActive?: boolean; autoDetected?: boolean }) =>
+      ipcRenderer.invoke('repos:add', payload),
+    update: (payload: { id: string; label?: string; path?: string; autoDetected?: boolean }) =>
+      ipcRenderer.invoke('repos:update', payload),
+    remove: (id: string) => ipcRenderer.invoke('repos:remove', { id }),
+    setActive: (id: string) => ipcRenderer.invoke('repos:setActive', { id }),
+  },
   settings: {
     get: (key: string) => ipcRenderer.invoke('settings:get', { key }),
     set: (key: string, value: any) => ipcRenderer.invoke('settings:set', { key, value }),
@@ -48,6 +57,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('ai:generate', { dir, entityType, userPrompt }),
     assist: (dir: string, question: string, mode?: string, focusId?: string) =>
       ipcRenderer.invoke('ai:assist', { dir, question, mode, focusId }),
+    applyEdit: (dir: string, filePath: string, updatedContent: string, summary?: string) =>
+      ipcRenderer.invoke('ai:applyEdit', { dir, filePath, updatedContent, summary }),
   },
 });
 
@@ -55,6 +66,13 @@ contextBridge.exposeInMainWorld('api', {
 declare global {
   interface Window {
     api: {
+      repos: {
+        list: () => Promise<RepoRegistryResponse>;
+        add: (payload: { label: string; path: string; setActive?: boolean; autoDetected?: boolean }) => Promise<RepoRegistryResponse>;
+        update: (payload: { id: string; label?: string; path?: string; autoDetected?: boolean }) => Promise<RepoRegistryResponse>;
+        remove: (id: string) => Promise<RepoRegistryResponse>;
+        setActive: (id: string) => Promise<RepoRegistryResponse>;
+      };
       settings: {
         get: (key: string) => Promise<{ ok: boolean; value?: any; error?: string }>;
         set: (key: string, value: any) => Promise<{ ok: boolean; error?: string }>;
@@ -108,11 +126,34 @@ declare global {
             snapshot?: Record<string, unknown>;
             error?: string;
             rawContent?: string;
+            edits?: Array<{ targetId?: string; filePath: string; summary: string; updatedContent: string }>;
           }>;
+        applyEdit: (dir: string, filePath: string, updatedContent: string, summary?: string) =>
+          Promise<{ ok: boolean; error?: string }>;
       };
-        app: {
-          getDefaultRepoPath: () => Promise<{ ok: boolean; path?: string; error?: string }>;
-        };
+      app: {
+        getDefaultRepoPath: () => Promise<{ ok: boolean; path?: string; error?: string }>;
+      };
     };
+  }
+
+  interface RepoRegistryEntry {
+    id: string;
+    label: string;
+    path: string;
+    createdAt: string;
+    lastUsed: string;
+    autoDetected?: boolean;
+  }
+
+  interface RepoRegistryPayload {
+    activeRepoId: string | null;
+    repos: RepoRegistryEntry[];
+  }
+
+  interface RepoRegistryResponse {
+    ok: boolean;
+    registry?: RepoRegistryPayload;
+    error?: string;
   }
 }
