@@ -1,6 +1,6 @@
 {
   "provider": "ollama",
   "endpoint": "http://localhost:11434",
-  "model": "gemma3:12b",
+  "model": "deepseek-r1:8b",
   "enabled": true
 }

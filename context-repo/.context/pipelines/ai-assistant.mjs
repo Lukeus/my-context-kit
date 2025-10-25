@@ -343,7 +343,24 @@ IMPORTANT RULES:
 - Output ONLY the JSON object, no additional text or explanation
 - Do not invent entities or assumptions beyond the snapshot
 - When suggesting edits, use the exact filePath provided in the snapshot metadata
-- Only include edits when you are confident in the full YAML replacement`;
+- Only include edits when you are confident in the full YAML replacement
+
+YAML SYNTAX RULES FOR EDITS (CRITICAL - FAILURE TO FOLLOW WILL CAUSE ERRORS):
+- NEVER EVER use compact/flow mapping syntax
+- NEVER use commas to separate key-value pairs
+- Each property MUST be on its own line
+- Use proper indentation (2 spaces per level)
+- Arrays use "- " prefix for each item
+
+INCORRECT YAML (DO NOT DO THIS):
+id: US-002, title: "my title", status: "active"
+
+CORRECT YAML (ALWAYS DO THIS):
+id: US-002
+title: "my title"
+status: "active"
+
+The updatedContent MUST be syntactically valid YAML that can be parsed without errors.`;
 
   const userPrompt = `Repository snapshot (trimmed to relevant details):
 
@@ -392,14 +409,36 @@ async function assistWithContext(provider, endpoint, model, apiKey, question, op
 
   try {
     const parsed = extractJSON(response.content);
+    
+    // Validate YAML in edits
+    const validatedEdits = [];
+    const clarifications = Array.isArray(parsed.clarifications) ? [...parsed.clarifications] : [];
+    
+    if (Array.isArray(parsed.edits)) {
+      for (const edit of parsed.edits) {
+        if (edit.updatedContent) {
+          try {
+            parseYAML(edit.updatedContent);
+            validatedEdits.push(edit);
+          } catch (yamlError) {
+            clarifications.push(
+              `Warning: Proposed edit for ${edit.filePath || 'unknown file'} contains invalid YAML and was removed. Error: ${yamlError.message}`
+            );
+          }
+        } else {
+          validatedEdits.push(edit);
+        }
+      }
+    }
+    
     const result = {
       ok: true,
       answer: typeof parsed.answer === 'string' ? parsed.answer : '',
       improvements: Array.isArray(parsed.improvements) ? parsed.improvements : [],
-      clarifications: Array.isArray(parsed.clarifications) ? parsed.clarifications : [],
+      clarifications,
       followUps: Array.isArray(parsed.followUps) ? parsed.followUps : [],
       references: Array.isArray(parsed.references) ? parsed.references : [],
-      edits: Array.isArray(parsed.edits) ? parsed.edits : [],
+      edits: validatedEdits,
       snapshot,
       usage: response.usage
     };
@@ -458,14 +497,36 @@ async function assistWithContextStream(provider, endpoint, model, apiKey, questi
     let finalResult;
     try {
       const parsed = extractJSON(contentBuffer);
+      
+      // Validate YAML in edits
+      const validatedEdits = [];
+      const clarifications = Array.isArray(parsed.clarifications) ? [...parsed.clarifications] : [];
+      
+      if (Array.isArray(parsed.edits)) {
+        for (const edit of parsed.edits) {
+          if (edit.updatedContent) {
+            try {
+              parseYAML(edit.updatedContent);
+              validatedEdits.push(edit);
+            } catch (yamlError) {
+              clarifications.push(
+                `Warning: Proposed edit for ${edit.filePath || 'unknown file'} contains invalid YAML and was removed. Error: ${yamlError.message}`
+              );
+            }
+          } else {
+            validatedEdits.push(edit);
+          }
+        }
+      }
+      
       finalResult = {
         ok: true,
         answer: typeof parsed.answer === 'string' ? parsed.answer : '',
         improvements: Array.isArray(parsed.improvements) ? parsed.improvements : [],
-        clarifications: Array.isArray(parsed.clarifications) ? parsed.clarifications : [],
+        clarifications,
         followUps: Array.isArray(parsed.followUps) ? parsed.followUps : [],
         references: Array.isArray(parsed.references) ? parsed.references : [],
-        edits: Array.isArray(parsed.edits) ? parsed.edits : [],
+        edits: validatedEdits,
         snapshot
       };
     } catch (error) {

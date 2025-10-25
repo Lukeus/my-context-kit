@@ -1,4 +1,30 @@
 {
+	"name": "my-context-kit",
+	"version": "1.0.0",
+	"private": true,
+	"packageManager": "pnpm@10.19.0",
+	"scripts": {
+		"start": "pnpm --filter context-sync start",
+		"dev": "pnpm --filter context-sync start",
+		"build": "pnpm --filter context-sync build",
+		"package": "pnpm --filter context-sync package",
+		"make": "pnpm --filter context-sync make",
+		"publish": "pnpm --filter context-sync publish",
+		"lint": "pnpm --filter context-sync lint",
+		"format": "pnpm --filter context-sync format",
+		"typecheck": "pnpm --filter context-sync typecheck",
+		"test": "pnpm --filter context-sync test",
+		"install:all": "pnpm install && cd app && pnpm install"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"electron",
+			"electron-winstaller"
+		],
+		"ignoredBuiltDependencies": [
+			"esbuild"
+		]
+	},
 	"dependencies": {
 		"diff-match-patch": "^1.0.5"
 	}

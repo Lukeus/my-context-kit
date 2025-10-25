@@ -153,7 +153,7 @@ watch(() => builderStore.partialEntity.feature, async () => {
 </script>
 
 <template>
-  <div v-if="builderStore.isOpen" class="fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
+  <div v-if="builderStore.isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
     <div class="bg-surface-1 rounded-m3-xl shadow-elevation-5 w-full max-w-3xl max-h-[90vh] flex flex-col border border-surface-variant">
       <!-- Header -->
       <div class="px-6 py-5 border-b border-surface-variant flex items-center justify-between">

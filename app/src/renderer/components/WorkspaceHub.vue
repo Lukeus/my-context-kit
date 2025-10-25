@@ -2,12 +2,15 @@
 import { onMounted, ref, computed } from 'vue';
 import { useContextStore } from '../stores/contextStore';
 import { useImpactStore } from '../stores/impactStore';
+import ProgressCompletionCard from './ProgressCompletionCard.vue';
+import NewRepoModal from './NewRepoModal.vue';
 
 const contextStore = useContextStore();
 const impactStore = useImpactStore();
 
 const recent = ref<string[]>([]);
 const pinned = ref<string[]>([]);
+const showNewRepoModal = ref(false);
 
 async function loadPrefs() {
   try {
@@ -48,23 +51,34 @@ onMounted(() => {
 
 <template>
   <div class="h-full overflow-auto bg-gradient-to-br from-surface via-surface-1 to-surface-2">
-    <!-- Hero Section -->
-    <div class="relative overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-br from-primary-600/10 via-secondary-500/5 to-transparent"></div>
-      <div class="relative px-8 py-12">
-        <div class="max-w-4xl mx-auto">
-          <h1 class="text-4xl font-bold text-primary-900 mb-3">Workspace Hub</h1>
-          <p class="text-lg text-secondary-700 mb-6">Your command center for context management and collaboration</p>
-          <div class="flex items-center gap-3">
+    <!-- Compact Hero Section -->
+    <div class="relative overflow-hidden border-b border-surface-variant">
+      <div class="absolute inset-0 bg-gradient-to-r from-primary-600/5 via-secondary-500/3 to-transparent"></div>
+      <div class="relative px-8 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-6">
+          <div class="flex-1 min-w-0">
+            <h1 class="text-2xl font-bold text-primary-900">Context Hub</h1>
+            <p class="text-sm text-secondary-600 mt-0.5">System Spec context management</p>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
             <button 
               @click="$emit('palette')" 
-              class="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-m3-lg bg-primary-600 text-white hover:bg-primary-700 shadow-elevation-2 hover:shadow-elevation-3 transition-all"
+              class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-lg bg-primary-600 text-white hover:bg-primary-700 shadow-elevation-1 hover:shadow-elevation-2 transition-all"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              Command Palette
-              <kbd class="ml-2 px-2 py-0.5 text-xs bg-white/20 rounded border border-white/30">Ctrl+K</kbd>
+              <span class="hidden sm:inline">Command Palette</span>
+              <kbd class="hidden lg:inline-block px-1.5 py-0.5 text-xs bg-white/20 rounded border border-white/30">Ctrl+K</kbd>
+            </button>
+            <button 
+              @click="showNewRepoModal = true" 
+              class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-lg bg-secondary-600 text-white hover:bg-secondary-700 shadow-elevation-1 hover:shadow-elevation-2 transition-all"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              <span class="hidden sm:inline">New Repo</span>
             </button>
           </div>
         </div>
@@ -72,7 +86,7 @@ onMounted(() => {
     </div>
 
     <!-- Content Grid -->
-    <div class="px-8 pb-8">
+    <div class="px-8 py-6">
       <div class="max-w-7xl mx-auto">
         <!-- Constitution Summary -->
         <div v-if="constitution" class="mb-6 bg-primary-900 rounded-m3-xl shadow-elevation-3 overflow-hidden">
@@ -118,6 +132,9 @@ onMounted(() => {
         </div>
 
         <div class="grid gap-6 lg:grid-cols-3">
+          <!-- Progress Completion Card -->
+          <ProgressCompletionCard />
+
           <!-- Pinned Items Card -->
           <div class="bg-surface rounded-m3-xl border border-surface-variant shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden">
             <div class="bg-primary-600 px-5 py-4 flex items-center gap-3">
@@ -140,25 +157,27 @@ onMounted(() => {
                 <p class="text-xs text-secondary-500 mt-1">Pin items from Recent or Tree</p>
               </div>
               <div v-else class="space-y-2">
-                <button 
+                <div 
                   v-for="id in pinned" 
                   :key="id" 
-                  class="group w-full text-left px-4 py-3 rounded-m3-lg hover:bg-primary-50 border border-transparent hover:border-primary-200 flex items-center justify-between transition-all"
-                  @click="openEntity(id)"
+                  class="flex items-center gap-2"
                 >
-                  <div class="flex items-center gap-3 min-w-0">
+                  <button 
+                    class="group flex-1 text-left px-4 py-3 rounded-m3-lg hover:bg-primary-50 border border-transparent hover:border-primary-200 flex items-center gap-3 transition-all"
+                    @click="openEntity(id)"
+                  >
                     <div class="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0"></div>
                     <span class="text-sm font-medium text-secondary-900 truncate">{{ id }}</span>
-                  </div>
+                  </button>
                   <button 
-                    class="text-xs px-2.5 py-1 rounded-m3-full bg-surface-2 group-hover:bg-error-50 group-hover:text-error-700 border border-surface-variant group-hover:border-error-200 transition-colors flex-shrink-0" 
-                    @click.stop="togglePin(id)"
+                    class="text-xs px-2.5 py-1 rounded-m3-full bg-surface-2 hover:bg-error-50 hover:text-error-700 border border-surface-variant hover:border-error-200 transition-colors flex-shrink-0" 
+                    @click="togglePin(id)"
                   >
                     <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
                   </button>
-                </button>
+                </div>
               </div>
             </div>
           </div>
@@ -219,9 +238,19 @@ onMounted(() => {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <div>
-                <h3 class="text-base font-semibold text-white">Needs Review</h3>
-                <p class="text-xs text-yellow-100">Stale or flagged items</p>
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-base font-semibold text-white">Needs Review</h3>
+                  <button 
+                    class="p-1 hover:bg-white/10 rounded-full transition-colors group relative"
+                    title="Items are marked for review when they're connected to changed entities or have validation issues"
+                  >
+                    <svg class="w-4 h-4 text-white/80 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </div>
+                <p class="text-xs text-yellow-100">Connected to changed entities</p>
               </div>
             </div>
             <div class="p-4">
@@ -230,7 +259,7 @@ onMounted(() => {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p class="text-sm text-secondary-600">All clear!</p>
-                <p class="text-xs text-secondary-500 mt-1">Run Impact to check for stale items</p>
+                <p class="text-xs text-secondary-500 mt-1">Run Impact Analysis to detect items needing review</p>
               </div>
               <div v-else class="space-y-2">
                 <button 
@@ -250,5 +279,8 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- New Repo Modal -->
+    <NewRepoModal v-if="showNewRepoModal" @close="showNewRepoModal = false" />
   </div>
 </template>

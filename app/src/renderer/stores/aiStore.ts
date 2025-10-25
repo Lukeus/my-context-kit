@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useContextStore } from './contextStore';
+import { DEFAULT_PROMPTS, detectModelCapabilities } from '../types/ai-prompts';
+import type { AIPromptConfig, ModelCapabilities, TokenProbability } from '../types/ai-prompts';
 
 type AssistantMode = 'improvement' | 'clarification' | 'general';
 
@@ -37,6 +39,7 @@ interface AssistantMessage {
   followUps?: string[];
   references?: AssistantReference[];
   edits?: AssistantEdit[];
+  logprobs?: TokenProbability[] | null;
 }
 
 interface AssistantUsage {
@@ -178,6 +181,7 @@ interface AssistantResponse {
   error?: string;
   rawContent?: string;
   edits?: AssistantEdit[];
+  logprobs?: TokenProbability[] | null;
 }
 
 function generateId(prefix: string) {
@@ -198,6 +202,8 @@ export const useAIStore = defineStore('ai', () => {
   const isInitialized = ref(false);
   const isEnabled = ref(false);
   const activeStreamId = ref<string | null>(null);
+  const prompts = ref<AIPromptConfig>(DEFAULT_PROMPTS);
+  const capabilities = ref<ModelCapabilities | null>(null);
 
   const hasConversation = computed(() => conversation.value.length > 0);
 
@@ -286,7 +292,8 @@ export const useAIStore = defineStore('ai', () => {
       clarifications: [],
       followUps: [],
       references: [],
-      edits: []
+      edits: [],
+      logprobs: null
     });
 
     const targetAssistant = findLatestAssistantWithPendingEdits();
@@ -304,7 +311,8 @@ export const useAIStore = defineStore('ai', () => {
         clarifications: [],
         followUps: [],
         references: [],
-        edits: []
+        edits: [],
+        logprobs: null
       });
       return true;
     }
@@ -326,7 +334,8 @@ export const useAIStore = defineStore('ai', () => {
         clarifications: [],
         followUps: [],
         references: [],
-        edits: []
+        edits: [],
+        logprobs: null
       });
       return true;
     }
@@ -343,7 +352,8 @@ export const useAIStore = defineStore('ai', () => {
       clarifications: [],
       followUps: [],
       references: [],
-      edits: []
+      edits: [],
+      logprobs: null
     });
 
     for (const { index } of pendingIndexes) {
@@ -414,7 +424,8 @@ export const useAIStore = defineStore('ai', () => {
       createdAt: new Date().toISOString(),
       mode: options.mode,
       focusId: options.focusId,
-      edits: []
+      edits: [],
+      logprobs: null
     });
 
     appendMessage({
@@ -429,7 +440,8 @@ export const useAIStore = defineStore('ai', () => {
       clarifications: [],
       followUps: [],
       references: [],
-      edits: []
+      edits: [],
+      logprobs: null
     });
 
     try {
@@ -462,7 +474,8 @@ export const useAIStore = defineStore('ai', () => {
               ...edit,
               status: 'pending'
             }))
-          : []
+          : [],
+        logprobs: result.logprobs || null
       });
     } catch (err: any) {
       const message = err?.message || 'Assistant request failed. Please check the console for details.';
@@ -518,7 +531,8 @@ export const useAIStore = defineStore('ai', () => {
       createdAt: new Date().toISOString(),
       mode: options.mode,
       focusId: options.focusId,
-      edits: []
+      edits: [],
+      logprobs: null
     });
 
     appendMessage({
@@ -532,7 +546,8 @@ export const useAIStore = defineStore('ai', () => {
       clarifications: [],
       followUps: [],
       references: [],
-      edits: []
+      edits: [],
+      logprobs: null
     });
 
     try {
@@ -557,7 +572,8 @@ export const useAIStore = defineStore('ai', () => {
             references: Array.isArray(result.references) ? result.references : [],
             edits: Array.isArray(result.edits)
               ? result.edits.map(edit => ({ ...edit, status: 'pending' }))
-              : []
+              : [],
+            logprobs: result.logprobs || null
           });
           lastSnapshot.value = (result as any).snapshot ?? null;
         } else if (payload.type === 'error') {
@@ -655,7 +671,8 @@ export const useAIStore = defineStore('ai', () => {
       clarifications: [],
       followUps: [],
       references: [],
-      edits: []
+      edits: [],
+      logprobs: null
     });
   }
 
@@ -670,6 +687,61 @@ export const useAIStore = defineStore('ai', () => {
     error.value = null;
   }
 
+  async function loadPrompts() {
+    const repoPath = contextStore.repoPath;
+    if (!repoPath) return;
+    
+    try {
+      const result = await window.api.fs.readFile(`${repoPath}/.context/ai-prompts.json`);
+      if (result.ok && result.content) {
+        const parsed = JSON.parse(result.content);
+        prompts.value = { ...DEFAULT_PROMPTS, ...parsed };
+      }
+    } catch {
+      prompts.value = DEFAULT_PROMPTS;
+    }
+  }
+
+  async function savePrompts(newPrompts: AIPromptConfig) {
+    const repoPath = contextStore.repoPath;
+    if (!repoPath) return { ok: false, error: 'No repository path' };
+    
+    try {
+      await window.api.fs.writeFile(
+        `${repoPath}/.context/ai-prompts.json`,
+        JSON.stringify(newPrompts, null, 2)
+      );
+      prompts.value = newPrompts;
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Failed to save prompts' };
+    }
+  }
+
+  function detectCapabilities(provider: string, model: string) {
+    capabilities.value = detectModelCapabilities(provider, model);
+  }
+
+  function getSystemPrompt(mode: 'general' | 'improvement' | 'clarification'): string {
+    return prompts.value.systemPrompts[mode];
+  }
+
+  function getQuickPrompt(type: 'improvement' | 'clarification', hasActiveEntity: boolean, entityId?: string): string {
+    const key = hasActiveEntity
+      ? `${type}Active` as const
+      : `${type}General` as const;
+    
+    let prompt = prompts.value.quickPrompts[key];
+    if (entityId) {
+      prompt = prompt.replace('{entityId}', entityId);
+    }
+    return prompt;
+  }
+
+  function resetPromptsToDefault() {
+    prompts.value = { ...DEFAULT_PROMPTS };
+  }
+
   return {
     conversation,
     lastSnapshot,
@@ -678,12 +750,20 @@ export const useAIStore = defineStore('ai', () => {
     error,
     isEnabled,
     hasConversation,
+    prompts,
+    capabilities,
     initialize,
     ask,
     askStream,
     clearConversation,
     acknowledgeError,
     applyEdit,
-    addAssistantInfo
+    addAssistantInfo,
+    loadPrompts,
+    savePrompts,
+    detectCapabilities,
+    getSystemPrompt,
+    getQuickPrompt,
+    resetPromptsToDefault
   };
 });

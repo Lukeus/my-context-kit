@@ -404,12 +404,44 @@ GitHub Actions workflow (`.github/workflows/context-validate.yml`):
 - Runs impact analysis
 - Blocks merge on validation failures
 
+## AI Assistant Features (Latest)
+
+### Streaming Responses
+- Real-time token-by-token AI output with progress indicators
+- Implemented for both Ollama and Azure OpenAI providers
+- IPC handlers: `ai:assistStreamStart`, `ai:assistStream:event`, `ai:assistStream:end`
+
+### Configurable Prompts
+- System prompts for general, improvement, and clarification modes
+- Quick action templates with `{entityId}` placeholder substitution
+- Example questions configurable via UI
+- Stored in `.context/ai-prompts.json` per repository
+
+### Token Probability Visualization
+- Azure OpenAI returns token probabilities (logprobs) with responses
+- Color-coded confidence levels: 🟢 90%+ (high), 🔵 70-90%, 🟡 50-70%, 🟠 30-50%, 🔴 <30% (low)
+- Collapsible viewer component in AI Assistant panel
+- Most Ollama models do not support logprobs
+
+### YAML Validation Improvements
+- Pre-edit validation catches invalid YAML before file writes
+- Enhanced system prompts with explicit YAML syntax rules and examples
+- Server-side validation filters invalid edits with user warnings
+- Detailed error messages with line and column numbers
+
+### Editor Enhancements
+- Auto-refresh: YAML editor reloads after AI applies edits
+- Side-by-side diff viewer with syntax highlighting
+- Unified and split view modes for diffs
+- Color-coded additions (green) and deletions (red)
+
 ## Known Issues & Troubleshooting
 
 ### Common Problems
 - **Forge + Vite plugin missing**: Ensure `@electron-forge/plugin-vite` in devDependencies
 - **Tailwind not applying**: Verify `content` glob includes `src/renderer/**/*.vue`
 - **Pipelines not executable**: On Windows, use `node` explicitly instead of direct execution
+- **AI generates invalid YAML**: Enhanced prompts and validation now catch most issues; retry if needed
 - **YAML schema errors**: Run `validate.mjs` for structured error output
 
 ### Windows-Specific Considerations

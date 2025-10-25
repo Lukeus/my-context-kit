@@ -347,18 +347,32 @@ pnpm validate
 
 ### ✅ Implemented
 
-- **AI-Assisted Entity Creation**: Generate entities from natural language using Ollama or Azure OpenAI
+#### AI Assistant (Enhanced)
+- **Streaming Responses**: Real-time token-by-token AI responses with progress indicators
+- **Configurable Prompts**: Customize system prompts, quick actions, and example questions via UI
+- **Token Probability Viewer**: Visualize AI confidence levels with color-coded token probabilities (Azure OpenAI)
+- **Smart Edit Suggestions**: AI proposes YAML edits with validation before application
+- **Multi-Provider Support**: Ollama (local) and Azure OpenAI with automatic capability detection
+- **Secure Credentials**: Encrypted API key storage using OS-level security (Windows Credential Manager)
+- **Conversation History**: Context-aware multi-turn conversations with clear, chat-like interface
+
+#### Editor & Validation
+- **Auto-Refresh YAML Editor**: Automatically reloads files after AI edits are applied
+- **Enhanced Diff Viewer**: Side-by-side comparison with syntax highlighting and color-coded changes
+- **Pre-Edit Validation**: YAML syntax validation before applying AI-generated changes
+- **Live Schema Validation**: Real-time error detection with inline warnings
+
+#### Core Features
+- **AI-Assisted Entity Creation**: Generate entities from natural language
 - **Smart Context Builder**: 4-step wizard with templates, suggestions, and validation
-- **Secure AI Configuration**: Encrypted API key storage with OS-level security (Windows Credential Manager)
 - **Context Management**: Browse, edit, and validate YAML entities
-- **Dependency Graph**: Visual representation of entity relationships
+- **Dependency Graph**: Visual representation with interactive entity relationships
 - **Impact Analysis**: See what changes affect related entities
 - **Prompt Generation**: Create AI-ready context for coding agents
 - **Git Workflow**: Commit, branch, create PRs from within the app
 - **CI/CD**: Automated validation and impact analysis on PRs
-- **Schema Validation**: Ensure all entities comply with JSON schemas
 - **Material 3 Design**: Modern, consistent UI with Intel brand colors
-- **Keyboard Shortcuts**: Ctrl+N for quick entity creation, Ctrl+S for save
+- **Keyboard Shortcuts**: Ctrl+N for quick create, Ctrl+S for save, Ctrl+Enter to send AI queries
 
 ### 🎯 Key Features
 
