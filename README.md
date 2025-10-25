@@ -4,7 +4,7 @@ A desktop application for managing GitHub-versioned context repositories for spe
 
 <img width="2559" height="1546" alt="image" src="https://github.com/user-attachments/assets/f6c1ef81-9c8c-400e-9fce-62bb4edc3c62" />
 
-<img width="2559" height="1546" alt="image" src="https://github.com/user-attachments/assets/4c987dba-8fbb-490b-b623-928b8a5ea5a9" />
+<img width="2556" height="1545" alt="image" src="https://github.com/user-attachments/assets/7307d982-0880-4cea-a0f4-4572c24565d9" />
 
 
 <img width="1879" height="1092" alt="image" src="https://github.com/user-attachments/assets/8ebd3773-869b-4301-b2e4-20701c93641b" />
