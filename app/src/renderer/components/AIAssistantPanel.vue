@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useAIStore } from '../stores/aiStore';
 import { useContextStore } from '../stores/contextStore';
+import DiffViewer from './DiffViewer.vue';
 
 type AssistantMode = 'improvement' | 'clarification' | 'general';
 
@@ -54,7 +55,7 @@ async function sendQuestion() {
   }
 
   const focusId = focusActive.value && contextStore.activeEntityId ? contextStore.activeEntityId : undefined;
-  await aiStore.ask(question.value, { mode: mode.value, focusId });
+  await aiStore.askStream(question.value, { mode: mode.value, focusId });
   question.value = '';
 }
 
@@ -69,6 +70,68 @@ function openSettings() {
   emit('open-settings');
 }
 
+async function runValidate() {
+  const repoPath = contextStore.repoPath;
+  if (!repoPath) return;
+  const res = await window.api.context.validate(repoPath);
+  aiStore.addAssistantInfo(res.ok ? 'Validation passed ✓' : `Validation failed: ${res.error || 'Unknown error'}`);
+}
+
+async function runImpact() {
+  const repoPath = contextStore.repoPath;
+  const id = contextStore.activeEntityId;
+  if (!repoPath || !id) return;
+  const res = await window.api.context.impact(repoPath, [id]);
+  if (res && res.issues) {
+    const stale = Array.isArray(res.stale) ? res.stale.length : (Array.isArray(res.staleIds) ? res.staleIds.length : 0);
+    const issues = Array.isArray(res.issues) ? res.issues.length : 0;
+    aiStore.addAssistantInfo(`Impact for ${id}: ${stale} stale, ${issues} issues.`);
+  } else if (res?.error) {
+    aiStore.addAssistantInfo(`Impact failed: ${res.error}`);
+  } else {
+    aiStore.addAssistantInfo('Impact analysis completed.');
+  }
+}
+
+async function runGeneratePrompt() {
+  const repoPath = contextStore.repoPath;
+  const id = contextStore.activeEntityId;
+  if (!repoPath || !id) return;
+  const res = await window.api.context.generate(repoPath, [id]);
+  if (res?.ok) {
+    aiStore.addAssistantInfo(`Prompt generated for ${id}. Check generated/prompts folder in the context repo.`);
+  } else {
+    aiStore.addAssistantInfo(`Prompt generation failed: ${res?.error || 'Unknown error'}`);
+  }
+}
+
+const editOriginalContent = ref<Record<string, string>>({});
+
+async function loadOriginalContent(filePath: string, messageId: string, editIndex: number) {
+  const key = `${messageId}-${editIndex}`;
+  if (editOriginalContent.value[key]) {
+    return; // Already loaded
+  }
+  
+  const repoPath = contextStore.repoPath;
+  if (!repoPath) return;
+  
+  const fullPath = `${repoPath}/${filePath}`;
+  try {
+    const result = await window.api.fs.readFile(fullPath);
+    if (result.ok && result.content) {
+      editOriginalContent.value[key] = result.content;
+    }
+  } catch (error) {
+    console.error('Failed to load original content:', error);
+  }
+}
+
+function getOriginalContent(messageId: string, editIndex: number): string {
+  const key = `${messageId}-${editIndex}`;
+  return editOriginalContent.value[key] || '';
+}
+
 function applyEdit(messageId: string, editIndex: number) {
   aiStore.applyEdit(messageId, editIndex);
 }
@@ -76,20 +139,36 @@ function applyEdit(messageId: string, editIndex: number) {
 
 <template>
   <div class="h-full flex flex-col bg-surface-1 text-secondary-900">
-    <div class="px-4 py-4 border-b border-surface-variant bg-surface-2 flex items-start justify-between gap-3">
-      <div class="space-y-1 min-w-0">
-        <h2 class="text-base font-semibold text-secondary-900">Context Assistant</h2>
-        <p class="text-xs text-secondary-600">Grounded recommendations and answers from the active repository snapshot.</p>
+    <div class="px-3 py-2 border-b border-primary-100 bg-primary-50 flex items-center justify-between gap-2">
+      <h2 class="text-xs font-semibold text-primary-900">Context Assistant</h2>
+      <div class="flex items-center gap-2 flex-wrap">
+        <button
+          class="px-2.5 py-1.5 text-[11px] rounded-m3-full border border-surface-variant hover:bg-surface-3"
+          title="Validate repository"
+          @click="runValidate"
+        >Validate</button>
+        <button
+          class="px-2.5 py-1.5 text-[11px] rounded-m3-full border border-surface-variant hover:bg-surface-3"
+          :disabled="!contextStore.activeEntityId"
+          title="Analyze impact for active entity"
+          @click="runImpact"
+        >Impact</button>
+        <button
+          class="px-2.5 py-1.5 text-[11px] rounded-m3-full border border-surface-variant hover:bg-surface-3"
+          :disabled="!contextStore.activeEntityId"
+          title="Generate prompt for active entity"
+          @click="runGeneratePrompt"
+        >Generate</button>
+        <button
+          class="p-2 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors"
+          title="AI Settings"
+          @click="openSettings"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 6.75a.75.75 0 011.5 0v.61a5.001 5.001 0 012.757 1.633l.432-.249a.75.75 0 11.75 1.299l-.432.249c.098.396.148.81.148 1.233s-.05.837-.148 1.233l.432.249a.75.75 0 11-.75 1.299l-.432-.249A5.001 5.001 0 0112.75 16.64v.61a.75.75 0 01-1.5 0v-.61a5.001 5.001 0 01-2.757-1.633l-.432.249a.75.75 0 01-.75-1.299l.432-.249A5.008 5.008 0 017.25 12c0-.423.05-.837.148-1.233l-.432-.249a.75.75 0 01.75-1.299l.432.249A5.001 5.001 0 0111.25 7.36v-.61zM12 9.75A2.25 2.25 0 1014.25 12 2.253 2.253 0 0012 9.75z" />
+          </svg>
+        </button>
       </div>
-      <button
-        class="p-2 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors"
-        title="AI Settings"
-        @click="openSettings"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 6.75a.75.75 0 011.5 0v.61a5.001 5.001 0 012.757 1.633l.432-.249a.75.75 0 11.75 1.299l-.432.249c.098.396.148.81.148 1.233s-.05.837-.148 1.233l.432.249a.75.75 0 11-.75 1.299l-.432-.249A5.001 5.001 0 0112.75 16.64v.61a.75.75 0 01-1.5 0v-.61a5.001 5.001 0 01-2.757-1.633l-.432.249a.75.75 0 01-.75-1.299l.432-.249A5.008 5.008 0 017.25 12c0-.423.05-.837.148-1.233l-.432-.249a.75.75 0 01.75-1.299l.432.249A5.001 5.001 0 0111.25 7.36v-.61zM12 9.75A2.25 2.25 0 1014.25 12 2.253 2.253 0 0012 9.75z" />
-        </svg>
-      </button>
     </div>
 
     <div v-if="aiStore.error" class="m-4 bg-error-50 border border-error-200 rounded-m3-md px-3 py-3 flex items-start gap-2">
@@ -113,84 +192,170 @@ function applyEdit(messageId: string, editIndex: number) {
         </ul>
       </div>
 
+      <!-- User Message -->
       <div
         v-for="message in aiStore.conversation"
         :key="message.id"
-        class="rounded-m3-lg border px-3 py-2.5 shadow-elevation-1"
-        :class="message.role === 'assistant' ? 'bg-primary-50 border-primary-100' : 'bg-surface-1 border-surface-variant'"
+        class="space-y-3"
       >
-        <div class="flex items-start justify-between gap-2 mb-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <span
-              class="px-2 py-0.5 text-[11px] font-semibold rounded-m3-full"
-              :class="message.role === 'assistant' ? 'bg-primary-100 text-primary-700' : 'bg-secondary-200 text-secondary-700'"
-            >
-              {{ message.role === 'assistant' ? 'Assistant' : 'You' }}
-            </span>
-            <span class="text-[11px] text-secondary-500 uppercase tracking-wide">{{ message.mode }}</span>
-            <span v-if="message.focusId" class="text-[11px] text-secondary-500">Focus: {{ message.focusId }}</span>
+        <div v-if="message.role === 'user'" class="flex justify-end">
+          <div class="max-w-[85%] bg-primary-600 text-white rounded-m3-xl px-4 py-3 shadow-elevation-2">
+            <div class="flex items-center gap-2 mb-1.5">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+              </svg>
+              <span class="text-xs font-semibold">You</span>
+              <span class="text-[10px] opacity-75 ml-auto">{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
+            </div>
+            <p class="text-sm leading-relaxed whitespace-pre-wrap">{{ message.content }}</p>
           </div>
-          <span class="text-[10px] text-secondary-400 uppercase tracking-wide">{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
         </div>
 
-        <p class="text-xs text-secondary-900 leading-relaxed whitespace-pre-wrap">{{ message.content }}</p>
-
-        <div v-if="message.suggestions && message.suggestions.length" class="mt-2 space-y-1">
-          <h4 class="text-[10px] font-semibold text-primary-700 uppercase tracking-wide">Improvement ideas</h4>
-          <ul class="space-y-1">
-            <li
-              v-for="suggestion in message.suggestions"
-              :key="`${message.id}-${suggestion.target}`"
-              class="text-xs bg-primary-50 border border-primary-100 rounded-m3-md px-2.5 py-2"
-            >
-              <div class="font-semibold text-primary-800 flex items-center gap-2">
-                <span class="font-mono text-[10px] bg-primary-200 text-primary-800 px-2 py-0.5 rounded-m3-full">{{ suggestion.target }}</span>
-                <span>{{ suggestion.suggestion }}</span>
+        <!-- Assistant Message -->
+        <div v-else class="flex justify-start">
+          <div class="max-w-[95%] bg-white rounded-m3-xl shadow-elevation-2 border border-surface-variant overflow-hidden">
+            <!-- Message Header -->
+            <div class="bg-primary-50 px-4 py-2.5 border-b border-primary-100 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="p-1.5 bg-primary-600 rounded-m3-lg">
+                  <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <span class="text-xs font-semibold text-primary-900">AI Assistant</span>
+                <span v-if="message.mode" class="text-[10px] px-2 py-0.5 bg-primary-100 text-primary-700 rounded-m3-full">{{ message.mode }}</span>
+                <span v-if="message.focusId" class="text-[10px] text-primary-600">· {{ message.focusId }}</span>
               </div>
-              <p v-if="suggestion.impact" class="text-[10px] text-primary-700 mt-1">Impact: {{ suggestion.impact }}</p>
-            </li>
-          </ul>
-        </div>
+              <span class="text-[10px] text-primary-600">{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
+            </div>
 
-        <div v-if="message.clarifications && message.clarifications.length" class="mt-2 space-y-1">
-          <h4 class="text-[10px] font-semibold text-tertiary-800 uppercase tracking-wide">Clarifications needed</h4>
-          <ul class="space-y-1">
-            <li
-              v-for="(item, index) in message.clarifications"
-              :key="`${message.id}-clarify-${index}`"
-              class="text-xs bg-tertiary-50 border border-tertiary-200 rounded-m3-md px-2.5 py-2 text-tertiary-900"
-            >{{ item }}</li>
-          </ul>
-        </div>
+            <!-- Message Content -->
+            <div class="px-4 py-3">
+              <div class="prose prose-sm max-w-none">
+                <p class="text-sm text-secondary-900 leading-relaxed whitespace-pre-wrap mb-0">{{ message.content }}</p>
+              </div>
+            </div>
 
-        <div v-if="message.followUps && message.followUps.length" class="mt-2 space-y-1">
-          <h4 class="text-[10px] font-semibold text-secondary-700 uppercase tracking-wide">Suggested follow-ups</h4>
-          <ul class="space-y-1">
-            <li
-              v-for="(item, index) in message.followUps"
-              :key="`${message.id}-follow-${index}`"
-              class="text-[11px] bg-surface-3 border border-surface-variant rounded-m3-md px-2.5 py-1.5 text-secondary-800"
-            >{{ item }}</li>
-          </ul>
-        </div>
+            <!-- Suggestions with Action Buttons -->
+            <div v-if="message.suggestions && message.suggestions.length" class="px-4 pb-3">
+              <div class="bg-primary-50 rounded-m3-lg border border-primary-200 p-3 space-y-2">
+                <div class="flex items-center gap-2 mb-2">
+                  <svg class="w-4 h-4 text-primary-700" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                  </svg>
+                  <h4 class="text-xs font-semibold text-primary-900">Suggested Improvements</h4>
+                </div>
+                <div class="space-y-2">
+                  <div
+                    v-for="(suggestion, idx) in message.suggestions"
+                    :key="`${message.id}-${suggestion.target}-${idx}`"
+                    class="bg-white rounded-m3-md p-3 border border-primary-100 space-y-2"
+                  >
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                          <span class="font-mono text-xs font-semibold bg-primary-100 text-primary-800 px-2 py-0.5 rounded">{{ suggestion.target }}</span>
+                        </div>
+                        <p class="text-sm text-secondary-900 leading-snug">{{ suggestion.suggestion }}</p>
+                        <p v-if="suggestion.impact" class="text-xs text-secondary-600 mt-1">
+                          <span class="font-semibold">Impact:</span> {{ suggestion.impact }}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2 pt-2 border-t border-primary-100">
+                      <button
+                        class="flex-1 px-3 py-2 text-xs font-semibold bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 transition-all shadow-sm"
+                      >
+                        Apply This Change
+                      </button>
+                      <button
+                        class="px-3 py-2 text-xs font-medium text-secondary-700 hover:bg-surface-2 rounded-m3-lg transition-all border border-surface-variant"
+                      >
+                        Skip
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-        <div v-if="message.references && message.references.length" class="mt-2 flex flex-wrap gap-1.5">
-          <span
-            v-for="(reference, index) in message.references"
-            :key="`${message.id}-ref-${index}`"
-            class="px-2.5 py-1 text-[10px] bg-secondary-100 text-secondary-800 rounded-m3-full border border-secondary-200"
-            :title="reference.note || ''"
-          >{{ reference.type }} · {{ reference.id }}</span>
-        </div>
+            <!-- Clarifications -->
+            <div v-if="message.clarifications && message.clarifications.length" class="px-4 pb-3">
+              <div class="bg-yellow-50 rounded-m3-lg border border-yellow-200 p-3 space-y-2">
+                <div class="flex items-center gap-2 mb-2">
+                  <svg class="w-4 h-4 text-yellow-700" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                  </svg>
+                  <h4 class="text-xs font-semibold text-yellow-900">Clarifications Needed</h4>
+                </div>
+                <div class="space-y-1.5">
+                  <div
+                    v-for="(item, index) in message.clarifications"
+                    :key="`${message.id}-clarify-${index}`"
+                    class="bg-white rounded-m3-md p-2.5 border border-yellow-100"
+                  >
+                    <p class="text-sm text-secondary-900">{{ item }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-        <div v-if="message.edits && message.edits.length" class="mt-3 space-y-2">
-          <h4 class="text-[10px] font-semibold text-secondary-700 uppercase tracking-wide">Proposed edits</h4>
+            <!-- Follow-ups -->
+            <div v-if="message.followUps && message.followUps.length" class="px-4 pb-3">
+              <div class="bg-secondary-50 rounded-m3-lg border border-secondary-200 p-3">
+                <div class="flex items-center gap-2 mb-2">
+                  <svg class="w-4 h-4 text-secondary-700" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                  </svg>
+                  <h4 class="text-xs font-semibold text-secondary-900">Suggested Next Steps</h4>
+                </div>
+                <div class="space-y-1.5">
+                  <button
+                    v-for="(item, index) in message.followUps"
+                    :key="`${message.id}-follow-${index}`"
+                    class="w-full text-left bg-white rounded-m3-md p-2.5 border border-secondary-100 hover:border-secondary-300 hover:bg-secondary-50 transition-all text-sm text-secondary-900"
+                  >
+                    {{ item }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- References -->
+            <div v-if="message.references && message.references.length" class="px-4 pb-3">
+              <div class="flex items-center gap-2 mb-2">
+                <svg class="w-3.5 h-3.5 text-secondary-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                  <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                </svg>
+                <h4 class="text-xs font-semibold text-secondary-700">References</h4>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="(reference, index) in message.references"
+                  :key="`${message.id}-ref-${index}`"
+                  class="px-2.5 py-1 text-xs bg-secondary-100 text-secondary-800 rounded-m3-md border border-secondary-200 hover:bg-secondary-200 transition-colors cursor-pointer"
+                  :title="reference.note || ''"
+                >{{ reference.type }} · {{ reference.id }}</span>
+              </div>
+            </div>
+
+            <!-- Proposed Edits -->
+            <div v-if="message.edits && message.edits.length" class="px-4 pb-3">
+              <div class="flex items-center gap-2 mb-3">
+                <svg class="w-4 h-4 text-secondary-700" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                  <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                </svg>
+                <h4 class="text-xs font-semibold text-secondary-900">Proposed File Changes</h4>
+              </div>
           <div
             v-for="(edit, editIndex) in message.edits"
             :key="`${message.id}-edit-${editIndex}`"
-            class="border border-surface-variant bg-surface-3 rounded-m3-md p-3 space-y-2"
+            class="space-y-2"
+            @vue:mounted="loadOriginalContent(edit.filePath, message.id, editIndex)"
           >
-            <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center justify-between gap-2 px-3 py-2 bg-surface-2 border border-surface-variant rounded-t-m3-md">
               <div class="flex flex-col">
                 <span class="text-[11px] font-semibold text-secondary-800">{{ edit.filePath }}</span>
                 <span v-if="edit.summary" class="text-[11px] text-secondary-600">{{ edit.summary }}</span>
@@ -205,8 +370,17 @@ function applyEdit(messageId: string, editIndex: number) {
                 }"
               >{{ edit.status }}</span>
             </div>
-            <pre class="bg-surface-1 border border-surface-variant rounded-m3-md p-2 text-[10px] text-secondary-700 overflow-auto max-h-48 whitespace-pre-wrap">{{ edit.updatedContent }}</pre>
-            <div class="flex items-center justify-between gap-2">
+            <DiffViewer
+              v-if="getOriginalContent(message.id, editIndex)"
+              :original="getOriginalContent(message.id, editIndex)"
+              :modified="edit.updatedContent"
+              :file-path="edit.filePath"
+              language="yaml"
+            />
+            <div v-else class="bg-surface-1 border border-surface-variant rounded-m3-md p-3 text-xs text-secondary-600">
+              Loading original file...
+            </div>
+            <div class="flex items-center justify-between gap-2 px-3 py-2 bg-surface-2 border border-surface-variant rounded-b-m3-md">
               <span v-if="edit.error" class="text-[10px] text-error-600">{{ edit.error }}</span>
               <div class="flex-1"></div>
               <button
@@ -221,14 +395,15 @@ function applyEdit(messageId: string, editIndex: number) {
                 {{ edit.status === 'applied' ? 'Applied' : edit.status === 'applying' ? 'Applying…' : 'Apply edit' }}
               </button>
             </div>
-            <!-- TODO: Replace raw content preview with a proper diff viewer once diff utilities are available. -->
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <div v-if="aiStore.isLoading" class="flex items-center gap-2 text-xs text-secondary-600">
         <span class="inline-block animate-spin rounded-full h-4 w-4 border-2 border-secondary-300 border-t-secondary-600"></span>
-        Thinking through the repository snapshot...
+        Streaming response…
       </div>
     </div>
 

@@ -8,6 +8,7 @@ import started from 'electron-squirrel-startup';
 import { execa } from 'execa';
 import { simpleGit } from 'simple-git';
 import { parse as parseYAML } from 'yaml';
+import chokidar, { type FSWatcher } from 'chokidar';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,6 +65,12 @@ const createWindow = (): void => {
 };
 
 // IPC Handlers for context repo operations
+
+// Track active AI streaming processes by streamId
+const aiStreamProcs = new Map<string, ReturnType<typeof execa>>();
+
+// Repo file watchers by absolute path
+const repoWatchers = new Map<string, FSWatcher>();
 ipcMain.handle('context:validate', async (_event, { dir }: { dir: string }) => {
   try {
     const result = await execa('node', [path.join(dir, '.context', 'pipelines', 'validate.mjs')], { 
@@ -208,6 +215,50 @@ ipcMain.handle('fs:findEntityFile', async (_event, { dir, entityType, entityId }
     } else {
       return { ok: false, error: `File not found for entity ${entityId}` };
     }
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
+// Repo watch handlers
+ipcMain.handle('repo:watch', async (event, { dir }: { dir: string }) => {
+  try {
+    const abs = path.resolve(dir);
+    if (repoWatchers.has(abs)) {
+      return { ok: true };
+    }
+    const watcher = chokidar.watch([
+      path.join(abs, 'contexts'),
+      path.join(abs, '.context', 'schemas')
+    ], {
+      ignored: (p: string) => path.basename(p).startsWith('.'),
+      ignoreInitial: true,
+      persistent: true,
+      awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 }
+    });
+
+    watcher.on('all', (evt, changedPath) => {
+      // Only forward YAML or template/schema changes
+      if (!changedPath.match(/\.(ya?ml|hbs|json)$/i)) return;
+      event.sender.send('repo:fileChanged', { dir: abs, event: evt, file: changedPath });
+    });
+
+    repoWatchers.set(abs, watcher);
+    return { ok: true };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('repo:unwatch', async (_event, { dir }: { dir: string }) => {
+  try {
+    const abs = path.resolve(dir);
+    const watcher = repoWatchers.get(abs);
+    if (watcher) {
+      await watcher.close();
+      repoWatchers.delete(abs);
+    }
+    return { ok: true };
   } catch (error: any) {
     return { ok: false, error: error.message };
   }
@@ -594,6 +645,15 @@ ipcMain.handle('context:nextId', async (_event, { dir, entityType }: { dir: stri
                       'pkg-new-1';
       return { ok: true, id: firstId };
     }
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('file:read', async (_event, { filePath }: { filePath: string }) => {
+  try {
+    const content = await readFile(filePath, 'utf-8');
+    return { ok: true, content };
   } catch (error: any) {
     return { ok: false, error: error.message };
   }
@@ -1197,6 +1257,110 @@ ipcMain.handle('ai:assist', async (_event, { dir, question, mode, focusId }:
       }
     }
     return { ok: false, error: errorMsg };
+  }
+});
+
+ipcMain.handle('ai:assistStreamStart', async (event, { dir, question, mode, focusId }:
+  { dir: string; question: string; mode?: string; focusId?: string }) => {
+  try {
+    if (!question || !question.trim()) {
+      return { ok: false, error: 'Question is required' };
+    }
+
+    const configPath = path.join(dir, '.context', AI_CONFIG_FILE);
+    let config;
+    try {
+      const content = await readFile(configPath, 'utf-8');
+      config = JSON.parse(content);
+    } catch {
+      return { ok: false, error: 'AI not configured. Please configure AI settings first.' };
+    }
+
+    if (!config.enabled) {
+      return { ok: false, error: 'AI assistance is disabled' };
+    }
+
+    let apiKey = '';
+    if (config.provider === 'azure-openai') {
+      try {
+        const credPath = path.join(app.getPath('userData'), `${config.provider}-${CREDENTIALS_FILE}`);
+        const encrypted = await readFile(credPath);
+        apiKey = safeStorage.decryptString(encrypted);
+      } catch {
+        return { ok: false, error: 'API key not found. Please configure credentials.' };
+      }
+    }
+
+    const streamId = randomUUID();
+    const encodedQuestion = Buffer.from(question, 'utf-8').toString('base64');
+    const encodedOptions = Buffer.from(JSON.stringify({ mode, focusId }), 'utf-8').toString('base64');
+
+    const args = [
+      path.join(dir, '.context', 'pipelines', 'ai-assistant.mjs'),
+      config.provider,
+      config.endpoint,
+      config.model,
+      apiKey,
+      encodedQuestion,
+      encodedOptions,
+      '--stream'
+    ];
+
+    const child = execa('node', args, {
+      cwd: dir,
+      env: {
+        ...process.env,
+        HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || '',
+        HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || '',
+        NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || ''
+      }
+    });
+
+    aiStreamProcs.set(streamId, child);
+
+    // Stream stdout lines as JSON events
+    child.stdout?.on('data', (data: Buffer | string) => {
+      const text = data.toString();
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      for (const line of lines) {
+        try {
+          const payload = JSON.parse(line);
+          event.sender.send('ai:assistStream:event', { streamId, ...payload });
+        } catch {
+          // ignore non-JSON line
+        }
+      }
+    });
+
+    const cleanup = () => {
+      aiStreamProcs.delete(streamId);
+      event.sender.send('ai:assistStream:end', { streamId });
+    };
+
+    child.on('close', cleanup);
+    child.on('exit', cleanup);
+    child.on('error', (err: any) => {
+      event.sender.send('ai:assistStream:event', { streamId, type: 'error', ok: false, error: err?.message || 'Stream error' });
+      cleanup();
+    });
+
+    return { ok: true, streamId };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('ai:assistStreamCancel', async (_event, { streamId }: { streamId: string }) => {
+  try {
+    const child = aiStreamProcs.get(streamId);
+    if (child) {
+      child.kill('SIGTERM');
+      aiStreamProcs.delete(streamId);
+      return { ok: true };
+    }
+    return { ok: false, error: 'Stream not found' };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
   }
 });
 

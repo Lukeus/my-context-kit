@@ -197,6 +197,7 @@ export const useAIStore = defineStore('ai', () => {
   const error = ref<string | null>(null);
   const isInitialized = ref(false);
   const isEnabled = ref(false);
+  const activeStreamId = ref<string | null>(null);
 
   const hasConversation = computed(() => conversation.value.length > 0);
 
@@ -479,6 +480,109 @@ export const useAIStore = defineStore('ai', () => {
     }
   }
 
+  async function askStream(question: string, options: AskOptions) {
+    await initialize();
+
+    if (!question.trim()) {
+      error.value = 'Please enter a question for the assistant.';
+      return;
+    }
+
+    if (!isEnabled.value) {
+      error.value = 'AI assistance is disabled. Enable it in AI settings to continue.';
+      return;
+    }
+
+    const repoPath = contextStore.repoPath;
+    if (!repoPath) {
+      error.value = 'Context repository path is not set. Configure a repository before using the assistant.';
+      return;
+    }
+
+    const trimmedQuestion = question.trim();
+    error.value = null;
+
+    const handledLocally = await handleLocalCommand(trimmedQuestion, options);
+    if (handledLocally) {
+      return;
+    }
+
+    isLoading.value = true;
+    const userMessageId = generateId('user');
+    const assistantMessageId = generateId('assistant');
+
+    appendMessage({
+      id: userMessageId,
+      role: 'user',
+      content: trimmedQuestion,
+      createdAt: new Date().toISOString(),
+      mode: options.mode,
+      focusId: options.focusId,
+      edits: []
+    });
+
+    appendMessage({
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      createdAt: new Date().toISOString(),
+      mode: options.mode,
+      focusId: options.focusId,
+      suggestions: [],
+      clarifications: [],
+      followUps: [],
+      references: [],
+      edits: []
+    });
+
+    try {
+      const startRes = await window.api.ai.assistStreamStart(repoPath, trimmedQuestion, options.mode, options.focusId);
+      if (!startRes.ok || !startRes.streamId) {
+        throw new Error(startRes.error || 'Failed to start streaming');
+      }
+      activeStreamId.value = startRes.streamId;
+      const offEvent = window.api.ai.onAssistStreamEvent((payload: any) => {
+        if (payload.streamId !== activeStreamId.value) return;
+        if (payload.type === 'delta' && typeof payload.data === 'string') {
+          updateAssistantMessage(assistantMessageId, {
+            content: (conversation.value.find(m => m.id === assistantMessageId)?.content || '') + payload.data
+          });
+        } else if (payload.type === 'final' && payload.result) {
+          const result = payload.result as AssistantResponse;
+          updateAssistantMessage(assistantMessageId, {
+            content: result.answer || (conversation.value.find(m => m.id === assistantMessageId)?.content || ''),
+            suggestions: Array.isArray(result.improvements) ? result.improvements : [],
+            clarifications: Array.isArray(result.clarifications) ? result.clarifications : [],
+            followUps: Array.isArray(result.followUps) ? result.followUps : [],
+            references: Array.isArray(result.references) ? result.references : [],
+            edits: Array.isArray(result.edits)
+              ? result.edits.map(edit => ({ ...edit, status: 'pending' }))
+              : []
+          });
+          lastSnapshot.value = (result as any).snapshot ?? null;
+        } else if (payload.type === 'error') {
+          const message = payload.error || 'Assistant stream failed.';
+          error.value = message;
+          updateAssistantMessage(assistantMessageId, {
+            content: message,
+            clarifications: [message]
+          });
+        }
+      });
+      const offEnd = window.api.ai.onAssistStreamEnd((payload: any) => {
+        if (payload.streamId !== activeStreamId.value) return;
+        isLoading.value = false;
+        activeStreamId.value = null;
+        offEvent();
+        offEnd();
+      });
+    } catch (err: any) {
+      const message = err?.message || 'Assistant stream failed. Please check the console for details.';
+      error.value = message;
+      isLoading.value = false;
+    }
+  }
+
   async function applyEdit(messageId: string, editIndex: number) {
     const targetMessage = conversation.value.find(item => item.id === messageId && item.role === 'assistant');
     if (!targetMessage || !targetMessage.edits || !targetMessage.edits[editIndex]) {
@@ -540,6 +644,21 @@ export const useAIStore = defineStore('ai', () => {
     }
   }
 
+  function addAssistantInfo(content: string) {
+    appendMessage({
+      id: generateId('assistant'),
+      role: 'assistant',
+      content,
+      createdAt: new Date().toISOString(),
+      mode: 'general',
+      suggestions: [],
+      clarifications: [],
+      followUps: [],
+      references: [],
+      edits: []
+    });
+  }
+
   function clearConversation() {
     conversation.value = [];
     lastSnapshot.value = null;
@@ -561,8 +680,10 @@ export const useAIStore = defineStore('ai', () => {
     hasConversation,
     initialize,
     ask,
+    askStream,
     clearConversation,
     acknowledgeError,
-    applyEdit
+    applyEdit,
+    addAssistantInfo
   };
 });

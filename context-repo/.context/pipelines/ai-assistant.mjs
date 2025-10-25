@@ -4,7 +4,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYAML } from 'yaml';
-import { callProvider } from './ai-common.mjs';
+import { callProvider, callProviderStream } from './ai-common.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -212,7 +212,7 @@ function mapGovernance(entity) {
   };
 }
 
-function buildSnapshot(entities) {
+function buildSnapshot(entities, focusId = '') {
   const { byType, byId } = entities;
 
   const features = byType.feature.map(feature => mapFeature(feature, byId));
@@ -235,6 +235,30 @@ function buildSnapshot(entities) {
 
   const parseErrors = Object.values(byType).flat().filter(entity => entity.parseError);
 
+  // Focus entity enrichment (raw YAML + neighbors) if provided
+  let focus = null;
+  if (focusId && byId[focusId]) {
+    try {
+      const rawYaml = readFileSync(join(REPO_ROOT, byId[focusId]._file), 'utf8');
+      const type = byId[focusId]._type;
+      const mapped =
+        type === 'feature' ? mapFeature(byId[focusId], byId)
+        : type === 'userstory' ? mapUserStory(byId[focusId])
+        : type === 'spec' ? mapSpec(byId[focusId])
+        : type === 'task' ? mapTask(byId[focusId])
+        : type === 'service' ? mapService(byId[focusId])
+        : type === 'package' ? mapPackage(byId[focusId])
+        : byId[focusId];
+      focus = {
+        id: focusId,
+        type,
+        filePath: byId[focusId]._file,
+        yaml: rawYaml,
+        mapped
+      };
+    } catch {}
+  }
+
   return {
     generatedAt: new Date().toISOString(),
     totals,
@@ -245,8 +269,42 @@ function buildSnapshot(entities) {
     tasks,
     services,
     packages,
-    parseErrors
+    parseErrors,
+    focus
   };
+}
+
+function extractJSON(text) {
+  // Try direct parse first
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Not direct JSON, try to extract
+  }
+
+  // Try to extract JSON from markdown code blocks
+  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    try {
+      return JSON.parse(codeBlockMatch[1].trim());
+    } catch {
+      // Continue to next strategy
+    }
+  }
+
+  // Try to find JSON object by looking for first { and last }
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      return JSON.parse(text.substring(firstBrace, lastBrace + 1));
+    } catch {
+      // Continue to next strategy
+    }
+  }
+
+  // All strategies failed
+  throw new Error('Could not extract valid JSON from response');
 }
 
 function buildAssistantPrompts({ snapshot, question, mode, focusId }) {
@@ -256,7 +314,10 @@ function buildAssistantPrompts({ snapshot, question, mode, focusId }) {
 
   const systemPrompt = `You are the Context-Sync assistant. You help teams maintain a spec-driven context repository.
 You receive a full repository snapshot as JSON. Use ONLY information from the snapshot when answering.
-Always respond with JSON using this exact shape:
+
+CRITICAL: You MUST respond with valid JSON only. Do not include any text before or after the JSON object.
+
+Respond using this exact JSON shape:
 {
   "answer": "Summarized response string",
   "improvements": [
@@ -276,9 +337,13 @@ Always respond with JSON using this exact shape:
     }
   ]
 }
-Always include all keys even if arrays are empty. Do not invent entities or assumptions beyond the snapshot.
-When suggesting edits, use the exact filePath provided in the snapshot metadata for that entity; never guess new paths.
-Only include edits when you are confident in the full YAML replacement.`;
+
+IMPORTANT RULES:
+- Always include all keys (answer, improvements, clarifications, followUps, references, edits) even if arrays are empty
+- Output ONLY the JSON object, no additional text or explanation
+- Do not invent entities or assumptions beyond the snapshot
+- When suggesting edits, use the exact filePath provided in the snapshot metadata
+- Only include edits when you are confident in the full YAML replacement`;
 
   const userPrompt = `Repository snapshot (trimmed to relevant details):
 
@@ -300,7 +365,7 @@ async function assistWithContext(provider, endpoint, model, apiKey, question, op
   }
 
   const entities = loadEntities();
-  const snapshot = buildSnapshot(entities);
+  const snapshot = buildSnapshot(entities, options.focusId || '');
 
   const { systemPrompt, userPrompt } = buildAssistantPrompts({
     snapshot,
@@ -326,7 +391,7 @@ async function assistWithContext(provider, endpoint, model, apiKey, question, op
   }
 
   try {
-    const parsed = JSON.parse(response.content);
+    const parsed = extractJSON(response.content);
     const result = {
       ok: true,
       answer: typeof parsed.answer === 'string' ? parsed.answer : '',
@@ -340,11 +405,87 @@ async function assistWithContext(provider, endpoint, model, apiKey, question, op
     };
     return result;
   } catch (error) {
+    // Fallback: If the model returned plain text instead of JSON, wrap it in a valid response structure
+    console.warn('Model returned non-JSON response. Wrapping in fallback structure.');
     return {
-      ok: false,
-      error: `Failed to parse assistant response: ${error.message}`,
-      rawContent: response.content
+      ok: true,
+      answer: response.content || 'No response content received.',
+      improvements: [],
+      clarifications: [
+        'Note: The AI model did not return a structured response. Please try again or use a model that better supports JSON formatting.'
+      ],
+      followUps: [],
+      references: [],
+      edits: [],
+      snapshot,
+      usage: response.usage
     };
+  }
+}
+
+async function assistWithContextStream(provider, endpoint, model, apiKey, question, options = {}) {
+  if (!question || !question.trim()) {
+    console.log(JSON.stringify({ type: 'error', ok: false, error: 'Question is required' }));
+    return;
+  }
+  const entities = loadEntities();
+  const snapshot = buildSnapshot(entities);
+  const { systemPrompt, userPrompt } = buildAssistantPrompts({
+    snapshot,
+    question,
+    mode: options.mode || DEFAULT_MODE,
+    focusId: options.focusId || ''
+  });
+
+  let contentBuffer = '';
+  try {
+    for await (const chunk of callProviderStream({
+      provider,
+      endpoint,
+      model,
+      apiKey,
+      systemPrompt,
+      userPrompt,
+      responseFormat: 'json',
+      temperature: options.temperature ?? 0.7,
+      maxTokens: options.maxTokens ?? 4000
+    })) {
+      contentBuffer += chunk;
+      console.log(JSON.stringify({ type: 'delta', data: chunk }));
+    }
+
+    // Try to parse final content
+    let finalResult;
+    try {
+      const parsed = extractJSON(contentBuffer);
+      finalResult = {
+        ok: true,
+        answer: typeof parsed.answer === 'string' ? parsed.answer : '',
+        improvements: Array.isArray(parsed.improvements) ? parsed.improvements : [],
+        clarifications: Array.isArray(parsed.clarifications) ? parsed.clarifications : [],
+        followUps: Array.isArray(parsed.followUps) ? parsed.followUps : [],
+        references: Array.isArray(parsed.references) ? parsed.references : [],
+        edits: Array.isArray(parsed.edits) ? parsed.edits : [],
+        snapshot
+      };
+    } catch (error) {
+      finalResult = {
+        ok: true,
+        answer: contentBuffer || 'No response content received.',
+        improvements: [],
+        clarifications: [
+          'Note: The AI model did not return a structured response. Please try again or use a model that better supports JSON formatting.'
+        ],
+        followUps: [],
+        references: [],
+        edits: [],
+        snapshot
+      };
+    }
+
+    console.log(JSON.stringify({ type: 'final', result: finalResult }));
+  } catch (error) {
+    console.log(JSON.stringify({ type: 'error', ok: false, error: error.message }));
   }
 }
 
@@ -355,6 +496,7 @@ if (process.argv.length >= 6) {
   const apiKey = process.argv[5] || '';
   const question = Buffer.from(process.argv[6], 'base64').toString('utf8');
   const optionsArg = process.argv[7] ? Buffer.from(process.argv[7], 'base64').toString('utf8') : '{}';
+  const isStream = process.argv.includes('--stream');
 
   let options;
   try {
@@ -363,15 +505,26 @@ if (process.argv.length >= 6) {
     options = { rawOptions: optionsArg };
   }
 
-  assistWithContext(provider, endpoint, model, apiKey, question, options)
-    .then(result => {
-      console.log(JSON.stringify(result));
-      process.exit(result.ok ? 0 : 1);
-    })
-    .catch(error => {
-      console.log(JSON.stringify({ ok: false, error: error.message }));
-      process.exit(1);
-    });
+  if (isStream) {
+    assistWithContextStream(provider, endpoint, model, apiKey, question, options)
+      .then(() => {
+        process.exit(0);
+      })
+      .catch(error => {
+        console.log(JSON.stringify({ type: 'error', ok: false, error: error.message }));
+        process.exit(1);
+      });
+  } else {
+    assistWithContext(provider, endpoint, model, apiKey, question, options)
+      .then(result => {
+        console.log(JSON.stringify(result));
+        process.exit(result.ok ? 0 : 1);
+      })
+      .catch(error => {
+        console.log(JSON.stringify({ ok: false, error: error.message }));
+        process.exit(1);
+      });
+  }
 }
 
 export { assistWithContext };

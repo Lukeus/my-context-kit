@@ -978,6 +978,254 @@ img-src 'self' data:;
 
 ---
 
+## Purpose
+
+Context-Sync is a desktop workspace for spec-driven development. It manages a Git-versioned repository of project context (features, stories, specs, tasks, services, packages) and turns it into actionable workflows for developers:
+- Edit validated YAML entities with schema-aware tooling
+- See dependency graphs and impact of changes before committing
+- Generate AI-ready prompts and apply AI-proposed edits safely
+- Drive a complete Git/PR workflow anchored on contracts and consistency rules
+
+---
+
+## UX Streamlining Roadmap
+
+### Current State Assessment
+
+**What's Working:**
+- Clear information architecture: left Context Tree, center YAML editor, right Impact/AI panels
+- Helpful Quick Actions and repository manager with multi-repo support
+- Strong Pinia stores with well-separated concerns
+- Tailwind tokens emulate Material 3 (surface, elevation, rounded-m3) consistently
+- Wizard-based entity builder with AI assistance
+- Cytoscape graph visualization with path finding
+- Git flows integrated with PR creation
+- AI panel grounded on repository state
+
+**Key Issues & Opportunities:**
+- **Visual consistency**: GraphView and Git areas use gray utility classes instead of M3 tokens; modals vary in density
+- **Discoverability**: Many header buttons with similar visual weight; right panel toggle affordance non-obvious; no global search/command palette
+- **Flows**: Builder lacks constitution guardrail infusion; relationship selection could use faceted pickers; PR/diff lacks inline experience
+- **Multi-app lens**: No "app" metadata to organize features/stories/specs/tasks per application across portfolio
+- **Feedback**: Missing toasts/snackbars for operations; AI panel Ctrl+Enter not bound to textarea
+
+### Phase P0: Quick Wins (1–2 weeks)
+
+#### 1. Unify Material 3 Look & Feel
+- **Goal**: Replace gray utility colors with M3 tokens throughout
+- **Components**: GraphView.vue, GitPanel.vue, headers
+- **Tasks**:
+  - Standardize to `surface-1/2/3/4`, `rounded-m3-*`, `shadow-elevation-*`
+  - Header actions: primary emphasis for "New Entity" and "Assistant"; outlined/tonal for toggles
+  - Add tooltips to all icon buttons
+
+#### 2. Global Search & Command Palette
+- **Goal**: Quick navigation and action discovery
+- **Components**: New `CommandPalette.vue`
+- **Tasks**:
+  - Implement Ctrl+K command palette
+  - Actions: "Open entity...", "Create feature/story/spec/task...", "Analyze impact", "Open Git/Graph", "Switch repo"
+  - Global entity search with fuzzy match across id/title/type
+  - Keyboard navigation (up/down, Enter to execute)
+
+#### 3. Right Panel Clarity
+- **Goal**: Make panel switching more obvious
+- **Components**: App.vue, ImpactPanel.vue, AIAssistantPanel.vue
+- **Tasks**:
+  - Convert to proper M3 segmented buttons
+  - Add keyboard shortcuts: Ctrl+I (Impact), Ctrl+Shift+A (Assistant)
+  - Persist last-opened tab per repository in contextStore
+
+#### 4. Feedback & Shortcuts
+- **Goal**: Better user feedback and keyboard accessibility
+- **Components**: New `Snackbar.vue`, AIAssistantPanel.vue
+- **Tasks**:
+  - Add M3 snackbar/toast component for saves, validation, repo actions
+  - Bind Ctrl+Enter in AI textarea
+  - Enter-to-apply in builder suggestion chips
+  - Escape to close modals
+
+#### 5. Graph Usability
+- **Goal**: Improve graph interaction patterns
+- **Components**: GraphView.vue
+- **Tasks**:
+  - Replace `alert()` with inline banner for "no path found"
+  - Add "Select start/end" chips for path finding
+  - Improve node label density toggle
+  - Replace `dbltap` with standard double-click handling
+
+#### 6. Git Affordances
+- **Goal**: Better diff viewing and staging
+- **Components**: GitPanel.vue, new `DiffViewer.vue`
+- **Tasks**:
+  - Inline diff viewer component (side-by-side, M3 cards)
+  - One-click "stage selected" and "commit selected"
+  - Fix changedFiles filter to not hardcode "context-repo/"
+
+### Phase P0.5: Workspace Hub and Center Tabs (1–2 weeks)
+
+Goal: Make the center panel first-class for everyday use, even when not editing YAML.
+
+Deliverables:
+- Workspace Hub view (when no entity selected)
+  - Recent entities (last 10), Pinned entities
+  - My queue (assigned tasks/owner == @me when available), Stale/Needs-review summary
+  - Quick actions (New, Validate, Impact, Generate Prompt), mini graph preview
+- Center tabs when an entity is selected: YAML | Preview | Diff | Docs
+  - Preview: rendered summary of the entity (title, status, relationships)
+  - Diff: inline git diff for the entity file (side-by-side later)
+  - Docs: in-app docs page (moved from Welcome)
+- Breadcrumbs with chips (type, status, domain) over the tabs
+- Keyboard focus management and shortcuts (1/2/3/4 to switch tabs)
+
+Components to touch:
+- app/src/renderer/App.vue (tab bar, hub routing)
+- app/src/renderer/components/WorkspaceHub.vue (new)
+- app/src/renderer/components/EntityPreview.vue (new)
+- app/src/renderer/components/EntityDiff.vue (new)
+- app/src/renderer/components/WelcomeDocumentation.vue (used as Docs tab)
+- app/src/renderer/stores/contextStore.ts (recent tracking via settings)
+
+Success metrics:
+- 2× faster navigation to relevant work (recent/pinned)
+- >50% reduction in “empty center” time
+- Daily-driver parity: developers can stay in center panel for most tasks
+
+---
+
+### Phase P1: Core Workflows (3–5 weeks)
+
+#### 1. Constitution-First Experience
+- **Goal**: Surface governance rules in workflows
+- **Components**: New `GovernancePanel.vue`, ContextBuilderModal.vue
+- **Tasks**:
+  - Governance view to read/edit `contexts/governance/constitution.yaml`
+  - Schema-backed form with non-negotiable chips and rule badges
+  - Surface constitution guardrails in Builder (Step 1 and Review)
+  - Inline rule reminders, status chips, warnings prior to save
+
+#### 2. Multi-App Lens (Non-Breaking)
+- **Goal**: Organize entities by application
+- **Components**: ContextTree.vue, ContextBuilderModal.vue, App.vue
+- **Tasks**:
+  - Introduce optional `appId`/`appName` metadata in entities
+  - Add App filter chip row atop Context Tree
+  - "Portfolio" overview in header: cards per app with entity counts, validation status
+  - Impact/Graph filters by app
+
+#### 3. Relationship Pickers
+- **Goal**: Better entity linking UX
+- **Components**: New `RelationshipPicker.vue`, ContextBuilderModal.vue
+- **Tasks**:
+  - Faceted pickers: search + filter by domain/app/status
+  - Confidence badges on suggestions
+  - Batch link/unlink operations
+
+#### 4. Builder Enhancements
+- **Goal**: Streamline entity creation
+- **Components**: ContextBuilderModal.vue, builderStore.ts
+- **Tasks**:
+  - Template browser sheet with preview
+  - "Diff against current inputs" for templates
+  - Reusable field presets
+  - "Continue to related entities" sequencer
+
+#### 5. Impact to Action
+- **Goal**: Make impact analysis actionable
+- **Components**: ImpactPanel.vue
+- **Tasks**:
+  - Per-issue CTA buttons: "Open file", "Generate prompt", "Create task" with prefilled relationships
+  - Bulk "mark resolved" (undoable)
+  - Impact-driven PR body composer
+
+#### 6. PR Authoring
+- **Goal**: Better PR creation flow
+- **Components**: GitPanel.vue
+- **Tasks**:
+  - Pre-built PR template composer
+  - Inject impact summary, changed entities, rule notes
+  - Save as default PR body template
+
+### Phase P2: Advanced UX (4–6 weeks)
+
+#### 1. Story Map & Planning Views
+- **Goal**: Visual planning and tracking
+- **Components**: New `StoryMapView.vue`, `FeatureKanban.vue`, `SpecMatrix.vue`
+- **Tasks**:
+  - User story map with release swimlanes
+  - Feature Kanban by status
+  - Spec coverage matrix
+  - Read-only first, navigate to editor
+
+#### 2. Command Palette Power Actions
+- **Goal**: Advanced batch operations
+- **Components**: CommandPalette.vue
+- **Tasks**:
+  - "Create from template <X> in app <Y>"
+  - "Refactor id <A>→<B>" with file rename preview
+  - "Bulk set status to needs-review" for stale items
+
+#### 3. AI-Assisted Edits Pipeline
+- **Goal**: Complete the AI edit workflow
+- **Components**: AIAssistantPanel.vue
+- **Tasks**:
+  - "Apply edit" shows proper diff
+  - Staged writes with validation
+  - One-click commit+branch
+  - Safe-guard with validation pre-commit
+
+#### 4. Accessibility & Performance
+- **Goal**: Production-grade quality
+- **Components**: All
+- **Tasks**:
+  - Focus rings, roles, keyboard traversal
+  - Virtualize long lists (ContextTree, ImpactPanel)
+  - Cache graphs per repo
+  - Lazy-load heavy components
+
+### Implementation Guide
+
+**Components to Touch:**
+- **App shell**: `app/src/renderer/App.vue`
+- **Command palette**: `app/src/renderer/components/CommandPalette.vue` (new)
+- **Constitution editor**: `app/src/renderer/components/GovernancePanel.vue` (new)
+- **Graph M3 pass**: `app/src/renderer/components/GraphView.vue`
+- **Git diff viewer**: `app/src/renderer/components/GitPanel.vue` + `DiffViewer.vue` (new)
+- **Builder**: `app/src/renderer/components/ContextBuilderModal.vue`
+- **Toast/snackbar**: `app/src/renderer/components/Snackbar.vue` (new)
+- **AI panel**: `app/src/renderer/components/AIAssistantPanel.vue`
+
+**Stores:**
+- `contextStore`: Add app metadata handling, cached filters, UI prefs per repo
+- `builderStore`: Accept app metadata, inject constitution guardrails, expose `canProceed` reasons
+- `impactStore`: Surface rule IDs and quick actions
+- `gitStore`: Expose stage/unstage selected, remove path hardcode, provide diff hunks
+
+### Success Metrics
+
+- Time-to-create entity reduced by 30–50%
+- Fewer invalid saves (validation caught earlier)
+- Higher use of Impact panel (actionable insights)
+- More apply-edit through AI (streamlined workflow)
+- Fewer modals closed without action
+- Improved repo switching clarity
+
+### Risks & Dependencies
+
+- Constitution schema drift: ensure forms derive from JSON schema
+- Diff viewer complexity: start with unified view, expand later
+- Multi-app metadata backfill: keep optional to avoid breaking existing repos
+
+### Estimated Effort
+
+- **P0 (Quick Wins)**: 1–2 weeks
+- **P1 (Core Workflows)**: 3–5 weeks
+- **P2 (Advanced UX)**: 4–6 weeks
+
+**Total**: 8–13 weeks for complete UX overhaul
+
+---
+
 ## Future Enhancements
 
 1. **Multi-repo support**: Manage multiple context repos in tabs
@@ -988,6 +1236,309 @@ img-src 'self' data:;
 6. **Team collaboration**: Real-time co-editing via WebSockets
 7. **Analytics**: Dashboard for feature velocity, task completion rates
 8. **Export**: Generate static site from context repo for documentation
+
+---
+
+## AI Integration Enhancements
+
+### Current AI Integration Analysis
+
+**What's Working:**
+1. ✅ AI configuration with multiple providers (Ollama, Azure OpenAI)
+2. ✅ Secure credential storage using Electron's safeStorage
+3. ✅ Conversation history with modes (improvement, clarification, general)
+4. ✅ Context-aware assistance with focus on specific entities
+5. ✅ Edit proposal and application workflow
+6. ✅ Token usage tracking
+7. ✅ Robust JSON parsing with fallback for non-compliant responses
+
+**Potential Improvements:**
+
+#### 1. Streaming Responses (High Impact)
+**Status**: Planned  
+**Priority**: P1
+
+**Goal**: Provide better UX for long AI responses by streaming tokens as they're generated.
+
+**Implementation:**
+- Modify `ai-common.mjs` to support streaming mode for both Ollama and Azure OpenAI
+- Add `stream: true` flag to provider calls
+- Update `callOllama` to handle Server-Sent Events (SSE)
+- Update `callAzureOpenAI` to handle SSE streams
+- Modify `AIAssistantPanel.vue` to display partial responses
+- Add streaming state indicator in UI
+
+**Components:**
+- `context-repo/.context/pipelines/ai-common.mjs`
+- `context-repo/.context/pipelines/ai-assistant.mjs`
+- `app/src/main/index.ts` (IPC handler modifications)
+- `app/src/renderer/components/AIAssistantPanel.vue`
+- `app/src/renderer/stores/aiStore.ts`
+
+**Technical Details:**
+```typescript
+// Ollama streaming
+const response = await fetch(`${endpoint}/api/generate`, {
+  method: 'POST',
+  body: JSON.stringify({ model, prompt, stream: true })
+});
+
+const reader = response.body.getReader();
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  const chunk = JSON.parse(new TextDecoder().decode(value));
+  yield chunk.response; // Stream to renderer
+}
+```
+
+#### 2. Conversation Context Management (Medium Impact)
+**Status**: Planned  
+**Priority**: P1
+
+**Goal**: Send conversation history to LLM for multi-turn context-aware interactions.
+
+**Implementation:**
+- Modify `ai-assistant.mjs` to accept conversation history array
+- Build messages array from `aiStore.conversation`
+- Add sliding window to limit context (last N messages or token limit)
+- Add "Clear context" button to force fresh start
+- Display conversation size/token estimate in UI
+
+**Components:**
+- `context-repo/.context/pipelines/ai-assistant.mjs`
+- `app/src/renderer/stores/aiStore.ts`
+- `app/src/renderer/components/AIAssistantPanel.vue`
+
+**Data Structure:**
+```typescript
+interface ConversationMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  tokens?: number; // estimated
+}
+
+// Build context from last N messages
+const messages = [
+  { role: 'system', content: systemPrompt },
+  ...conversation.slice(-5).map(msg => ({
+    role: msg.role,
+    content: msg.content
+  })),
+  { role: 'user', content: question }
+];
+```
+
+#### 3. Better Error Handling & Retry Logic (Medium Impact)
+**Status**: Planned  
+**Priority**: P2
+
+**Goal**: Add automatic retry with exponential backoff for transient failures.
+
+**Implementation:**
+- Wrap `callProvider` with retry logic
+- Detect transient errors (network, rate limits, timeouts)
+- Exponential backoff: 1s, 2s, 4s delays
+- Show retry indicator in UI
+- Allow user to cancel retry
+- Log retry attempts for debugging
+
+**Components:**
+- `context-repo/.context/pipelines/ai-common.mjs`
+- `app/src/renderer/stores/aiStore.ts`
+
+**Implementation:**
+```typescript
+async function callProviderWithRetry(options, maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await callProvider(options);
+    } catch (error) {
+      if (!isRetryable(error) || attempt === maxRetries - 1) {
+        throw error;
+      }
+      const delay = Math.pow(2, attempt) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+```
+
+#### 4. Diff Viewer for Edits (High UX Impact)
+**Status**: Planned  
+**Priority**: P1
+
+**Goal**: Display proposed edits in a side-by-side diff view instead of raw YAML.
+
+**Implementation:**
+- Create new `DiffViewer.vue` component
+- Use diff library (e.g., `diff-match-patch`, `jsdiff`, or `monaco-editor`)
+- Show before/after with syntax highlighting
+- Highlight added/removed/changed lines
+- Support line numbers and context
+- Integrate into `AIAssistantPanel.vue` edit display
+
+**Components:**
+- `app/src/renderer/components/DiffViewer.vue` (new)
+- `app/src/renderer/components/AIAssistantPanel.vue`
+
+**Dependencies:**
+```json
+{
+  "diff-match-patch": "^1.0.5",
+  "@types/diff-match-patch": "^1.0.36"
+}
+```
+
+**UI Structure:**
+```vue
+<DiffViewer
+  :original="originalContent"
+  :modified="edit.updatedContent"
+  :language="'yaml'"
+  :file-path="edit.filePath"
+/>
+```
+
+#### 5. Conversation Export/Import (Low Impact)
+**Status**: Planned  
+**Priority**: P3
+
+**Goal**: Allow users to save/load conversations for reference.
+
+**Implementation:**
+- Add "Export" button to export conversation as JSON or Markdown
+- Add "Import" button to load previous conversation
+- Store exports in user data directory
+- Include metadata (timestamp, repo, model used)
+- Option to share conversations across team
+
+**Components:**
+- `app/src/renderer/stores/aiStore.ts`
+- `app/src/renderer/components/AIAssistantPanel.vue`
+- `app/src/main/index.ts` (file I/O handlers)
+
+#### 6. Cost Estimation (Medium Impact)
+**Status**: Planned  
+**Priority**: P2
+
+**Goal**: Show estimated cost before sending requests (especially for paid APIs).
+
+**Implementation:**
+- Add token counting utility (tiktoken or approximate)
+- Estimate tokens in prompt + expected response
+- Display cost based on provider pricing
+- Add cost tracking per session/day/month
+- Warn when approaching budget limits
+
+**Components:**
+- `app/src/renderer/stores/aiStore.ts`
+- `app/src/renderer/components/AIAssistantPanel.vue`
+- `context-repo/.context/pipelines/ai-common.mjs`
+
+**Pricing Data:**
+```typescript
+const PRICING = {
+  'azure-openai': {
+    'gpt-4o': { input: 0.00015, output: 0.0006 }, // per 1K tokens
+    'gpt-4o-mini': { input: 0.000003, output: 0.00001 }
+  },
+  'ollama': { '*': { input: 0, output: 0 } } // Free
+};
+```
+
+#### 7. Multi-turn Edit Refinement (High Impact)
+**Status**: Planned  
+**Priority**: P1
+
+**Goal**: Allow user to request changes to proposed edits before applying.
+
+**Implementation:**
+- Add "Refine" button next to each proposed edit
+- Open refinement dialog with edit context
+- Send refinement request to AI with original edit
+- Replace edit in conversation with refined version
+- Support multiple refinement rounds
+- Track edit history/versions
+
+**Components:**
+- `app/src/renderer/components/AIAssistantPanel.vue`
+- `app/src/renderer/stores/aiStore.ts`
+- `context-repo/.context/pipelines/ai-assistant.mjs`
+
+**Workflow:**
+```
+1. AI proposes edit
+2. User clicks "Refine" → enters feedback
+3. AI generates new version considering feedback
+4. User reviews → Apply or Refine again
+```
+
+#### 8. Batch Operations (Medium Impact)
+**Status**: Planned  
+**Priority**: P2
+
+**Goal**: Apply multiple edits atomically with rollback on failure.
+
+**Implementation:**
+- Add "Apply All" button for pending edits
+- Create backup of all files before applying
+- Apply edits sequentially, tracking success/failure
+- On any failure, rollback all changes
+- Show progress indicator during batch apply
+- Display summary of results
+
+**Components:**
+- `app/src/renderer/stores/aiStore.ts`
+- `app/src/main/index.ts`
+- `context-repo/.context/pipelines/ai-assistant.mjs`
+
+**Implementation:**
+```typescript
+async function applyEditsBatch(edits: AssistantEdit[]) {
+  const backups = await createBackups(edits);
+  const results = [];
+  
+  try {
+    for (const edit of edits) {
+      const result = await applyEdit(edit);
+      results.push(result);
+      if (!result.ok) throw new Error('Edit failed');
+    }
+    return { ok: true, results };
+  } catch (error) {
+    await restoreBackups(backups);
+    return { ok: false, error: error.message, results };
+  }
+}
+```
+
+### Implementation Priorities
+
+**Phase 1 (Immediate - 1-2 weeks):**
+- ✅ Robust JSON parsing with fallback (COMPLETED)
+- ✅ Diff Viewer for Edits (COMPLETED)
+- P1: Streaming Responses
+
+**Phase 2 (Short-term - 2-3 weeks):**
+- P1: Conversation Context Management
+- P1: Multi-turn Edit Refinement
+
+**Phase 3 (Medium-term - 3-4 weeks):**
+- P2: Better Error Handling & Retry Logic
+- P2: Cost Estimation
+- P2: Batch Operations
+
+**Phase 4 (Future - 4+ weeks):**
+- P3: Conversation Export/Import
+
+### Success Metrics
+
+- **User Experience**: 40% reduction in time-to-apply AI edits (via diff viewer)
+- **Reliability**: 90% reduction in JSON parsing errors (via robust extraction)
+- **Engagement**: 2x increase in multi-turn AI conversations (via context management)
+- **Efficiency**: 30% reduction in failed edit applications (via preview+diff)
+- **Cost Transparency**: 100% of paid API users aware of costs before sending
 
 ---
 

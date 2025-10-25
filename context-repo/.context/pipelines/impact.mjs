@@ -99,6 +99,7 @@ if (changedIds.length === 0) {
 
 // Entity type to directory mapping
 const entityDirs = {
+  governance: 'governance',
   feature: 'features',
   userstory: 'userstories',
   spec: 'specs',
@@ -411,6 +412,113 @@ try {
   const issues = [];
   const staleIds = new Set();
   
+  // Lightweight insights for entities to add useful guidance even when there are no diffs
+  function computeInsights(entity) {
+    const out = [];
+    if (!entity) return out;
+
+    if (entity._type === 'feature') {
+      if (!Array.isArray(entity.userStories) || entity.userStories.length === 0) {
+        out.push({
+          id: entity.id,
+          type: 'insight',
+          severity: 'info',
+          message: 'Feature has no linked user stories',
+          suggestedAction: 'Link user stories that describe the outcomes for this feature'
+        });
+      }
+      if (!Array.isArray(entity.specs) || entity.specs.length === 0) {
+        out.push({
+          id: entity.id,
+          type: 'insight',
+          severity: 'info',
+          message: 'Feature has no linked specs',
+          suggestedAction: 'Link specifications that define how to implement this feature'
+        });
+      }
+      if (!Array.isArray(entity.tasks) || entity.tasks.length === 0) {
+        out.push({
+          id: entity.id,
+          type: 'insight',
+          severity: 'info',
+          message: 'Feature has no linked tasks',
+          suggestedAction: 'Create tasks to plan the implementation for this feature'
+        });
+      }
+    }
+
+    if (entity._type === 'userstory') {
+      const ac = Array.isArray(entity.acceptanceCriteria) ? entity.acceptanceCriteria : [];
+      if (ac.length === 0) {
+        out.push({
+          id: entity.id,
+          type: 'insight',
+          severity: 'info',
+          message: 'User story has no acceptance criteria',
+          suggestedAction: 'Add 2–5 acceptance criteria to make the story testable'
+        });
+      }
+      if (!entity.feature) {
+        out.push({
+          id: entity.id,
+          type: 'insight',
+          severity: 'info',
+          message: 'User story is not linked to a feature',
+          suggestedAction: 'Link this story to its parent feature'
+        });
+      }
+    }
+
+    if (entity._type === 'spec') {
+      const relatedFeatures = Array.isArray(entity.related?.features) ? entity.related.features : [];
+      if (relatedFeatures.length === 0) {
+        out.push({
+          id: entity.id,
+          type: 'insight',
+          severity: 'info',
+          message: 'Spec is not linked to any feature',
+          suggestedAction: 'Link this spec to one or more features it supports'
+        });
+      }
+    }
+
+    if (entity._type === 'service') {
+      if (!entity.api || !entity.api.version) {
+        out.push({
+          id: entity.id,
+          type: 'insight',
+          severity: 'info',
+          message: 'Service is missing API version metadata',
+          suggestedAction: 'Add api.version to document the current contract version'
+        });
+      }
+      if (!Array.isArray(entity.consumers) || entity.consumers.length === 0) {
+        out.push({
+          id: entity.id,
+          type: 'insight',
+          severity: 'info',
+          message: 'Service has no declared consumers',
+          suggestedAction: 'Link packages or services that consume this service to improve visibility'
+        });
+      }
+    }
+
+    if (entity._type === 'package') {
+      const usesServices = Array.isArray(entity.uses?.services) ? entity.uses.services : [];
+      if (usesServices.length === 0) {
+        out.push({
+          id: entity.id,
+          type: 'insight',
+          severity: 'info',
+          message: 'Package has no linked services',
+          suggestedAction: 'Link services this package depends on for clarity'
+        });
+      }
+    }
+
+    return out;
+  }
+
   for (const changedId of changedIds) {
     if (!entities[changedId]) {
       issues.push({
@@ -441,6 +549,10 @@ try {
     const ruleIssues = applyConsistencyRules(changedId, changedEntity, neighbors, fieldChanges);
     issues.push(...ruleIssues);
     
+    // Add helpful insights for the changed entity and its direct neighbors
+    issues.push(...computeInsights(changedEntity));
+    neighbors.forEach(id => issues.push(...computeInsights(entities[id])));
+
     // Mark entities with issues as stale
     ruleIssues.forEach(issue => staleIds.add(issue.id));
   }

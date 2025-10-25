@@ -11,6 +11,81 @@ function applyAgent(options) {
   return options;
 }
 
+async function* callAzureOpenAIStream({ endpoint, apiKey, model, systemPrompt, userPrompt, responseFormat, temperature, maxTokens }) {
+  const body = {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ],
+    max_completion_tokens: maxTokens
+  };
+  if (responseFormat === 'json') {
+    body.response_format = { type: 'json_object' };
+  }
+  if (typeof temperature === 'number' && temperature === 1) {
+    body.temperature = temperature;
+  }
+  const url = `${endpoint}/openai/deployments/${model}/chat/completions?api-version=2024-12-01-preview&stream=true`;
+  const response = await fetch(url, applyAgent({
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': apiKey
+    },
+    body: JSON.stringify(body)
+  }));
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => response.statusText);
+    throw new Error(`Azure OpenAI error (${response.status}): ${errorText}`);
+  }
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const extractTextDelta = (obj) => {
+    try {
+      const choice = (obj.choices && obj.choices[0]) || {};
+      const delta = choice.delta || choice.message?.delta || {};
+      // text may be in various shapes
+      if (typeof delta.content === 'string') return delta.content;
+      if (Array.isArray(delta.content)) {
+        return delta.content
+          .map(part => (typeof part === 'string' ? part : (part.text || part.content || '')))
+          .join('');
+      }
+      if (typeof choice.content === 'string') return choice.content;
+      if (Array.isArray(choice.content)) {
+        return choice.content
+          .map(part => (typeof part === 'string' ? part : (part.text || part.content || '')))
+          .join('');
+      }
+      return '';
+    } catch { return ''; }
+  };
+  for await (const chunk of response.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    let sepIndex;
+    while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+      const block = buffer.slice(0, sepIndex).trim();
+      buffer = buffer.slice(sepIndex + 2);
+      if (!block) continue;
+      const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+      for (const line of lines) {
+        if (!line.toLowerCase().startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const obj = JSON.parse(data);
+          const text = extractTextDelta(obj);
+          if (text) {
+            yield text;
+          }
+        } catch {
+          // ignore line parse errors
+        }
+      }
+    }
+  }
+}
+
 export async function callProvider({
   provider,
   endpoint,
@@ -67,6 +142,28 @@ export async function callProvider({
   return { ok: false, error: `Unknown provider: ${provider}` };
 }
 
+export async function* callProviderStream({
+  provider,
+  endpoint,
+  model,
+  apiKey = '',
+  systemPrompt = '',
+  userPrompt = '',
+  temperature = 1.0,
+  maxTokens = 4000,
+  responseFormat = 'text'
+}) {
+  if (provider === 'ollama') {
+    yield* callOllamaStream({ endpoint, model, systemPrompt, userPrompt, responseFormat });
+    return;
+  }
+  if (provider === 'azure-openai') {
+    yield* callAzureOpenAIStream({ endpoint, apiKey, model, systemPrompt, userPrompt, temperature, maxTokens, responseFormat });
+    return;
+  }
+  throw new Error(`Unknown provider: ${provider}`);
+}
+
 async function callOllama({ endpoint, model, systemPrompt, userPrompt, responseFormat }) {
   try {
     const body = {
@@ -112,6 +209,57 @@ async function callOllama({ endpoint, model, systemPrompt, userPrompt, responseF
       ok: false,
       error: errorMessage
     };
+  }
+}
+
+async function* callOllamaStream({ endpoint, model, systemPrompt, userPrompt, responseFormat }) {
+  const body = {
+    model,
+    prompt: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt,
+    stream: true
+  };
+  if (responseFormat === 'json') {
+    body.format = 'json';
+  }
+  const response = await fetch(`${endpoint}/api/generate`, applyAgent({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }));
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => response.statusText);
+    throw new Error(`Ollama API error (${response.status}): ${errorText}`);
+  }
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for await (const chunk of response.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    let idx;
+    while ((idx = buffer.indexOf('\n')) !== -1) {
+      const line = buffer.slice(0, idx).trim();
+      buffer = buffer.slice(idx + 1);
+      if (!line) continue;
+      try {
+        const obj = JSON.parse(line);
+        if (typeof obj.response === 'string' && obj.response) {
+          yield obj.response;
+        }
+      } catch {
+        // ignore malformed line
+      }
+    }
+  }
+  // flush any remaining
+  const tail = buffer.trim();
+  if (tail) {
+    try {
+      const obj = JSON.parse(tail);
+      if (typeof obj.response === 'string' && obj.response) {
+        yield obj.response;
+      }
+    } catch {
+      // ignore
+    }
   }
 }
 

@@ -85,6 +85,26 @@ export const useContextStore = defineStore('context', () => {
           await applyDefaultRepoPath();
         }
       }
+
+      // Start repo watcher
+      if (repoPath.value) {
+        try {
+          await window.api.repos.watch(repoPath.value);
+        } catch { /* ignore */ }
+      }
+
+      // Auto-refresh on external file changes (debounced)
+      let debounceTimer: any = null;
+      const off = window.api.repos.onFileChanged(async (payload: any) => {
+        if (!repoPath.value || payload?.dir !== repoPath.value) return;
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+          await loadGraph();
+        }, 250);
+      });
+
+      // Save disposer on settings so we can unwatch if needed (simplified)
+      // Note: In a real app, store this in a closure; omitted for brevity.
     } catch (err) {
       await applyDefaultRepoPath();
     }
@@ -235,9 +255,23 @@ export const useContextStore = defineStore('context', () => {
     }
   }
 
-  function setActiveEntity(entityId: string | null) {
-    activeEntityId.value = entityId;
+function setActiveEntity(entityId: string | null) {
+  activeEntityId.value = entityId;
+
+  // Update recents list in settings (best-effort, non-blocking)
+  if (entityId) {
+    (async () => {
+      try {
+        const res = await window.api.settings.get('recentEntities');
+        const list: string[] = Array.isArray(res?.value) ? res.value : [];
+        const next = [entityId, ...list.filter((id) => id !== entityId)].slice(0, 10);
+        await window.api.settings.set('recentEntities', next);
+      } catch {
+        // ignore settings errors silently
+      }
+    })();
   }
+}
 
   function getEntity(entityId: string): Entity | null {
     return entities.value[entityId] || null;

@@ -2,18 +2,28 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import ContextTree from './components/ContextTree.vue';
 import YamlEditor from './components/YamlEditor.vue';
-import ImpactPanel from './components/ImpactPanel.vue';
+import ImpactPanel from './components/ImpactPanelImproved.vue';
 import GraphView from './components/GraphView.vue';
 import GitPanel from './components/GitPanel.vue';
 import WelcomeDocumentation from './components/WelcomeDocumentation.vue';
+import WorkspaceHub from './components/WorkspaceHub.vue';
+import EntityPreview from './components/EntityPreview.vue';
+import EntityDiff from './components/EntityDiff.vue';
+import EntityDependencyGraph from './components/EntityDependencyGraph.vue';
 import ContextBuilderModal from './components/ContextBuilderModal.vue';
 import AISettingsModal from './components/AISettingsModal.vue';
 import AIAssistantPanel from './components/AIAssistantPanel.vue';
+import Snackbar from './components/Snackbar.vue';
+import AppToolbar from './components/AppToolbar.vue';
+import CommandPalette from './components/CommandPalette.vue';
 import { useContextStore } from './stores/contextStore';
 import { useBuilderStore } from './stores/builderStore';
+import { useAIStore } from './stores/aiStore';
+import { useSnackbar } from './composables/useSnackbar';
 
 const contextStore = useContextStore();
 const builderStore = useBuilderStore();
+const { show: showSnackbar, message: snackbarMessage, type: snackbarType, action: snackbarAction, hide: hideSnackbar, handleAction: handleSnackbarAction } = useSnackbar();
 
 const statusMessage = ref('Ready');
 const showGraphModal = ref(false);
@@ -29,12 +39,18 @@ const removingRepoId = ref<string | null>(null);
 const repoSelection = ref('');
 const isHeaderExpanded = ref(false);
 
+// Command palette visibility
+const showCommandPalette = ref(false);
+
+// Docs view toggle (when no entity selected)
+const showDocsCenter = ref(false);
+
 // Panel state
 const leftPanelOpen = ref(true);
 const rightPanelOpen = ref(true);
 const leftPanelWidth = ref(256); // 64 * 4 = 256px (w-64)
 const rightPanelWidth = ref(380);
-const rightPanelView = ref<'impact' | 'assistant'>('impact');
+const showImpactModal = ref(false);
 
 const isResizingLeft = ref(false);
 const isResizingRight = ref(false);
@@ -94,8 +110,11 @@ const activeEntityDescription = computed(() => {
   return entity.title || entity.name || 'No additional details available.';
 });
 
-const isImpactView = computed(() => rightPanelView.value === 'impact');
-const isAssistantView = computed(() => rightPanelView.value === 'assistant');
+// Panel is always AI Assistant now
+
+// Center tabs state
+const centerTab = ref<'yaml' | 'preview' | 'diff' | 'docs'>('yaml');
+function setCenterTab(tab: 'yaml' | 'preview' | 'diff' | 'docs') { centerTab.value = tab; }
 
 // Panel resize handlers
 function startResizeLeft() {
@@ -153,13 +172,52 @@ function stopResize() {
 }
 
 // Keyboard shortcuts
-async function handleKeyboard(e: KeyboardEvent) {
+function handleKeyboard(e: KeyboardEvent) {
   // Ctrl+N or Cmd+N to create new entity
-  if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
     e.preventDefault();
-    // Open builder with default entity type (feature)
-    await contextStore.initializeStore();
-    builderStore.initBuilder('feature', {}, contextStore.repoPath);
+    contextStore.initializeStore().then(() => {
+      builderStore.initBuilder('feature', {}, contextStore.repoPath);
+    });
+    return;
+  }
+
+  // Ctrl+K Command Palette
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    showCommandPalette.value = !showCommandPalette.value;
+    return;
+  }
+  
+  // Ctrl+I to open Impact modal
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
+    e.preventDefault();
+    showImpactModal.value = true;
+    return;
+  }
+  
+  // Ctrl+Shift+A to toggle AI Assistant panel
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'a') {
+    e.preventDefault();
+    rightPanelOpen.value = !rightPanelOpen.value;
+    return;
+  }
+  
+  // Escape to close modals/palette
+  if (e.key === 'Escape') {
+    if (showCommandPalette.value) {
+      showCommandPalette.value = false;
+      return;
+    }
+    if (showGraphModal.value) {
+      showGraphModal.value = false;
+    } else if (showGitModal.value) {
+      showGitModal.value = false;
+    } else if (showRepoManager.value) {
+      showRepoManager.value = false;
+    } else if (showAISettings.value) {
+      showAISettings.value = false;
+    }
   }
 }
 
@@ -193,34 +251,64 @@ const reloadGraph = async () => {
   statusMessage.value = isSuccess ? 'Graph refreshed ✓' : (errorDetail || fallbackMessage);
 };
 
-function openImpactPanel() {
-  rightPanelView.value = 'impact';
-  rightPanelOpen.value = true;
+function openDocs() {
+  showDocsCenter.value = true;
+  contextStore.setActiveEntity(null);
+}
+
+function openWorkspace() {
+  showDocsCenter.value = false;
+  contextStore.setActiveEntity(null);
+}
+
+function toggleRightPanel() {
+  rightPanelOpen.value = !rightPanelOpen.value;
 }
 
 function openAssistantPanel() {
-  rightPanelView.value = 'assistant';
   rightPanelOpen.value = true;
 }
 
-function toggleHeader() {
-  isHeaderExpanded.value = !isHeaderExpanded.value;
+const aiStore = useAIStore();
+
+async function handleAskAboutEntity(entityId: string) {
+  openAssistantPanel();
+  await aiStore.initialize();
+  const entity = contextStore.getEntity(entityId);
+  const prompt = entity ? `Give a concise brief on ${entityId} (type: ${entity._type}). Highlight risks, dependencies, and next steps.` : `Give a concise brief on ${entityId}.`;
+  await aiStore.ask(prompt, { mode: 'general', focusId: entityId });
 }
 
-function handleImpactAction() {
-  if (!rightPanelOpen.value || !isImpactView.value) {
-    openImpactPanel();
-  } else {
-    rightPanelOpen.value = false;
+function handleCommandExecute(commandId: string) {
+  switch (commandId) {
+    case 'assistant:open':
+      openAssistantPanel();
+      break;
+    case 'impact:analyze':
+      showImpactModal.value = true;
+      break;
+    case 'graph:open':
+      showGraphModal.value = true;
+      break;
+    case 'git:open':
+      showGitModal.value = true;
+      break;
+    case 'create:feature':
+      openBuilderModal('feature');
+      break;
+    case 'create:userstory':
+      openBuilderModal('userstory');
+      break;
+    case 'create:spec':
+      openBuilderModal('spec');
+      break;
+    case 'create:task':
+      openBuilderModal('task');
+      break;
+    default:
+      break;
   }
-}
-
-function handleAssistantAction() {
-  if (!rightPanelOpen.value || !isAssistantView.value) {
-    openAssistantPanel();
-  } else {
-    rightPanelOpen.value = false;
-  }
+  showCommandPalette.value = false;
 }
 
 function openBuilderModal(type: string = 'feature') {
@@ -305,211 +393,54 @@ async function handleRemoveRepo(id: string) {
 
 <template>
   <div class="flex flex-col h-full bg-surface">
-    <!-- Sticky Header with Material 3 Design -->
+    <!-- Simplified App Header (Material 3) -->
     <header class="sticky top-0 z-50 shadow-elevation-3">
-      <div class="bg-gradient-to-r from-primary-900 via-primary-700 to-secondary-800 text-white">
-        <div class="px-6 py-4">
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <div class="p-2.5 rounded-m3-xl bg-white/10 border border-white/20 shadow-elevation-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7a2 2 0 012-2h5l2 2h5a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-                </svg>
-              </div>
-              <div>
-                <h1 class="text-xl font-semibold tracking-tight">Context-Sync</h1>
-                <p class="text-xs text-primary-100">Spec-driven development workspace</p>
-              </div>
+      <div class="bg-primary-800 text-white">
+        <div class="px-6 py-3 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 min-w-0">
+            <button @click="toggleLeftPanel" class="p-2 rounded-m3-full hover:bg-white/15 border border-white/10" title="Toggle Context Tree">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div class="p-2.5 rounded-m3-xl bg-white/10 border border-white/20 shadow-elevation-2">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7a2 2 0 012-2h5l2 2h5a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+              </svg>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                @click="openBuilderModal()"
-                class="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-m3-full bg-white/15 hover:bg-white/25 border border-white/20 transition-all hover:shadow-elevation-2"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                New Entity
-              </button>
-              <button
-                @click="openAssistantPanel()"
-                class="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-m3-full bg-white/15 hover:bg-white/25 border border-white/20 transition-all hover:shadow-elevation-2"
-                title="Open AI Assistant"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                AI Assistant
-              </button>
-              <button
-                @click="toggleHeader"
-                class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-m3-full bg-white/15 hover:bg-white/25 border border-white/20 transition-all hover:shadow-elevation-2"
-                :aria-expanded="isHeaderExpanded"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="isHeaderExpanded ? 'M19 9l-7 7-7-7' : 'M5 9l7 7 7-7'" />
-                </svg>
-                <span>{{ isHeaderExpanded ? 'Hide overview' : 'Show overview' }}</span>
-              </button>
+            <div class="min-w-0">
+              <h1 class="text-xl font-semibold tracking-tight">Context-Sync</h1>
+              <div class="flex items-center gap-2 text-[11px] text-primary-100 truncate">
+                <span class="truncate">{{ activeRepoMeta ? activeRepoMeta.label : 'No repository selected' }}</span>
+                <span v-if="totalEntities" class="px-2 py-0.5 rounded-m3-full bg-white/20">Entities {{ totalEntities }}</span>
+              </div>
             </div>
           </div>
-
-          <Transition name="header-collapse">
-            <div v-if="isHeaderExpanded" class="mt-5 space-y-5">
-              <div class="grid gap-4 md:grid-cols-3">
-                <div class="bg-surface-1/95 text-secondary-900 rounded-m3-lg border border-white/25 shadow-elevation-2 backdrop-blur-sm p-4">
-                  <div class="flex items-start justify-between gap-2">
-                    <div class="min-w-0">
-                      <p class="text-xs font-semibold uppercase tracking-wide text-secondary-600">Repository</p>
-                      <h2 class="text-base font-semibold text-secondary-900 truncate">{{ activeRepoMeta ? activeRepoMeta.label : 'No repository selected' }}</h2>
-                      <p class="text-xs text-secondary-600 mt-1 truncate">{{ repoSummaryLine }}</p>
-                    </div>
-                    <button
-                      class="px-3 py-1.5 text-xs font-semibold rounded-m3-full bg-primary-600 text-white hover:bg-primary-700 transition-colors shadow-elevation-1"
-                      @click="openRepoManager"
-                    >
-                      Manage
-                    </button>
-                  </div>
-                  <div class="mt-4 space-y-2">
-                    <label class="text-xs font-medium text-secondary-600">Switch repository</label>
-                    <select
-                      class="w-full px-3 py-2 text-sm rounded-m3-md border border-surface-variant bg-surface-2 text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      :value="repoSelection"
-                      :disabled="repoOptions.length === 0"
-                      @change="handleRepoChange"
-                    >
-                      <option value="" disabled>Select repository</option>
-                      <option
-                        v-for="repo in repoOptions"
-                        :key="repo.id"
-                        :value="repo.id"
-                      >
-                        {{ repo.label }}
-                      </option>
-                    </select>
-                  </div>
-                  <p v-if="activeRepoMeta" class="text-[11px] text-secondary-500 mt-3">Last used {{ repoLastUsedDisplay }}</p>
-                  <p v-else class="text-[11px] text-secondary-500 mt-3">{{ repoStatusHint }}</p>
-                </div>
-
-                <div class="bg-surface-1/95 text-secondary-900 rounded-m3-lg border border-white/25 shadow-elevation-2 backdrop-blur-sm p-4">
-                  <div class="flex items-start justify-between gap-2">
-                    <div>
-                      <p class="text-xs font-semibold uppercase tracking-wide text-secondary-600">Quick Actions</p>
-                      <h2 class="text-base font-semibold text-secondary-900">Stay in flow</h2>
-                    </div>
-                    <span class="px-2.5 py-1 text-xs font-semibold rounded-m3-full bg-primary-100 text-primary-700">
-                      Entities {{ totalEntities }}
-                    </span>
-                  </div>
-                  <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    <button
-                      @click="contextStore.setActiveEntity(null)"
-                      class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 hover:shadow-elevation-1 transition-all"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                      </svg>
-                      Home
-                    </button>
-                    <button
-                      @click="showGraphModal = true"
-                      :disabled="!isRepoConfigured"
-                      class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 hover:shadow-elevation-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                      </svg>
-                      Graph
-                    </button>
-                    <button
-                      @click="showGitModal = true"
-                      :disabled="!isRepoConfigured"
-                      class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 hover:shadow-elevation-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                      </svg>
-                      Git
-                    </button>
-                    <button
-                      @click="runValidation"
-                      :disabled="!isRepoConfigured"
-                      class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 hover:shadow-elevation-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M5 7h14" />
-                      </svg>
-                      Validate
-                    </button>
-                    <button
-                      @click="toggleLeftPanel"
-                      class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 hover:shadow-elevation-1 transition-all"
-                      :title="leftPanelOpen ? 'Hide Context Tree' : 'Show Context Tree'"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                      </svg>
-                      Context
-                    </button>
-                    <button
-                      @click="handleImpactAction()"
-                      class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-md border transition-all"
-                      :class="rightPanelOpen && isImpactView ? 'bg-primary-600 text-white border-primary-400 shadow-elevation-2' : 'border-surface-variant bg-surface-2 hover:bg-surface-3 hover:shadow-elevation-1'"
-                      :title="rightPanelOpen && isImpactView ? 'Hide Impact Panel' : 'Open Impact Panel'"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      Impact
-                    </button>
-                    <button
-                      @click="handleAssistantAction()"
-                      class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-md border transition-all"
-                      :class="rightPanelOpen && isAssistantView ? 'bg-primary-600 text-white border-primary-400 shadow-elevation-2' : 'border-surface-variant bg-surface-2 hover:bg-surface-3 hover:shadow-elevation-1'"
-                      :title="rightPanelOpen && isAssistantView ? 'Hide Assistant Panel' : 'Open Assistant Panel'"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      Assistant
-                    </button>
-                  </div>
-                </div>
-
-                <div class="bg-surface-1/95 text-secondary-900 rounded-m3-lg border border-white/25 shadow-elevation-2 backdrop-blur-sm p-4">
-                  <div class="flex items-start justify-between gap-2">
-                    <div>
-                      <p class="text-xs font-semibold uppercase tracking-wide text-secondary-600">Workspace</p>
-                      <h2 class="text-base font-semibold text-secondary-900">Focus overview</h2>
-                    </div>
-                    <span class="text-xs font-medium text-secondary-500">{{ isRepoConfigured ? 'Repo connected' : 'Setup required' }}</span>
-                  </div>
-                  <div class="mt-4 space-y-4">
-                    <div class="rounded-m3-md bg-surface-3 border border-surface-variant px-3 py-2 shadow-elevation-1">
-                      <p class="text-sm font-semibold text-secondary-900">{{ activeEntitySummary }}</p>
-                      <p class="text-xs text-secondary-600 mt-1">{{ activeEntityDescription }}</p>
-                    </div>
-                    <button
-                      @click="reloadGraph"
-                      :disabled="!isRepoConfigured"
-                      class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 hover:shadow-elevation-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M5 11a9 9 0 0114-6.708M19 13a9 9 0 01-14 6.708" />
-                      </svg>
-                      Refresh graph
-                    </button>
-                    <div class="text-xs text-secondary-600">{{ statusMessage }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Transition>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button @click="openBuilderModal()" class="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-m3-full bg-white/15 hover:bg-white/25 border border-white/20 transition-all hover:shadow-elevation-2" title="Create new entity (Ctrl+N)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              New Entity
+            </button>
+            <button @click="openDocs" class="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-m3-full bg-white/15 hover:bg-white/25 border border-white/20 transition-all hover:shadow-elevation-2" title="Open Docs">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20l9-16H3l9 16z"/></svg>
+              Docs
+            </button>
+            <button @click="openRepoManager" class="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-m3-full bg-white/15 hover:bg-white/25 border border-white/20 transition-all hover:shadow-elevation-2" title="Manage repositories">Manage</button>
+          </div>
         </div>
       </div>
     </header>
+
+    <!-- Toolbar with quick actions -->
+    <AppToolbar
+      :left-panel-open="leftPanelOpen"
+      :right-panel-open="rightPanelOpen"
+      :is-repo-configured="isRepoConfigured"
+      @show-graph="showGraphModal = true"
+      @show-git="showGitModal = true"
+      @validate="runValidation"
+      @show-impact="showImpactModal = true"
+      @toggle-assistant="toggleRightPanel"
+      @go-workspace="openWorkspace"
+    />
 
     <div
       v-if="!isRepoConfigured"
@@ -529,7 +460,7 @@ async function handleRemoveRepo(id: string) {
         :style="{ width: leftPanelWidth + 'px' }"
         class="bg-surface-1 border-r border-surface-variant shadow-elevation-1 relative flex-shrink-0"
       >
-        <ContextTree />
+        <ContextTree @ask-about-entity="handleAskAboutEntity" />
         <!-- Resize handle -->
         <div
           @mousedown="startResizeLeft"
@@ -539,44 +470,37 @@ async function handleRemoveRepo(id: string) {
         </div>
       </aside>
 
-      <!-- Center area with YAML Editor or Welcome -->
+      <!-- Center area with YAML/Preview/Diff/Docs or Hub -->
       <section class="flex-1 flex flex-col overflow-hidden min-w-0">
-        <!-- Active Entity View -->
-        <div v-if="activeEntity" class="h-full">
-          <YamlEditor />
+        <!-- Active Entity View with tabs -->
+        <div v-if="activeEntity" class="h-full flex flex-col">
+          <div class="flex items-center gap-2 border-b border-surface-variant bg-surface-1 px-4">
+            <button @click="setCenterTab('yaml')" :class="centerTab==='yaml' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" class="px-3 py-3 text-sm font-medium border-b-2 transition-all">YAML</button>
+            <button @click="setCenterTab('preview')" :class="centerTab==='preview' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" class="px-3 py-3 text-sm font-medium border-b-2 transition-all">Preview</button>
+            <button @click="setCenterTab('diff')" :class="centerTab==='diff' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" class="px-3 py-3 text-sm font-medium border-b-2 transition-all">Diff</button>
+            <button @click="setCenterTab('docs')" :class="centerTab==='docs' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" class="px-3 py-3 text-sm font-medium border-b-2 transition-all">Graph</button>
+          </div>
+          <div class="flex-1 min-h-0">
+            <YamlEditor v-if="centerTab==='yaml'" />
+            <EntityPreview v-else-if="centerTab==='preview'" />
+            <EntityDiff v-else-if="centerTab==='diff'" />
+            <EntityDependencyGraph v-else />
+          </div>
         </div>
 
-        <!-- Welcome Documentation view when no entity selected -->
-        <WelcomeDocumentation v-else />
+        <!-- Workspace Hub/Docs when no entity selected -->
+        <WelcomeDocumentation v-else-if="showDocsCenter" />
+        <WorkspaceHub v-else @palette="showCommandPalette = true" />
       </section>
 
-      <!-- Right Panel (Impact Analysis / AI Assistant) -->
+      <!-- Right Panel (AI Assistant) -->
       <aside
         v-if="rightPanelOpen"
         :style="{ width: rightPanelWidth + 'px' }"
         class="bg-surface-1 border-l border-surface-variant shadow-elevation-1 relative flex-shrink-0"
       >
-        <div class="h-full flex flex-col">
-          <div class="px-4 py-3 border-b border-surface-variant bg-surface-2 flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
-              <button
-                @click="openImpactPanel()"
-                class="px-3 py-1.5 text-xs font-semibold rounded-m3-full transition-all"
-                :class="isImpactView ? 'bg-primary-600 text-white shadow-elevation-1' : 'bg-surface-3 text-secondary-700 hover:bg-surface-4'"
-              >Impact</button>
-              <button
-                @click="openAssistantPanel()"
-                class="px-3 py-1.5 text-xs font-semibold rounded-m3-full transition-all"
-                :class="isAssistantView ? 'bg-primary-600 text-white shadow-elevation-1' : 'bg-surface-3 text-secondary-700 hover:bg-surface-4'"
-              >Assistant</button>
-            </div>
-            <span class="text-[11px] text-secondary-600" v-if="isAssistantView">Repository-aware guidance</span>
-            <span class="text-[11px] text-secondary-600" v-else>Impact analysis tools</span>
-          </div>
-          <div class="flex-1 overflow-hidden">
-            <ImpactPanel v-if="isImpactView" />
-            <AIAssistantPanel v-else @open-settings="showAISettings = true" />
-          </div>
+        <div class="h-full">
+          <AIAssistantPanel @open-settings="showAISettings = true" />
         </div>
         <!-- Resize handle -->
         <div
@@ -643,7 +567,7 @@ async function handleRemoveRepo(id: string) {
             </div>
             <!-- Graph Content -->
             <div class="flex-1 overflow-hidden">
-              <GraphView />
+              <GraphView @ask-about-entity="handleAskAboutEntity" />
             </div>
           </div>
         </div>
@@ -653,6 +577,55 @@ async function handleRemoveRepo(id: string) {
     <!-- Context Builder Modal -->
     <ContextBuilderModal />
     <AISettingsModal v-if="showAISettings" @close="showAISettings = false" />
+    
+    <!-- Impact Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showImpactModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style="background-color: rgba(0, 0, 0, 0.5);"
+          @click.self="showImpactModal = false"
+        >
+          <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[800px] max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 bg-surface-2 border-b border-surface-variant">
+              <div>
+                <h2 class="text-xl font-semibold text-primary-700">Impact Analysis</h2>
+                <p class="text-xs text-secondary-600 mt-1">Analyze dependencies and potential impacts</p>
+              </div>
+              <button
+                @click="showImpactModal = false"
+                class="text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 p-2 rounded-m3-full transition-all"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div class="flex-1 overflow-hidden">
+              <ImpactPanel @close="showImpactModal = false" />
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+    
+    <!-- Global Snackbar -->
+    <Snackbar
+      :show="showSnackbar"
+      :message="snackbarMessage"
+      :type="snackbarType"
+      :action="snackbarAction"
+      @close="hideSnackbar"
+      @action="handleSnackbarAction"
+    />
+
+    <!-- Command Palette -->
+    <CommandPalette
+      v-if="showCommandPalette"
+      @close="showCommandPalette = false"
+      @execute="handleCommandExecute"
+    />
 
     <!-- Repo Manager Modal -->
     <Transition name="modal">
