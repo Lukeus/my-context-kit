@@ -149,6 +149,14 @@ watch(() => contextStore.activeEntityId, () => {
   loadFile();
 });
 
+// Watch for graph updates (e.g., after AI edits are applied)
+watch(() => contextStore.graph, () => {
+  // Only reload if the editor is not dirty (user hasn't made local changes)
+  if (!isDirty.value && contextStore.activeEntityId) {
+    loadFile();
+  }
+}, { deep: true });
+
 // Keyboard shortcuts
 function handleKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {

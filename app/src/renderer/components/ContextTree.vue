@@ -14,23 +14,56 @@ const builderStore = useBuilderStore();
 const searchQuery = ref('');
 const expandedTypes = ref<Set<string>>(new Set(['governance', 'feature', 'userstory', 'spec', 'task']));
 
+// Helper function to recursively search through entity properties
+function searchInValue(value: any, query: string): boolean {
+  if (value == null) return false;
+  
+  if (typeof value === 'string') {
+    return value.toLowerCase().includes(query);
+  }
+  
+  if (Array.isArray(value)) {
+    return value.some(item => searchInValue(item, query));
+  }
+  
+  if (typeof value === 'object') {
+    return Object.values(value).some(val => searchInValue(val, query));
+  }
+  
+  return false;
+}
+
+function matchesSearch(entity: any, query: string): boolean {
+  // Skip internal/system fields
+  const skipFields = ['_type', '_file', 'checksum'];
+  
+  // Search through all entity properties
+  for (const [key, value] of Object.entries(entity)) {
+    if (skipFields.includes(key)) continue;
+    if (searchInValue(value, query)) return true;
+  }
+  
+  return false;
+}
+
 // Computed
 const filteredEntitiesByType = computed(() => {
   const entities = contextStore.entitiesByType;
-  const query = searchQuery.value.toLowerCase();
+  const query = searchQuery.value.toLowerCase().trim();
 
   if (!query) return entities;
 
   const filtered: Record<string, any[]> = {};
   Object.entries(entities).forEach(([type, items]) => {
-    filtered[type] = items.filter(entity => 
-      (entity.id?.toLowerCase().includes(query)) ||
-      (entity.title?.toLowerCase().includes(query)) ||
-      (entity.name?.toLowerCase().includes(query))
-    );
+    filtered[type] = items.filter(entity => matchesSearch(entity, query));
   });
 
   return filtered;
+});
+
+const totalSearchResults = computed(() => {
+  if (!searchQuery.value.trim()) return null;
+  return Object.values(filteredEntitiesByType.value).reduce((sum, items) => sum + items.length, 0);
 });
 
 const entityTypeLabels: Record<string, string> = {
@@ -124,6 +157,18 @@ onMounted(() => {
 watch(() => contextStore.repoPath, () => {
   loadEntities();
 });
+
+// Auto-expand types with search results
+watch(() => searchQuery.value, (newQuery) => {
+  if (newQuery.trim()) {
+    // Expand all types that have results
+    Object.entries(filteredEntitiesByType.value).forEach(([type, items]) => {
+      if (items.length > 0) {
+        expandedTypes.value.add(type);
+      }
+    });
+  }
+});
 </script>
 
 <template>
@@ -133,16 +178,38 @@ watch(() => contextStore.repoPath, () => {
       <h2 class="text-lg font-semibold mb-3 text-primary-700">Context Tree</h2>
       
       <!-- Search -->
-      <input
-        v-model="searchQuery"
-        type="text"
-        placeholder="Search entities..."
-        class="w-full px-3 py-2 text-sm border border-surface-variant rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary bg-surface transition-all"
-      />
+      <div class="relative">
+        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Deep search: IDs, titles, descriptions, links..."
+          class="w-full pl-10 pr-10 py-2.5 text-sm border border-surface-variant rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-surface transition-all"
+        />
+        <button
+          v-if="searchQuery"
+          @click="searchQuery = ''"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-secondary-500 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-full transition-colors"
+          title="Clear search"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
       
       <!-- Stats -->
       <div class="mt-2 text-xs text-secondary-600">
-        {{ contextStore.entityCount }} entities
+        <span v-if="totalSearchResults !== null" class="font-semibold text-primary-700">
+          {{ totalSearchResults }} {{ totalSearchResults === 1 ? 'result' : 'results' }} found
+        </span>
+        <span v-else>
+          {{ contextStore.entityCount }} entities
+        </span>
       </div>
     </div>
 
@@ -214,40 +281,44 @@ watch(() => contextStore.repoPath, () => {
           <div v-if="entities.length === 0" class="px-4 py-2 text-sm text-secondary-500">
             No entities
           </div>
-          <button
+          <div
             v-for="entity in entities"
             :key="entity.id"
-            @click="selectEntity(entity.id)"
-            @contextmenu.prevent.stop="askAI(entity.id)"
-            class="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-primary-50 text-left border-l-3 transition-all relative"
+            class="w-full flex items-center gap-2 hover:bg-primary-50 border-l-3 transition-all relative"
             :class="{
               'border-primary bg-primary-50 shadow-elevation-1': contextStore.activeEntityId === entity.id,
               'border-transparent': contextStore.activeEntityId !== entity.id && !isEntityStale(entity.id),
               'border-tertiary-400': contextStore.activeEntityId !== entity.id && isEntityStale(entity.id)
             }"
-            :title="'Right-click for AI on ' + entity.id"
           >
-            <!-- Status indicator -->
-            <span
-              class="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-elevation-1"
-              :class="getStatusColor(entity.status, entity._type)"
-            ></span>
+            <button
+              @click="selectEntity(entity.id)"
+              @contextmenu.prevent.stop="askAI(entity.id)"
+              class="flex-1 px-4 py-2.5 flex items-center gap-3 text-left"
+              :title="'Right-click for AI on ' + entity.id"
+            >
+              <!-- Status indicator -->
+              <span
+                class="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-elevation-1"
+                :class="getStatusColor(entity.status, entity._type)"
+              ></span>
 
-            <!-- Entity info -->
-            <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium truncate text-secondary-900">
-                {{ entity.id }}
+              <!-- Entity info -->
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium truncate text-secondary-900">
+                  {{ entity.id }}
+                </div>
+                <div class="text-xs text-secondary-600 line-clamp-2 leading-snug">
+                  {{ entity.title || entity.name || entity.iWant || 'Untitled' }}
+                </div>
               </div>
-              <div class="text-xs truncate text-secondary-600">
-                {{ entity.title || entity.name || entity.iWant || 'Untitled' }}
-              </div>
-            </div>
+            </button>
 
             <!-- Quick Ask AI action -->
             <button
-              class="flex-shrink-0 p-1.5 rounded-m3-full text-secondary-600 hover:text-secondary-900 hover:bg-surface-3"
+              class="flex-shrink-0 p-1.5 mr-2 rounded-m3-full text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors"
               title="Ask AI about this entity"
-              @click.stop="askAI(entity.id)"
+              @click="askAI(entity.id)"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -255,10 +326,10 @@ watch(() => contextStore.repoPath, () => {
             </button>
 
             <!-- Stale/Issue indicator -->
-            <div v-if="isEntityStale(entity.id)" class="flex-shrink-0" title="Needs review">
+            <div v-if="isEntityStale(entity.id)" class="flex-shrink-0 mr-2" title="Needs review">
               <span class="inline-block w-2.5 h-2.5 rounded-full bg-tertiary-500"></span>
             </div>
-          </button>
+          </div>
         </div>
       </div>
     </div>

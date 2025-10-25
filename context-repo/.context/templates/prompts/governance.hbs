@@ -1,0 +1,106 @@
+# Constitution: {{name}} ({{id}})
+
+**Version**: {{version}}  
+**Status**: {{status}}  
+{{#if ratifiedOn}}**Ratified**: {{ratifiedOn}}{{/if}}  
+{{#if lastAmendedOn}}**Last Amended**: {{lastAmendedOn}}{{/if}}
+
+## Summary
+{{summary}}
+
+{{#if layers}}
+## System Layers
+{{#each layers}}
+### {{name}} (`{{id}}`)
+{{description}}
+
+**Paths**:
+{{#each paths}}
+- `{{this}}`
+{{/each}}
+{{/each}}
+{{/if}}
+
+{{#if principles}}
+## Governing Principles
+{{#each principles}}
+### {{title}}
+{{summary}}
+
+{{#if details}}
+{{details}}
+{{/if}}
+
+**Applies To**: {{#each appliesTo}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}  
+**Non-Negotiable**: {{#if nonNegotiable}}Yes{{else}}No{{/if}}  
+{{#if tags}}**Tags**: {{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}
+
+{{#if requirements}}
+#### Requirements
+{{#each requirements}}
+- **{{id}}** ({{severity}}): {{statement}}
+{{#if evidence}}
+  Evidence:
+{{#each evidence}}
+  - {{type}}: `{{path}}` - {{description}}
+{{/each}}
+{{/if}}
+{{/each}}
+{{/if}}
+
+{{#if references}}
+**References**: {{#each references}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+
+---
+{{/each}}
+{{/if}}
+
+{{#if governance}}
+## Governance Model
+**Owners**: {{#each governance.owners}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}  
+**Review Cadence**: {{governance.reviewCadence}}  
+**Change Control**: {{governance.changeControl}}
+
+{{#if governance.adrReferences}}
+**ADR References**:
+{{#each governance.adrReferences}}
+- {{this}}
+{{/each}}
+{{/if}}
+{{/if}}
+
+{{#if compliance}}
+## Compliance Rules
+{{#each compliance.rules}}
+### {{id}}
+{{description}}
+
+**Targets**: {{#each targets}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}  
+**Severity**: {{severity}}
+
+**Conditions**:
+{{#each conditions}}
+- Path: `{{path}}` | Operator: `{{operator}}`{{#if value}} | Value: `{{value}}`{{/if}}  
+  Message: {{message}}
+{{/each}}
+
+{{#if references}}
+**References**: {{#each references}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+
+---
+{{/each}}
+
+{{#if compliance.exceptions}}
+**Exceptions**:
+{{#each compliance.exceptions}}
+- {{this}}
+{{/each}}
+{{/if}}
+{{/if}}
+
+---
+
+**Generated**: {{timestamp}}  
+**Context Source**: {{_file}}

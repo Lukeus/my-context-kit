@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useAIStore } from '../stores/aiStore';
 import { useContextStore } from '../stores/contextStore';
 import DiffViewer from './DiffViewer.vue';
+import TokenProbabilityViewer from './TokenProbabilityViewer.vue';
 
 type AssistantMode = 'improvement' | 'clarification' | 'general';
 
@@ -21,6 +22,17 @@ const isSendDisabled = computed(() => aiStore.isLoading || !question.value.trim(
 
 onMounted(async () => {
   await aiStore.initialize();
+  await aiStore.loadPrompts();
+  
+  // Detect capabilities if config is available
+  try {
+    const result = await window.api.ai.getConfig(contextStore.repoPath);
+    if (result.ok && result.config) {
+      aiStore.detectCapabilities(result.config.provider || 'ollama', result.config.model || '');
+    }
+  } catch {
+    // Ignore
+  }
 });
 
 watch(() => contextStore.activeEntityId, (id) => {
@@ -30,22 +42,14 @@ watch(() => contextStore.activeEntityId, (id) => {
 });
 
 function quickPrompt(type: 'improvement' | 'clarification') {
-  if (type === 'improvement') {
-    mode.value = 'improvement';
-    if (activeEntity.value) {
-      question.value = `Suggest improvements for ${activeEntity.value.id} to stay aligned with the constitution and dependencies.`;
-      focusActive.value = true;
-    } else {
-      question.value = 'Review the roadmap and suggest improvements to keep everything aligned.';
-    }
-  } else {
-    mode.value = 'clarification';
-    if (activeEntity.value) {
-      question.value = `Clarify the purpose, dependencies, and outstanding risks for ${activeEntity.value.id}.`;
-      focusActive.value = true;
-    } else {
-      question.value = 'Clarify how the current context pieces fit together and what is missing.';
-    }
+  const entityId = activeEntity.value?.id;
+  const hasEntity = Boolean(entityId);
+  
+  question.value = aiStore.getQuickPrompt(type, hasEntity, entityId);
+  mode.value = type;
+  
+  if (hasEntity) {
+    focusActive.value = true;
   }
 }
 
@@ -135,6 +139,18 @@ function getOriginalContent(messageId: string, editIndex: number): string {
 function applyEdit(messageId: string, editIndex: number) {
   aiStore.applyEdit(messageId, editIndex);
 }
+
+function requestEditForSuggestion(suggestion: any) {
+  const prompt = `Please generate the complete YAML edit to implement this improvement:
+Target: ${suggestion.target}
+Suggestion: ${suggestion.suggestion}
+${suggestion.impact ? `Impact: ${suggestion.impact}` : ''}
+
+Provide the complete updated YAML file content for ${suggestion.target}.`;
+  question.value = prompt;
+  focusActive.value = true;
+  mode.value = 'improvement';
+}
 </script>
 
 <template>
@@ -186,9 +202,7 @@ function applyEdit(messageId: string, editIndex: number) {
       <div v-if="!aiStore.hasConversation && !aiStore.isLoading" class="text-xs text-secondary-600 bg-surface-2 border border-dashed border-surface-variant rounded-m3-lg p-4">
         <p class="font-semibold text-secondary-800 mb-2">Try asking:</p>
         <ul class="list-disc list-inside space-y-1">
-          <li>"Summarize the current feature landscape and any gaps."</li>
-          <li>"Which tasks look risky based on the constitution rules?"</li>
-          <li>"Clarify how <span class="font-mono">FEAT-001</span> impacts services and packages."</li>
+          <li v-for="(q, i) in aiStore.prompts.exampleQuestions" :key="i">{{ q }}</li>
         </ul>
       </div>
 
@@ -264,9 +278,10 @@ function applyEdit(messageId: string, editIndex: number) {
                     </div>
                     <div class="flex items-center gap-2 pt-2 border-t border-primary-100">
                       <button
+                        @click="requestEditForSuggestion(suggestion)"
                         class="flex-1 px-3 py-2 text-xs font-semibold bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 transition-all shadow-sm"
                       >
-                        Apply This Change
+                        Request Edit
                       </button>
                       <button
                         class="px-3 py-2 text-xs font-medium text-secondary-700 hover:bg-surface-2 rounded-m3-lg transition-all border border-surface-variant"
@@ -396,6 +411,11 @@ function applyEdit(messageId: string, editIndex: number) {
               </button>
             </div>
               </div>
+            </div>
+            
+            <!-- Token Probabilities -->
+            <div class="px-4 pb-3">
+              <TokenProbabilityViewer :logprobs="message.logprobs" />
             </div>
           </div>
         </div>

@@ -17,7 +17,8 @@ async function* callAzureOpenAIStream({ endpoint, apiKey, model, systemPrompt, u
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ],
-    max_completion_tokens: maxTokens
+    max_completion_tokens: maxTokens,
+    stream_options: { include_usage: true }
   };
   if (responseFormat === 'json') {
     body.response_format = { type: 'json_object' };
@@ -195,7 +196,8 @@ async function callOllama({ endpoint, model, systemPrompt, userPrompt, responseF
         prompt_tokens: data.prompt_eval_count || 0,
         completion_tokens: data.eval_count || 0,
         total_tokens: (data.prompt_eval_count || 0) + (data.eval_count || 0)
-      }
+      },
+      logprobs: null // Ollama doesn't support logprobs by default
     };
   } catch (error) {
     let errorMessage = error.message;
@@ -270,7 +272,9 @@ async function callAzureOpenAI({ endpoint, apiKey, model, systemPrompt, userProm
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      max_completion_tokens: maxTokens
+      max_completion_tokens: maxTokens,
+      logprobs: true,
+      top_logprobs: 3
     };
 
     if (responseFormat === 'json') {
@@ -365,6 +369,19 @@ async function callAzureOpenAI({ endpoint, apiKey, model, systemPrompt, userProm
       };
     }
 
+    // Process logprobs if available
+    const logprobsContent = choice.logprobs?.content || [];
+    const tokenProbs = logprobsContent.map(lp => ({
+      token: lp.token,
+      logprob: lp.logprob,
+      prob: Math.exp(lp.logprob),
+      topLogprobs: lp.top_logprobs?.map(t => ({
+        token: t.token,
+        logprob: t.logprob,
+        prob: Math.exp(t.logprob)
+      })) || []
+    }));
+
     return {
       ok: true,
       content: contentText,
@@ -372,7 +389,8 @@ async function callAzureOpenAI({ endpoint, apiKey, model, systemPrompt, userProm
         prompt_tokens: data.usage?.prompt_tokens ?? 0,
         completion_tokens: data.usage?.completion_tokens ?? 0,
         total_tokens: data.usage?.total_tokens ?? 0
-      }
+      },
+      logprobs: tokenProbs.length > 0 ? tokenProbs : null
     };
   } catch (error) {
     let errorMessage = error.message;

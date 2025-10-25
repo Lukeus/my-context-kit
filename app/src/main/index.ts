@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, clipboard, safeStorage } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFile, writeFile, readdir, rename } from 'node:fs/promises';
+import { readFile, writeFile, readdir, rename, mkdir, access, cp } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import started from 'electron-squirrel-startup';
@@ -766,6 +766,190 @@ ipcMain.handle('context:getTemplates', async (_event, { dir, entityType }: { dir
   }
 });
 
+ipcMain.handle('context:scaffoldNewRepo', async (_event, { dir, repoName, projectPurpose, constitutionSummary }: { dir: string; repoName: string; projectPurpose?: string; constitutionSummary?: string }) => {
+  try {
+    const targetDir = path.join(dir, repoName);
+    
+    // Check if directory already exists
+    try {
+      await access(targetDir);
+      return { ok: false, error: 'Directory already exists' };
+    } catch {
+      // Directory doesn't exist, which is what we want
+    }
+    
+    // Get the reference template path from the app resources
+    // In development, use context-repo from parent directory
+    // In production, this would be bundled with the app
+    const isDev = process.env.NODE_ENV === 'development';
+    const templateSourcePath = isDev 
+      ? path.join(__dirname, '..', '..', '..', '..', 'context-repo')
+      : path.join(process.resourcesPath, 'context-repo-template');
+    
+    // Check if template exists
+    try {
+      await access(templateSourcePath);
+    } catch {
+      return { ok: false, error: 'Context repo template not found' };
+    }
+    
+    // Create target directory
+    await mkdir(targetDir, { recursive: true });
+    
+    // Create required folder structure
+    const requiredDirs = [
+      '.context',
+      '.context/pipelines',
+      '.context/rules',
+      '.context/schemas',
+      '.context/templates',
+      '.context/templates/builder',
+      '.context/templates/docs',
+      '.context/templates/prompts',
+      'contexts',
+      'contexts/features',
+      'contexts/governance',
+      'contexts/packages',
+      'contexts/services',
+      'contexts/specs',
+      'contexts/tasks',
+      'contexts/userstories',
+      'generated',
+      'generated/docs',
+      'generated/prompts',
+      'generated/docs/impact',
+    ];
+    
+    for (const dir of requiredDirs) {
+      await mkdir(path.join(targetDir, dir), { recursive: true });
+    }
+    
+    // Copy pipeline files from template
+    const pipelineFiles = [
+      'build-graph.mjs',
+      'validate.mjs',
+      'impact.mjs',
+      'generate.mjs',
+      'context-builder.mjs',
+      'ai-assistant.mjs'
+    ];
+    
+    for (const file of pipelineFiles) {
+      try {
+        const sourcePath = path.join(templateSourcePath, '.context', 'pipelines', file);
+        const destPath = path.join(targetDir, '.context', 'pipelines', file);
+        await cp(sourcePath, destPath);
+      } catch (err) {
+        console.warn(`Failed to copy pipeline file ${file}:`, err);
+      }
+    }
+    
+    // Copy template files (handlebars)
+    const templateDirs = ['builder', 'docs', 'prompts'];
+    for (const templateDir of templateDirs) {
+      try {
+        const sourcePath = path.join(templateSourcePath, '.context', 'templates', templateDir);
+        const destPath = path.join(targetDir, '.context', 'templates', templateDir);
+        await cp(sourcePath, destPath, { recursive: true });
+      } catch (err) {
+        console.warn(`Failed to copy template directory ${templateDir}:`, err);
+      }
+    }
+    
+    // Copy schema files
+    try {
+      const sourcePath = path.join(templateSourcePath, '.context', 'schemas');
+      const destPath = path.join(targetDir, '.context', 'schemas');
+      await cp(sourcePath, destPath, { recursive: true });
+    } catch (err) {
+      console.warn('Failed to copy schema files:', err);
+    }
+    
+    // Copy package.json for dependencies
+    try {
+      const sourcePath = path.join(templateSourcePath, 'package.json');
+      const destPath = path.join(targetDir, 'package.json');
+      await cp(sourcePath, destPath);
+    } catch (err) {
+      console.warn('Failed to copy package.json:', err);
+    }
+    
+    // Create a default README.md
+    const readmeContent = `# ${repoName}
+
+This is a Context-Kit repository for managing project context, specifications, and relationships.
+
+## Structure
+
+- \`contexts/\` - YAML entities (features, user stories, specs, tasks, services, packages, governance)
+- \`.context/pipelines/\` - Automation scripts for validation, graph building, and impact analysis
+- \`.context/templates/\` - Handlebars templates for code generation
+- \`generated/\` - Auto-generated documentation and prompts
+
+## Getting Started
+
+1. Install dependencies: \`npm install\`
+2. Add your first entities in \`contexts/\`
+3. Open in Context-Kit app to visualize and manage
+
+## Governance
+
+Create a constitution in \`contexts/governance/constitution.yaml\` to define principles and compliance rules.
+`;
+    await writeFile(path.join(targetDir, 'README.md'), readmeContent, 'utf-8');
+    
+    // Create .gitignore
+    const gitignoreContent = `node_modules/
+generated/
+.env
+*.log
+`;
+    await writeFile(path.join(targetDir, '.gitignore'), gitignoreContent, 'utf-8');
+    
+    // Create constitution file if summary provided
+    if (constitutionSummary && constitutionSummary.trim()) {
+      const { stringify: stringifyYAML } = await import('yaml');
+      const constitution = {
+        id: `CONST-${repoName.toUpperCase().replace(/[^A-Z0-9]/g, '-')}`,
+        name: `${repoName} Constitution`,
+        version: '1.0.0',
+        status: 'draft',
+        ratifiedOn: new Date().toISOString().split('T')[0],
+        summary: constitutionSummary.trim(),
+        ...(projectPurpose && projectPurpose.trim() ? { purpose: projectPurpose.trim() } : {}),
+        principles: [],
+        governance: {
+          owners: [],
+          reviewCadence: 'quarterly',
+          changeControl: 'Updates require approval and documentation'
+        },
+        compliance: {
+          rules: [],
+          exceptions: []
+        }
+      };
+      
+      const constitutionYaml = stringifyYAML(constitution);
+      const constitutionPath = path.join(targetDir, 'contexts', 'governance', 'constitution.yaml');
+      await writeFile(constitutionPath, constitutionYaml, 'utf-8');
+    }
+    
+    // Initialize git repository
+    try {
+      const git = simpleGit(targetDir);
+      await git.init();
+      await git.add('.');
+      await git.commit('Initial commit: Scaffold context repository');
+    } catch (err) {
+      console.warn('Failed to initialize git repository:', err);
+    }
+    
+    return { ok: true, path: targetDir };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
 // Configuration and Secure Credential Storage
 const APP_SETTINGS_FILE = 'app-settings.json';
 const AI_CONFIG_FILE = 'ai-config.json';
@@ -1385,7 +1569,19 @@ ipcMain.handle('ai:applyEdit', async (_event, { dir, filePath, updatedContent, s
     try {
       parseYAML(updatedContent);
     } catch (error: any) {
-      return { ok: false, error: `Updated content is not valid YAML: ${error.message}` };
+      const errorMsg = error.message || 'Unknown YAML parsing error';
+      const lineMatch = errorMsg.match(/at line (\d+)/);
+      const columnMatch = errorMsg.match(/column (\d+)/);
+      let detailedError = `Updated content is not valid YAML: ${errorMsg}`;
+      
+      if (lineMatch || columnMatch) {
+        const line = lineMatch ? lineMatch[1] : '?';
+        const column = columnMatch ? columnMatch[1] : '?';
+        detailedError += ` (Line ${line}, Column ${column})`;
+      }
+      
+      detailedError += '\n\nThe AI generated invalid YAML. Please try asking again or edit the YAML manually.';
+      return { ok: false, error: detailedError };
     }
 
     await writeFile(targetPath, updatedContent, 'utf-8');

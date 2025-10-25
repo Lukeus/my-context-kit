@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('api', {
     createEntity: (dir: string, entity: any, entityType: string) => ipcRenderer.invoke('context:createEntity', { dir, entity, entityType }),
     getSuggestions: (dir: string, command: string, params: any[]) => ipcRenderer.invoke('context:getSuggestions', { dir, command, params }),
     getTemplates: (dir: string, entityType?: string) => ipcRenderer.invoke('context:getTemplates', { dir, entityType }),
+    scaffoldNewRepo: (dir: string, repoName: string, projectPurpose?: string, constitutionSummary?: string) => ipcRenderer.invoke('context:scaffoldNewRepo', { dir, repoName, projectPurpose, constitutionSummary }),
   },
   fs: {
     readFile: (filePath: string) => ipcRenderer.invoke('fs:readFile', { filePath }),
@@ -110,6 +111,7 @@ declare global {
         createEntity: (dir: string, entity: any, entityType: string) => Promise<{ ok: boolean; filePath?: string; error?: string }>;
         getSuggestions: (dir: string, command: string, params: any[]) => Promise<any>;
         getTemplates: (dir: string, entityType?: string) => Promise<{ ok: boolean; templates: any[]; error?: string }>;
+        scaffoldNewRepo: (dir: string, repoName: string, projectPurpose?: string, constitutionSummary?: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
       };
       fs: {
         readFile: (filePath: string) => Promise<{ ok: boolean; content?: string; error?: string }>;
