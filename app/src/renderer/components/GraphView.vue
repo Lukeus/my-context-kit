@@ -3,6 +3,8 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import cytoscape, { type Core, type NodeSingular, type EdgeSingular } from 'cytoscape';
 import { useContextStore } from '../stores/contextStore';
 
+const emit = defineEmits<{ 'ask-about-entity': [string] }>();
+
 const contextStore = useContextStore();
 
 const graphContainer = ref<HTMLElement | null>(null);
@@ -14,6 +16,7 @@ const showLabels = ref(true);
 const highlightedPath = ref<string[]>([]);
 const selectedEntityId = ref<string | null>(null);
 const showDetailPanel = ref(false);
+const pathError = ref<string | null>(null);
 
 // Entity type colors
 const nodeColors = {
@@ -207,8 +210,8 @@ function initializeGraph() {
     }
   });
 
-  // Double click to show details
-  cy.value.on('dbltap', 'node', (evt) => {
+  // Double click to show details using standard dblclick event
+  cy.value.on('dblclick', 'node', (evt) => {
     const node = evt.target;
     const nodeId = node.data('id');
     selectedEntityId.value = nodeId;
@@ -219,6 +222,13 @@ function initializeGraph() {
   cy.value.on('tap', 'edge', (evt) => {
     const edge = evt.target;
     console.log('Edge:', edge.data('relationship'), 'from', edge.data('source'), 'to', edge.data('target'));
+  });
+
+  // Right-click (context) on node to ask AI about it
+  cy.value.on('cxttap', 'node', (evt) => {
+    const node = evt.target;
+    const nodeId = node.data('id');
+    emit('ask-about-entity', nodeId);
   });
 }
 
@@ -240,9 +250,14 @@ function highlightPath() {
   const path = dijkstra.pathTo(target);
   
   if (path.length === 0) {
-    alert(`No path found between ${sourceId} and ${targetId}`);
+    pathError.value = `No path found between ${sourceId} and ${targetId}`;
+    setTimeout(() => {
+      pathError.value = null;
+    }, 5000);
     return;
   }
+  
+  pathError.value = null;
 
   // Dim all elements
   cy.value.elements().addClass('dimmed');
@@ -264,6 +279,7 @@ function clearHighlights() {
 function clearSelection() {
   selectedNodes.value = [];
   clearHighlights();
+  pathError.value = null;
 }
 
 function runLayout() {
@@ -375,21 +391,49 @@ onBeforeUnmount(() => {
 <template>
   <div class="h-full flex flex-col bg-white">
     <!-- Header -->
-    <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+    <div class="px-4 py-3 border-b border-surface-variant bg-surface-2 flex items-center justify-between">
       <div>
-        <h2 class="text-lg font-semibold">Dependency Graph</h2>
-        <p class="text-xs text-gray-600">{{ stats.nodes }} nodes, {{ stats.edges }} edges</p>
+        <h2 class="text-lg font-semibold text-secondary-900">Dependency Graph</h2>
+        <p class="text-xs text-secondary-600">{{ stats.nodes }} nodes, {{ stats.edges }} edges</p>
       </div>
       <button
         @click="fitToScreen"
-        class="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        class="text-sm px-3 py-1 bg-surface-3 hover:bg-surface-4 rounded-m3-md transition-colors border border-surface-variant"
+        title="Fit graph to screen"
       >
         Fit to Screen
       </button>
     </div>
 
+    <!-- Path Error Banner -->
+    <Transition name="slide-down">
+      <div v-if="pathError" class="mx-4 mt-3 px-4 py-3 bg-tertiary-50 border-l-4 border-tertiary-500 rounded-m3-md shadow-elevation-1 flex items-center gap-3">
+        <svg class="w-5 h-5 text-tertiary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span class="flex-1 text-sm text-tertiary-900 font-medium">{{ pathError }}</span>
+        <button @click="pathError = null" class="text-tertiary-600 hover:text-tertiary-900">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </Transition>
+    
     <!-- Toolbar -->
-    <div class="px-4 py-2 border-b border-gray-200 flex items-center gap-3 flex-wrap">
+    <div class="px-4 py-2 border-b border-surface-variant flex items-center gap-3 flex-wrap">
+      <!-- Path Selection Chips -->
+      <div v-if="selectedNodes.length > 0" class="flex items-center gap-2">
+        <span class="text-xs font-medium text-secondary-700">Path:</span>
+        <span
+          v-for="(nodeId, index) in selectedNodes"
+          :key="nodeId"
+          class="px-3 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded-m3-full border border-primary-300"
+        >
+          {{ index === 0 ? 'Start:' : 'End:' }} {{ nodeId }}
+        </span>
+      </div>
+      
       <!-- Search -->
       <div class="flex-1 min-w-[200px]">
         <input
@@ -397,14 +441,15 @@ onBeforeUnmount(() => {
           @input="searchNodes"
           type="text"
           placeholder="Search nodes..."
-          class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full px-3 py-1.5 text-sm border border-surface-variant rounded-m3-md bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
       </div>
 
       <!-- Layout selector -->
       <select
         v-model="layoutType"
-        class="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        class="px-3 py-1.5 text-sm border border-surface-variant rounded-m3-md bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+        title="Change graph layout"
       >
         <option value="cose">Force-Directed</option>
         <option value="circle">Circle</option>
@@ -416,7 +461,7 @@ onBeforeUnmount(() => {
       <div class="flex gap-1">
         <button
           @click="zoomIn"
-          class="p-1.5 hover:bg-gray-100 rounded transition-colors"
+          class="p-1.5 hover:bg-surface-3 rounded-m3-md transition-colors text-secondary-700"
           title="Zoom In"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -425,7 +470,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           @click="zoomOut"
-          class="p-1.5 hover:bg-gray-100 rounded transition-colors"
+          class="p-1.5 hover:bg-surface-3 rounded-m3-md transition-colors text-secondary-700"
           title="Zoom Out"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -434,7 +479,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           @click="resetZoom"
-          class="p-1.5 hover:bg-gray-100 rounded transition-colors"
+          class="p-1.5 hover:bg-surface-3 rounded-m3-md transition-colors text-secondary-700"
           title="Reset Zoom"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -443,8 +488,8 @@ onBeforeUnmount(() => {
         </button>
         <button
           @click="toggleLabels"
-          class="p-1.5 hover:bg-gray-100 rounded transition-colors"
-          :class="{ 'bg-blue-100 text-blue-600': showLabels }"
+          class="p-1.5 hover:bg-surface-3 rounded-m3-md transition-colors"
+          :class="showLabels ? 'bg-primary-100 text-primary-700' : 'text-secondary-700'"
           title="Toggle Labels"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -454,7 +499,7 @@ onBeforeUnmount(() => {
         <button
           v-if="selectedNodes.length > 0 || highlightedPath.length > 0"
           @click="clearSelection"
-          class="px-2 py-1.5 text-xs bg-orange-100 text-orange-700 hover:bg-orange-200 rounded transition-colors"
+          class="px-2 py-1.5 text-xs bg-tertiary-100 text-tertiary-700 hover:bg-tertiary-200 rounded-m3-md transition-colors border border-tertiary-300"
         >
           Clear ({{ selectedNodes.length }})
         </button>
@@ -462,7 +507,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Legend -->
-    <div class="px-4 py-2 border-b border-gray-200 flex items-center gap-4 text-xs flex-wrap">
+    <div class="px-4 py-2 border-b border-surface-variant bg-surface-2 flex items-center gap-4 text-xs flex-wrap">
       <div class="flex items-center gap-1">
         <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: nodeColors.feature }"></span>
         <span>Feature</span>
@@ -487,14 +532,14 @@ onBeforeUnmount(() => {
         <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: nodeColors.package }"></span>
         <span>Package</span>
       </div>
-      <div class="ml-4 text-gray-600">
+      <div class="ml-4 text-secondary-600">
         Click nodes to select • Double-click to view details • Select 2 nodes to find path
       </div>
     </div>
 
     <!-- Graph Container with Detail Panel -->
     <div class="flex-1 flex overflow-hidden">
-      <div ref="graphContainer" class="flex-1 bg-gray-50" :class="{ 'w-2/3': showDetailPanel }"></div>
+      <div ref="graphContainer" class="flex-1 bg-surface" :class="{ 'w-2/3': showDetailPanel }"></div>
       
       <!-- Detail Panel -->
       <Transition name="slide">
@@ -701,6 +746,21 @@ onBeforeUnmount(() => {
 
 .slide-leave-to {
   transform: translateX(100%);
+  opacity: 0;
+}
+
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-down-enter-from {
+  transform: translateY(-12px);
+  opacity: 0;
+}
+
+.slide-down-leave-to {
+  transform: translateY(-8px);
   opacity: 0;
 }
 </style>

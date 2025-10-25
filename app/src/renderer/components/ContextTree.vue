@@ -4,6 +4,8 @@ import { useContextStore } from '../stores/contextStore';
 import { useImpactStore } from '../stores/impactStore';
 import { useBuilderStore } from '../stores/builderStore';
 
+const emit = defineEmits<{ 'ask-about-entity': [string] }>();
+
 const contextStore = useContextStore();
 const impactStore = useImpactStore();
 const builderStore = useBuilderStore();
@@ -60,6 +62,10 @@ function isTypeExpanded(type: string): boolean {
 
 function selectEntity(entityId: string) {
   contextStore.setActiveEntity(entityId);
+}
+
+function askAI(entityId: string) {
+  emit('ask-about-entity', entityId);
 }
 
 function getStatusColor(status: string | undefined, type: string): string {
@@ -212,13 +218,14 @@ watch(() => contextStore.repoPath, () => {
             v-for="entity in entities"
             :key="entity.id"
             @click="selectEntity(entity.id)"
+            @contextmenu.prevent.stop="askAI(entity.id)"
             class="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-primary-50 text-left border-l-3 transition-all relative"
             :class="{
               'border-primary bg-primary-50 shadow-elevation-1': contextStore.activeEntityId === entity.id,
-              'border-transparent': contextStore.activeEntityId !== entity.id,
-              'bg-tertiary-50 border-tertiary-300': isEntityStale(entity.id) && contextStore.activeEntityId !== entity.id,
-              'ring-1 ring-tertiary-300': isEntityStale(entity.id)
+              'border-transparent': contextStore.activeEntityId !== entity.id && !isEntityStale(entity.id),
+              'border-tertiary-400': contextStore.activeEntityId !== entity.id && isEntityStale(entity.id)
             }"
+            :title="'Right-click for AI on ' + entity.id"
           >
             <!-- Status indicator -->
             <span
@@ -228,19 +235,28 @@ watch(() => contextStore.repoPath, () => {
 
             <!-- Entity info -->
             <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium truncate" :class="isEntityStale(entity.id) ? 'text-tertiary-900' : 'text-secondary-900'">
+              <div class="text-sm font-medium truncate text-secondary-900">
                 {{ entity.id }}
               </div>
-              <div class="text-xs truncate" :class="isEntityStale(entity.id) ? 'text-tertiary-700' : 'text-secondary-600'">
+              <div class="text-xs truncate text-secondary-600">
                 {{ entity.title || entity.name || entity.iWant || 'Untitled' }}
               </div>
             </div>
 
-            <!-- Stale/Issue indicator -->
-            <div v-if="isEntityStale(entity.id)" class="flex-shrink-0">
-              <svg class="w-4 h-4 text-tertiary-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            <!-- Quick Ask AI action -->
+            <button
+              class="flex-shrink-0 p-1.5 rounded-m3-full text-secondary-600 hover:text-secondary-900 hover:bg-surface-3"
+              title="Ask AI about this entity"
+              @click.stop="askAI(entity.id)"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
+            </button>
+
+            <!-- Stale/Issue indicator -->
+            <div v-if="isEntityStale(entity.id)" class="flex-shrink-0" title="Needs review">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-tertiary-500"></span>
             </div>
           </button>
         </div>

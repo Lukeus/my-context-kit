@@ -1,18 +1,23 @@
+--- 
 id: FEAT-002
 title: Feature builder
 status: proposed
 domain: developer-tools
-objective: "Provide an interactive builder UI to help authors create and assemble feature definitions, attach related user stories and tasks, and visualize dependency relationships between context entities. The builder should produce valid context YAML that can be validated by the project's validation pipeline."
-userStories:
-  - US-002
+objective: Provide an interactive builder UI to help authors create and assemble feature definitions, attach related user stories and tasks, and visualize dependency relationships between context entities. The builder should produce valid context YAML that can be validated by the project’s validation pipeline.
+userStories: [
+  "US-002"
+]
 specs: []
 tasks: []
-requires:
-  - svc-git
-filePath: contexts\\features\\FEAT-002-feature-builder.yaml
-linkedUserStories:
-  - id: US-002
-    title: "to visualize the dependency graph of my context entities"
-    status: ""
+requires: [
+  "svc-git"
+]
+linkedUserStories: [
+  {
+    "id": "US-002",
+    "title": "to visualize the dependency graph of my context entities",
+    "status": ""
+  }
+]
 linkedSpecs: []
 linkedTasks: []

@@ -13,6 +13,13 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('repos:update', payload),
     remove: (id: string) => ipcRenderer.invoke('repos:remove', { id }),
     setActive: (id: string) => ipcRenderer.invoke('repos:setActive', { id }),
+    watch: (dir: string) => ipcRenderer.invoke('repo:watch', { dir }),
+    unwatch: (dir: string) => ipcRenderer.invoke('repo:unwatch', { dir }),
+    onFileChanged: (listener: (payload: any) => void) => {
+      const wrapped = (_e: any, payload: any) => listener(payload);
+      ipcRenderer.on('repo:fileChanged', wrapped);
+      return () => ipcRenderer.removeListener('repo:fileChanged', wrapped);
+    },
   },
   settings: {
     get: (key: string) => ipcRenderer.invoke('settings:get', { key }),
@@ -57,6 +64,20 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('ai:generate', { dir, entityType, userPrompt }),
     assist: (dir: string, question: string, mode?: string, focusId?: string) =>
       ipcRenderer.invoke('ai:assist', { dir, question, mode, focusId }),
+    // Streaming API
+    assistStreamStart: (dir: string, question: string, mode?: string, focusId?: string) =>
+      ipcRenderer.invoke('ai:assistStreamStart', { dir, question, mode, focusId }),
+    assistStreamCancel: (streamId: string) => ipcRenderer.invoke('ai:assistStreamCancel', { streamId }),
+    onAssistStreamEvent: (listener: (payload: any) => void) => {
+      const wrapped = (_e: any, payload: any) => listener(payload);
+      ipcRenderer.on('ai:assistStream:event', wrapped);
+      return () => ipcRenderer.removeListener('ai:assistStream:event', wrapped);
+    },
+    onAssistStreamEnd: (listener: (payload: any) => void) => {
+      const wrapped = (_e: any, payload: any) => listener(payload);
+      ipcRenderer.on('ai:assistStream:end', wrapped);
+      return () => ipcRenderer.removeListener('ai:assistStream:end', wrapped);
+    },
     applyEdit: (dir: string, filePath: string, updatedContent: string, summary?: string) =>
       ipcRenderer.invoke('ai:applyEdit', { dir, filePath, updatedContent, summary }),
   },
@@ -72,6 +93,9 @@ declare global {
         update: (payload: { id: string; label?: string; path?: string; autoDetected?: boolean }) => Promise<RepoRegistryResponse>;
         remove: (id: string) => Promise<RepoRegistryResponse>;
         setActive: (id: string) => Promise<RepoRegistryResponse>;
+        watch: (dir: string) => Promise<{ ok: boolean; error?: string }>;
+        unwatch: (dir: string) => Promise<{ ok: boolean; error?: string }>;
+        onFileChanged: (listener: (payload: any) => void) => (() => void);
       };
       settings: {
         get: (key: string) => Promise<{ ok: boolean; value?: any; error?: string }>;
@@ -128,6 +152,10 @@ declare global {
             rawContent?: string;
             edits?: Array<{ targetId?: string; filePath: string; summary: string; updatedContent: string }>;
           }>;
+        assistStreamStart: (dir: string, question: string, mode?: string, focusId?: string) => Promise<{ ok: boolean; streamId?: string; error?: string }>;
+        assistStreamCancel: (streamId: string) => Promise<{ ok: boolean; error?: string }>;
+        onAssistStreamEvent: (listener: (payload: any) => void) => (() => void);
+        onAssistStreamEnd: (listener: (payload: any) => void) => (() => void);
         applyEdit: (dir: string, filePath: string, updatedContent: string, summary?: string) =>
           Promise<{ ok: boolean; error?: string }>;
       };

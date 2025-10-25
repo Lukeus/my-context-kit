@@ -6,7 +6,7 @@ ratifiedOn: "2025-10-22"
 lastAmendedOn: "2025-10-22"
 checksum: "2a7f9d2b1c46108dfcbbcb1e1f908db8d2d5f1ef3ab9c4155a5d22443a4df366"
 summary: |
-  Governs the Context-Sync platform with principles that enforce spec-driven development,
+  This Governs the Context-Sync platform with principles that enforce spec-driven development,
   Git-backed single source of truth, and disciplined validation workflows for every entity.
 layers:
   - id: main

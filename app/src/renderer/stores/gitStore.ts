@@ -48,9 +48,9 @@ export const useGitStore = defineStore('git', () => {
   const changedFiles = computed(() => {
     if (!status.value) return [];
     
-    // Filter to only show files in context-repo directory
-    const filterContextRepo = (files: string[]) => {
-      return files.filter(f => f.startsWith('context-repo/'));
+    // Filter to only show files in contexts directory (relative to repo root)
+    const filterContexts = (files: string[]) => {
+      return files.filter(f => f.includes('contexts/') || f.includes('.context/'));
     };
     
     const renamedTargets = status.value.renamed
@@ -60,11 +60,11 @@ export const useGitStore = defineStore('git', () => {
     const notAdded = status.value.not_added ?? [];
 
     const aggregated = [
-      ...filterContextRepo(status.value.modified),
-      ...filterContextRepo(status.value.created),
-      ...filterContextRepo(status.value.deleted),
-      ...filterContextRepo(renamedTargets),
-      ...filterContextRepo(notAdded)
+      ...filterContexts(status.value.modified),
+      ...filterContexts(status.value.created),
+      ...filterContexts(status.value.deleted),
+      ...filterContexts(renamedTargets),
+      ...filterContexts(notAdded)
     ];
 
     return Array.from(new Set(aggregated));
