@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import ContextTree from './components/ContextTree.vue';
 import YamlEditor from './components/YamlEditor.vue';
-import ImpactPanel from './components/ImpactPanelImproved.vue';
 import GraphView from './components/GraphView.vue';
 import GitPanel from './components/GitPanel.vue';
 import WelcomeDocumentation from './components/WelcomeDocumentation.vue';
@@ -10,6 +9,8 @@ import WorkspaceHub from './components/WorkspaceHub.vue';
 import EntityPreview from './components/EntityPreview.vue';
 import EntityDiff from './components/EntityDiff.vue';
 import EntityDependencyGraph from './components/EntityDependencyGraph.vue';
+import PromptPanel from './components/PromptPanel.vue';
+import ImpactReportPanel from './components/ImpactReportPanel.vue';
 import ContextBuilderModal from './components/ContextBuilderModal.vue';
 import AISettingsModal from './components/AISettingsModal.vue';
 import AIAssistantPanel from './components/AIAssistantPanel.vue';
@@ -50,7 +51,6 @@ const leftPanelOpen = ref(true);
 const rightPanelOpen = ref(true);
 const leftPanelWidth = ref(256); // 64 * 4 = 256px (w-64)
 const rightPanelWidth = ref(380);
-const showImpactModal = ref(false);
 
 const isResizingLeft = ref(false);
 const isResizingRight = ref(false);
@@ -113,8 +113,8 @@ const activeEntityDescription = computed(() => {
 // Panel is always AI Assistant now
 
 // Center tabs state
-const centerTab = ref<'yaml' | 'preview' | 'diff' | 'docs'>('yaml');
-function setCenterTab(tab: 'yaml' | 'preview' | 'diff' | 'docs') { centerTab.value = tab; }
+const centerTab = ref<'yaml' | 'preview' | 'diff' | 'graph' | 'impact' | 'prompt'>('yaml');
+function setCenterTab(tab: 'yaml' | 'preview' | 'diff' | 'graph' | 'impact' | 'prompt') { centerTab.value = tab; }
 
 // Panel resize handlers
 function startResizeLeft() {
@@ -189,10 +189,12 @@ function handleKeyboard(e: KeyboardEvent) {
     return;
   }
   
-  // Ctrl+I to open Impact modal
+  // Ctrl+I to open Impact tab
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
     e.preventDefault();
-    showImpactModal.value = true;
+    if (contextStore.activeEntity) {
+      setCenterTab('impact');
+    }
     return;
   }
   
@@ -285,7 +287,9 @@ function handleCommandExecute(commandId: string) {
       openAssistantPanel();
       break;
     case 'impact:analyze':
-      showImpactModal.value = true;
+      if (contextStore.activeEntity) {
+        setCenterTab('impact');
+      }
       break;
     case 'graph:open':
       showGraphModal.value = true;
@@ -437,7 +441,6 @@ async function handleRemoveRepo(id: string) {
       @show-graph="showGraphModal = true"
       @show-git="showGitModal = true"
       @validate="runValidation"
-      @show-impact="showImpactModal = true"
       @toggle-assistant="toggleRightPanel"
       @go-workspace="openWorkspace"
     />
@@ -475,16 +478,81 @@ async function handleRemoveRepo(id: string) {
         <!-- Active Entity View with tabs -->
         <div v-if="activeEntity" class="h-full flex flex-col">
           <div class="flex items-center gap-2 border-b border-surface-variant bg-surface-1 px-4">
-            <button @click="setCenterTab('yaml')" :class="centerTab==='yaml' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" class="px-3 py-3 text-sm font-medium border-b-2 transition-all">YAML</button>
-            <button @click="setCenterTab('preview')" :class="centerTab==='preview' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" class="px-3 py-3 text-sm font-medium border-b-2 transition-all">Preview</button>
-            <button @click="setCenterTab('diff')" :class="centerTab==='diff' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" class="px-3 py-3 text-sm font-medium border-b-2 transition-all">Diff</button>
-            <button @click="setCenterTab('docs')" :class="centerTab==='docs' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" class="px-3 py-3 text-sm font-medium border-b-2 transition-all">Graph</button>
+            <button 
+              @click="setCenterTab('yaml')" 
+              :class="centerTab==='yaml' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
+              class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
+              title="Edit YAML source (raw entity definition)"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+              YAML
+            </button>
+            <button 
+              @click="setCenterTab('preview')" 
+              :class="centerTab==='preview' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
+              class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
+              title="View formatted entity details"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Preview
+            </button>
+            <button 
+              @click="setCenterTab('diff')" 
+              :class="centerTab==='diff' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
+              class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
+              title="Compare changes with Git history"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12M8 12h12M8 17h12M3 7h.01M3 12h.01M3 17h.01" />
+              </svg>
+              Diff
+            </button>
+            <button 
+              @click="setCenterTab('graph')" 
+              :class="centerTab==='graph' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
+              class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
+              title="View entity dependency graph"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              Graph
+            </button>
+            <button 
+              @click="setCenterTab('impact')" 
+              :class="centerTab==='impact' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
+              class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
+              title="Analyze impact on related entities (Ctrl+I)"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Impact
+            </button>
+            <button 
+              @click="setCenterTab('prompt')" 
+              :class="centerTab==='prompt' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
+              class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
+              title="Generate AI context prompt for this entity"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Prompt
+            </button>
           </div>
           <div class="flex-1 min-h-0">
             <YamlEditor v-if="centerTab==='yaml'" />
             <EntityPreview v-else-if="centerTab==='preview'" />
             <EntityDiff v-else-if="centerTab==='diff'" />
-            <EntityDependencyGraph v-else />
+            <EntityDependencyGraph v-else-if="centerTab==='graph'" />
+            <ImpactReportPanel v-else-if="centerTab==='impact'" />
+            <PromptPanel v-else-if="centerTab==='prompt'" />
           </div>
         </div>
 
@@ -578,37 +646,6 @@ async function handleRemoveRepo(id: string) {
     <ContextBuilderModal />
     <AISettingsModal v-if="showAISettings" @close="showAISettings = false" />
     
-    <!-- Impact Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div
-          v-if="showImpactModal"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style="background-color: rgba(0, 0, 0, 0.5);"
-          @click.self="showImpactModal = false"
-        >
-          <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[800px] max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="flex items-center justify-between px-6 py-4 bg-surface-2 border-b border-surface-variant">
-              <div>
-                <h2 class="text-xl font-semibold text-primary-700">Impact Analysis</h2>
-                <p class="text-xs text-secondary-600 mt-1">Analyze dependencies and potential impacts</p>
-              </div>
-              <button
-                @click="showImpactModal = false"
-                class="text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 p-2 rounded-m3-full transition-all"
-              >
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div class="flex-1 overflow-hidden">
-              <ImpactPanel @close="showImpactModal = false" />
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
     
     <!-- Global Snackbar -->
     <Snackbar

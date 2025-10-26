@@ -157,6 +157,7 @@ watch(() => contextStore.graph, () => {
   }
 }, { deep: true });
 
+
 // Keyboard shortcuts
 function handleKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -182,7 +183,7 @@ onBeforeUnmount(() => {
     <!-- Toolbar -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-surface-variant bg-surface-2 shadow-elevation-1">
       <div class="flex items-center gap-3">
-        <h3 class="text-sm font-semibold text-primary-700">YAML Editor</h3>
+        <h3 class="text-sm font-semibold text-primary-700">Entity Editor</h3>
         <span v-if="filePath" class="text-xs text-secondary-600 font-mono truncate max-w-md">
           {{ filePath }}
         </span>
@@ -205,22 +206,25 @@ onBeforeUnmount(() => {
       </div>
     </div>
     
-    <!-- Validation Errors Panel -->
-    <div v-if="hasValidationErrors" class="px-4 py-3 bg-error-50 border-b border-error-200">
-      <h4 class="text-sm font-semibold text-error-900 mb-2">Validation Errors:</h4>
-      <div class="space-y-1 max-h-24 overflow-y-auto">
-        <div
-          v-for="(error, idx) in validationErrors"
-          :key="idx"
-          class="text-xs text-error-800 font-mono"
-        >
-          {{ error.message || JSON.stringify(error) }}
+    <!-- Editor Content -->
+    <div class="flex-1 flex flex-col min-h-0">
+      <!-- Validation Errors Panel -->
+      <div v-if="hasValidationErrors" class="px-4 py-3 bg-error-50 border-b border-error-200">
+        <h4 class="text-sm font-semibold text-error-900 mb-2">Validation Errors:</h4>
+        <div class="space-y-1 max-h-24 overflow-y-auto">
+          <div
+            v-for="(error, idx) in validationErrors"
+            :key="idx"
+            class="text-xs text-error-800 font-mono"
+          >
+            {{ error.message || JSON.stringify(error) }}
+          </div>
         </div>
       </div>
+      
+      <!-- CodeMirror Container -->
+      <div ref="editorContainer" class="flex-1 overflow-auto"></div>
     </div>
-    
-    <!-- CodeMirror Container -->
-    <div ref="editorContainer" class="flex-1 overflow-auto"></div>
     
     <!-- Status Bar -->
     <div class="flex items-center justify-between px-4 py-2 border-t border-surface-variant bg-surface-2 text-xs text-secondary-700">
