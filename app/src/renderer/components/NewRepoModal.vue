@@ -116,31 +116,22 @@ function close() {
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
     @click.self="close"
   >
-    <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col overflow-hidden">
+    <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col overflow-hidden border border-surface-variant">
       <!-- Header -->
-      <div class="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-5 flex-shrink-0">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="p-2 bg-white/20 rounded-m3-lg">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-            </div>
-            <div>
-              <h2 class="text-xl font-bold text-white">Create New Context Repository</h2>
-              <p class="text-sm text-primary-100">Scaffold a new context repo with all required structure</p>
-            </div>
-          </div>
-          <button 
-            @click="close" 
-            :disabled="isCreating"
-            class="p-2 hover:bg-white/10 rounded-m3-full transition-colors disabled:opacity-50"
-          >
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+      <div class="px-6 py-5 border-b border-surface-variant bg-surface-2 flex items-center justify-between flex-shrink-0">
+        <div>
+          <h2 class="text-xl font-semibold text-secondary-900">Create New Context Repository</h2>
+          <p class="text-sm text-secondary-600 mt-1">Scaffold a new context repo with all required structure</p>
         </div>
+        <button 
+          @click="close" 
+          :disabled="isCreating"
+          class="p-2 hover:bg-surface-3 rounded-m3-full transition-colors disabled:opacity-50 text-secondary-600 hover:text-secondary-900"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       <!-- Body -->
@@ -296,18 +287,18 @@ function close() {
       </div>
 
       <!-- Footer -->
-      <div class="px-6 py-4 bg-surface-1 border-t border-surface-variant flex items-center justify-end gap-3 flex-shrink-0">
+      <div class="px-6 py-5 bg-surface-2 border-t border-surface-variant flex items-center justify-end gap-3 flex-shrink-0">
         <button
           @click="close"
           :disabled="isCreating"
-          class="px-4 py-2.5 text-sm font-semibold rounded-m3-lg text-secondary-700 hover:bg-surface-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-5 py-2.5 text-sm font-medium rounded-m3-lg text-secondary-700 hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           @click="createRepository"
           :disabled="!isValid || isCreating || success"
-          class="px-6 py-2.5 text-sm font-semibold rounded-m3-lg bg-primary-600 hover:bg-primary-700 text-white shadow-elevation-2 hover:shadow-elevation-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          class="px-5 py-2.5 text-sm font-medium rounded-m3-lg bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white shadow-elevation-2 hover:shadow-elevation-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <svg v-if="isCreating" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

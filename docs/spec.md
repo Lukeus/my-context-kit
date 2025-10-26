@@ -1542,6 +1542,688 @@ async function applyEditsBatch(edits: AssistantEdit[]) {
 
 ---
 
+## Enhancement Roadmap
+
+### Executive Summary
+
+With MVP Phase 9 complete, the next evolution integrates **Specification-Driven Development (SDD)** methodology directly into Context-Sync, transforming it from a context management tool into a complete spec-to-code workflow orchestrator.
+
+### Phase 10: SDD Workflow Integration (3-4 weeks)
+**Overall Status**: ✅ **COMPLETE** (100%)
+
+**Goal**: Implement the `/speckit` command system to transform Context-Sync into a spec-driven development workspace.
+
+**Summary**:
+- ✅ Phase 10.1: Speckit Commands Foundation - COMPLETE
+- ✅ Phase 10.2: Constitutional Governance - COMPLETE
+- ✅ Phase 10.3: Template-Driven Quality - COMPLETE
+- ✅ Phase 10.4: Spec→Plan→Task Flow - COMPLETE (all integrations done)
+
+#### Phase 10.1: Speckit Commands Foundation (Week 1)
+**Status**: ✅ COMPLETE
+
+**New Pipeline**: `context-repo/.context/pipelines/speckit.mjs` ✅
+
+**Commands Implemented**:
+- ✅ `/speckit.specify` - Creates feature specs with auto-numbering and branch creation
+- ✅ `/speckit.plan` - Generates implementation plans from specifications
+- ✅ `/speckit.tasks` - Derives executable task lists from plans
+
+**Components**:
+- ✅ `SpeckitWizard.vue` - Multi-step modal wizard for spec→plan→task workflow
+- ✅ IPC handlers in `app/src/main/index.ts` (speckit:specify, speckit:plan, speckit:tasks)
+- ✅ Preload bindings in `app/src/main/preload.ts`
+
+**Store**: ✅ `speckitStore.ts` - Manages spec→plan→task workflow state with validation
+
+**Deliverable**: ✅ Users can run speckit commands to create structured specifications with automatic file management
+
+#### Phase 10.2: Constitutional Governance (Week 2)
+**Status**: ✅ COMPLETE
+
+**Goal**: Parse and enforce constitution rules during development workflow
+
+**Components**:
+- ✅ `ConstitutionPanel.vue` - View constitutional articles with gates
+- ✅ `constitution.mjs` pipeline - Parses YAML constitution and validates plans
+- ✅ Constitution YAML already exists at `contexts/governance/constitution.yaml`
+- ✅ JSON schema at `contexts/governance/constitution.schema.json`
+- ✅ Handlebars template at `contexts/governance/governance.hbs`
+
+**Features**:
+- ✅ Phase -1 Gates validation (Simplicity, Anti-Abstraction, Integration-First)
+- ✅ "Complexity Tracking" section in implementation plans
+- ✅ Constitutional compliance checks integrated into speckit.mjs pipeline
+- ✅ Automated gate validation during plan generation
+- ✅ Display compliance in SpeckitWizard UI
+
+**Constitution Engine**:
+```typescript
+interface ConstitutionGate {
+  article: number;        // Article VII, VIII, IX
+  name: string;          // "Simplicity Gate"
+  checks: GateCheck[];   // Individual compliance checks
+  passed: boolean;
+  violations?: string[];
+}
+```
+
+**Deliverable**: ✅ All implementation plans validate constitutional gates with detailed reporting
+
+#### Phase 10.3: Template-Driven Quality (Week 3)
+**Status**: ✅ COMPLETE
+
+**Enhanced Templates** in `.context/templates/sdd/`:
+- ✅ `feature-spec-template.md` - Feature specification structure with constitutional checkpoints
+- ✅ `implementation-plan-template.md` - Technical implementation blueprint with TDD phases
+- ✅ `task-template.md` - Individual task breakdown with full constitutional validation
+
+**Template Features**:
+- `[NEEDS CLARIFICATION]` marker support for ambiguities
+- Checklist-based completion tracking
+- Constitutional gate checkpoints
+- Hierarchical detail management (main doc + `implementation-details/`)
+- Explicit uncertainty markers to prevent LLM assumptions
+
+**Example Template Structure**:
+```markdown
+# Feature Specification: {{title}}
+
+## What (Not How)
+- ✅ Focus on WHAT users need and WHY
+- ❌ Avoid HOW to implement (no tech stack, APIs, code structure)
+
+## User Stories
+{{#each userStories}}
+- {{this}} [NEEDS CLARIFICATION: acceptance criteria]
+{{/each}}
+
+## Constitutional Compliance
+### Simplicity Gate (Article VII)
+- [ ] Using ≤3 projects?
+- [ ] No future-proofing?
+```
+
+**Deliverable**: Template system that guides LLMs toward high-quality, unambiguous specifications
+
+#### Phase 10.4: Spec→Plan→Task Flow (Week 4)
+**Status**: ✅ COMPLETE
+
+**Completed Workflow**:
+1. ✅ User runs speckit commands via `SpeckitWizard` UI
+2. ✅ Pipeline creates `specs/[branch-name]/spec.md`
+3. ✅ Auto-creates feature branch (`feature/001-feature-name`)
+4. ✅ User generates `plan.md` with constitutional checks
+5. ✅ Constitutional gates validate (Simplicity, Anti-Abstraction, Integration-First)
+6. ✅ User generates `tasks.md` with task breakdown
+7. ✅ User generates YAML entities (Feature, UserStory) from spec
+8. ❌ Task agent execution - **FUTURE PHASE**
+
+**Integration Points**:
+- ✅ Git workflow (branch creation) - **Auto-creates feature branches**
+- ✅ AI Assistant (accessible from SpeckitWizard)
+- ✅ Context Builder (derive YAML entities from specs) - **Generates Feature & UserStory entities**
+- ⚠️ Impact Analysis (changes to specs propagate to related entities) - **Future enhancement**
+
+**IPC Handlers**:
+```typescript
+✅ ipcMain.handle('speckit:specify', async (_e, { repoPath, description }) => {
+  // Auto-number, create branch, generate spec from template
+});
+
+✅ ipcMain.handle('speckit:plan', async (_e, { repoPath, specPath, techStack }) => {
+  // Read spec, generate implementation plan, validate gates
+});
+
+✅ ipcMain.handle('speckit:tasks', async (_e, { repoPath, planPath }) => {
+  // Parse plan, extract tasks, mark parallelizable tasks
+});
+```
+
+**✅ Deliverable COMPLETE**: Full spec-to-entity workflow with constitutional compliance and Git integration
+
+**Completed Features**:
+1. ✅ **Git Integration**:
+   - Auto-create feature branch on spec creation
+   - Handles uncommitted changes gracefully
+   - Checks for existing branches
+   
+2. ✅ **Context Builder Integration**:
+   - Generate YAML entities (Feature, UserStory) from specs
+   - Link entities bidirectionally
+   - Domain inference from spec content
+   
+3. ✅ **SpeckitWizard UI**:
+   - Entity generation toggle
+   - Success/error feedback
+   - Disabled complete button until entities generated
+   
+4. ✅ **E2E Testing**:
+   - Comprehensive Playwright tests
+   - Full workflow coverage
+   - Error handling scenarios
+
+**Future Enhancements** (Phase 11+):
+- 🔎 Impact Analysis: Watch spec files for changes
+- 🔎 PR template generation with impact analysis
+- 🔎 Task Agent: CLI task execution framework
+
+---
+
+### Phase P0.5: Workspace Hub (1-2 weeks)
+**Status**: Planned  
+**Priority**: High
+
+**Goal**: Make the center panel first-class for everyday use, even when not editing YAML.
+
+**Deliverables**:
+- **Workspace Hub view** (when no entity selected):
+  - Recent entities (last 10)
+  - Pinned entities
+  - My queue (assigned tasks/owner == @me)
+  - Stale/Needs-review summary
+  - Quick actions (New, Validate, Impact, Generate Prompt)
+  - Mini graph preview
+
+- **Center tabs** when an entity is selected:
+  - **YAML** | **Preview** | **Diff** | **Docs**
+  - Preview: rendered summary of entity (title, status, relationships)
+  - Diff: inline git diff for the entity file (side-by-side)
+  - Docs: in-app documentation page
+
+- **Breadcrumbs** with chips (type, status, domain) over the tabs
+- **Keyboard** focus management and shortcuts (1/2/3/4 to switch tabs)
+
+**Components to Create**:
+- `app/src/renderer/components/WorkspaceHub.vue` (new)
+- `app/src/renderer/components/EntityPreview.vue` (new)
+- `app/src/renderer/components/EntityDiff.vue` (new)
+
+**Store Updates**:
+- `contextStore.ts` - Track recent entities, pinned items
+
+**Success Metrics**:
+- 2× faster navigation to relevant work (recent/pinned)
+- >50% reduction in "empty center" time
+- Daily-driver parity: developers can stay in center panel for most tasks
+
+---
+
+### Phase P1: Multi-App Portfolio Lens (2-3 weeks)
+**Status**: Planned  
+**Priority**: Medium
+
+**Goal**: Support managing multiple applications within one context repository.
+
+**Components**:
+- **Portfolio Dashboard** (`PortfolioDashboard.vue`):
+  - Cards per app with entity counts
+  - Validation status per app
+  - Health metrics (stale entities, validation failures)
+
+- **App Metadata** (optional, non-breaking):
+  - Add `appId`/`appName` to entity schemas
+  - Filter by app in ContextTree
+  - Graph view filtered by app
+
+- **Impact Analysis by App**:
+  - Cross-app dependency warnings
+  - Per-app impact reports
+
+**Schema Extension** (backward compatible):
+```yaml
+# Optional app metadata in entities
+appId: web-frontend
+appName: "E-commerce Web App"
+```
+
+**Deliverable**: Single repository can manage 5+ applications with clear separation and cross-app dependency tracking
+
+---
+
+### Phase 11: Advanced SDD Features (4-5 weeks)
+**Status**: Planned  
+**Priority**: Medium
+
+#### Phase 11.1: Research Agent Integration (Week 1)
+**Goal**: Gather critical context throughout the specification process
+
+**Components**:
+- `ResearchPanel.vue` - Display research findings
+- `ResearchAgent.mjs` - Pipeline for gathering context
+
+**Features**:
+- Library compatibility checks (npm, PyPI)
+- Performance benchmarks lookup (web-based or cached)
+- Security implications analysis (CVE databases)
+- Organizational constraints (from constitution)
+- Auto-populate `research.md` in spec directories
+
+**Example Research Output**:
+```markdown
+# Research: OAuth 2.0 Implementation
+
+## Library Recommendations
+- passport-google-oauth20 (✨ High confidence)
+  - 500K+ weekly downloads
+  - Active maintenance (last update: 2 weeks ago)
+  - Security: No known vulnerabilities
+
+## Performance Benchmarks
+- OAuth flow: ~200ms average latency
+- Token validation: <10ms
+
+## Organizational Constraints
+- Constitution Article VII: Must use ≤3 projects
+- Security policy: Require 2FA for production
+```
+
+#### Phase 11.2: Bidirectional Feedback Loop (Week 2)
+**Goal**: Production reality informs specification evolution
+
+**Monitoring Integration**:
+- Parse production metrics/logs
+- Link incidents to specs/tasks
+- Auto-create "needs-review" tasks from errors
+
+**Components**:
+- `ProductionFeedbackPanel.vue`
+- `incident-to-spec.mjs` pipeline
+
+**Flow**:
+```
+Production incident → analyze → find related spec → flag for review → update spec
+```
+
+**Example**:
+```yaml
+# Auto-generated task from production incident
+id: T-2001
+title: "Fix OAuth timeout in production"
+status: needs-review
+related:
+  spec: SPEC-101-oauth-flow
+  incident: INC-2025-03-15-001
+source: production-feedback
+priority: high
+```
+
+#### Phase 11.3: Branching for Exploration (Week 3)
+**Goal**: Generate multiple implementation approaches from the same specification
+
+**Features**:
+- "Experiment Mode" toggle
+- Parallel implementation branches from one spec
+- Optimization targets: performance vs. maintainability vs. cost
+- Compare implementations side-by-side
+
+**Components**:
+- `ExperimentBranchManager.vue`
+- `approach-comparison.mjs` pipeline
+
+**Workflow**:
+```
+1. Create spec: SPEC-101-oauth-flow.md
+2. Generate 3 approaches:
+   - approach-a-performance (Redis sessions, minimal latency)
+   - approach-b-security (JWT + refresh tokens, audit logs)
+   - approach-c-simple (Passport.js default, fastest implementation)
+3. Compare: cost, complexity, maintenance burden
+4. Select winner → merge to main spec
+```
+
+#### Phase 11.4: What-If Simulation (Weeks 4-5)
+**Goal**: Simulate hypothetical changes and estimate impact
+
+**Simulation Engine**:
+- Clone existing spec
+- Apply hypothetical changes (AI-assisted)
+- Generate impact analysis
+- Estimate effort/cost
+- Preview architecture changes
+
+**Components**:
+- `SimulationWizard.vue`
+- `what-if-engine.mjs` pipeline
+
+**Example Use Case**:
+```
+Question: "What if we switch from OAuth to SAML for enterprise customers?"
+
+Simulation Results:
+- Affected specs: 3 (SPEC-101, SPEC-105, SPEC-110)
+- Affected services: 2 (svc-auth, svc-user-api)
+- New dependencies: saml2-js library
+- Effort estimate: 8-12 developer-days
+- Risk: Medium (breaking change for existing users)
+- Cost: ~$15K (assuming $150/hr)
+```
+
+---
+
+### Phase 12: AI-Enhanced SDD (3-4 weeks)
+**Status**: Planned  
+**Priority**: High
+
+#### Phase 12.1: Specification Co-Pilot (Weeks 1-2)
+**Goal**: AI-assisted iterative specification development
+
+**Features**:
+- AI asks clarifying questions
+- Identifies edge cases
+- Suggests acceptance criteria
+- Validates completeness
+- Constitutional compliance checking
+
+**Integration**:
+- Extend existing AI Assistant
+- New mode: "Spec Co-Pilot"
+- System prompt based on SDD principles
+
+**Example Interaction**:
+```
+User: "I need a feature for user authentication"
+
+AI: "I need clarification on several points:
+1. [NEEDS CLARIFICATION: auth method] - Email/password, SSO, OAuth, or multiple?
+2. [NEEDS CLARIFICATION: user types] - Single user type or roles (admin, user, guest)?
+3. [NEEDS CLARIFICATION: session management] - Stateless JWT or server-side sessions?
+4. [NEEDS CLARIFICATION: 2FA] - Required, optional, or not supported?
+
+Once clarified, I can generate a complete specification."
+```
+
+#### Phase 12.2: Code Generation from Plans (Weeks 3-4)
+**Goal**: Generate code from implementation plans following TDD principles
+
+**Pipeline**: `code-generator.mjs`
+
+**Features**:
+- Parse `plan.md` and `data-model.md`
+- Generate stub code files
+- Create test scaffolds (TDD-first per Article III)
+- Preserve manual edits on regeneration
+
+**Safety**:
+- Dry-run mode (preview only)
+- Git staging before generation
+- Rollback on validation failure
+
+**Example**:
+```yaml
+# From plan.md:
+## Data Model
+- User entity: id, email, passwordHash, roles[]
+
+# Generates:
+# src/models/User.ts (stub)
+# src/models/User.test.ts (TDD-first)
+# src/repositories/UserRepository.ts (stub)
+# src/repositories/UserRepository.test.ts (TDD-first)
+```
+
+**Constitutional Compliance**:
+- Article III: Tests generated BEFORE implementation
+- Article VII: Validates ≤3 projects constraint
+- Article VIII: No unnecessary abstractions
+
+---
+
+### Phase 13: Team Collaboration (4-6 weeks)
+**Status**: Planned  
+**Priority**: Low
+
+#### Phase 13.1: Real-Time Co-Editing (Weeks 1-3)
+**Goal**: Enable multiple developers to edit specifications simultaneously
+
+**Technologies**:
+- WebSocket server for live collaboration
+- Operational Transform (OT) for concurrent YAML edits
+- Presence indicators (who's editing what)
+
+**Components**:
+- `CollaborationService.ts` - WebSocket client
+- `PresenceBadges.vue` - Show active users
+- `collaboration-server.mjs` - WebSocket server
+
+**Features**:
+- Real-time cursor positions
+- Conflict resolution (OT algorithm)
+- User avatars and colors
+- "Following" mode (shadow other user's viewport)
+
+#### Phase 13.2: Review & Approval Workflow (Weeks 4-6)
+**Goal**: Structured review process for specifications
+
+**Components**:
+- `ReviewPanel.vue` - Comment threads on specs
+- `approval-workflow.mjs` - Approval state machine
+
+**Workflow**:
+```
+1. Spec created (status: draft)
+2. Request review → notify reviewers
+3. Reviewers add comments/suggestions
+4. Author addresses feedback
+5. Reviewers approve (status: approved)
+6. Generate plan only after approval
+```
+
+**Approval Gates**:
+- Constitutional compliance check
+- Completeness validation (no `[NEEDS CLARIFICATION]` markers)
+- Minimum 2 approvals for production specs
+
+---
+
+### Quick Wins (Immediate - 1-2 weeks)
+**Status**: Ready to implement  
+**Priority**: High
+
+#### 1. Command Palette (Ctrl+K) - 2-3 days
+**Component**: `CommandPalette.vue`
+
+**Features**:
+- Global search across entities (fuzzy match on id/title/type)
+- Quick actions: "Open entity...", "Create feature/story/spec/task...", "Analyze impact", "Open Git/Graph", "Switch repo"
+- Keyboard navigation (up/down, Enter to execute)
+- Recent commands history
+
+**Implementation**:
+```typescript
+interface Command {
+  id: string;
+  label: string;
+  description?: string;
+  category: 'navigation' | 'creation' | 'analysis' | 'git';
+  keywords: string[];
+  action: () => void | Promise<void>;
+  shortcut?: string;
+}
+```
+
+#### 2. Material 3 Consistency Pass - 1 week
+**Goal**: Unify design tokens across all components
+
+**Tasks**:
+- Replace gray utility colors with M3 tokens in `GraphView.vue` and `GitPanel.vue`
+- Standardize to `surface-1/2/3/4`, `rounded-m3-*`, `shadow-elevation-*`
+- Header actions: primary emphasis for "New Entity" and "Assistant"; outlined/tonal for toggles
+- Add tooltips to all icon buttons
+- Consistent spacing and padding across modals
+
+**Components to Update**:
+- `GraphView.vue`
+- `GitPanel.vue`
+- Header sections in `App.vue`
+- All modal dialogs
+
+#### 3. Snackbar/Toast Component - 2-3 days
+**Component**: `Snackbar.vue`
+
+**Features**:
+- M3-styled notifications
+- Auto-dismiss after timeout
+- Action buttons ("Undo", "View Details")
+- Position: bottom-left or top-right (configurable)
+- Queue system for multiple notifications
+
+**Usage**:
+```typescript
+import { useSnackbar } from '@/stores/snackbarStore';
+const snackbar = useSnackbar();
+
+// Success
+snackbar.success('Entity saved successfully');
+
+// Error with action
+snackbar.error('Failed to save', {
+  action: { label: 'Retry', callback: () => save() }
+});
+
+// Warning with undo
+snackbar.warning('Entity deleted', {
+  action: { label: 'Undo', callback: () => restore() },
+  timeout: 10000
+});
+```
+
+#### 4. AI Panel Enhancements - 3-4 days
+**Component**: `AIAssistantPanel.vue`
+
+**Tasks**:
+- Bind Ctrl+Enter in textarea to send message
+- Improve error messaging (network errors, API errors)
+- Better loading states (skeleton screens, progress indicators)
+- Enter-to-apply in suggestion chips
+- Escape to close modals
+
+#### 5. Right Panel Clarity - 2 days
+**Goal**: Make panel switching more obvious
+
+**Tasks**:
+- Convert to proper M3 segmented buttons
+- Add keyboard shortcuts: Ctrl+I (Impact), Ctrl+Shift+A (Assistant)
+- Persist last-opened tab per repository in contextStore
+- Visual indicator for active panel
+
+#### 6. Graph Usability - 2-3 days
+**Component**: `GraphView.vue`
+
+**Tasks**:
+- Replace `alert()` with inline banner for "no path found"
+- Add "Select start/end" chips for path finding
+- Improve node label density toggle
+- Replace `dbltap` with standard double-click handling
+- Better zoom/pan controls
+
+---
+
+### Implementation Priority Order
+
+**Immediate (Weeks 1-2)**:
+1. ✅ Quick Wins (Command Palette, M3 pass, Snackbars, AI enhancements)
+2. ✅ Workspace Hub (Phase P0.5)
+
+**Short-term (Weeks 3-8)**:
+3. ✅ Phase 10: SDD Workflow Integration (highest impact)
+4. ✅ Phase 12.1: Specification Co-Pilot
+
+**Medium-term (Weeks 9-16)**:
+5. ✅ Phase P1: Multi-App Portfolio Lens
+6. ✅ Phase 11: Advanced SDD Features (Research, Feedback, Experiments)
+7. ✅ Phase 12.2: Code Generation
+
+**Long-term (Weeks 17+)**:
+8. ✅ Phase 13: Team Collaboration
+
+---
+
+### Key Architectural Decisions
+
+1. **Keep YAML as Source of Truth**: Even with specs/plans, YAML entities remain canonical
+2. **Specs → YAML Derivation**: Specs generate YAML entities, not replace them
+3. **Constitutional Compliance**: All new features respect the 9 articles from SDD constitution
+4. **Backward Compatibility**: Existing repos work without SDD features
+5. **Progressive Enhancement**: Users can adopt SDD incrementally
+6. **Test-First Always**: Code generation follows Article III (TDD imperative)
+7. **Library-First**: New features follow Article I (library-first principle)
+
+---
+
+### Success Metrics
+
+**SDD Adoption**:
+- Spec-to-Code Time: Reduce from days to hours via `/speckit` commands
+- Constitutional Compliance: 100% of generated plans pass gates
+- AI Assist Adoption: 60%+ of specs created with AI co-pilot
+- Regeneration Safety: 0 data loss incidents from code regeneration
+
+**User Experience**:
+- Command Palette Usage: 40%+ of actions via Ctrl+K
+- Time-to-create entity: 30% reduction with Quick Wins
+- Center Panel Engagement: 2× increase in time spent (Workspace Hub)
+- Multi-App Support: 5+ apps in one repository
+
+**Quality**:
+- Specification Completeness: <5% specs with `[NEEDS CLARIFICATION]` at approval
+- Test Coverage: 100% (TDD-first generation)
+- Constitutional Violations: <1% of plans fail gates
+
+---
+
+### Development Time Estimates
+
+| Phase | Estimated Time | Priority |
+|-------|---------------|----------|
+| Quick Wins | 1-2 weeks | High |
+| Phase P0.5 (Workspace Hub) | 1-2 weeks | High |
+| Phase 10 (SDD Integration) | 3-4 weeks | High |
+| Phase P1 (Multi-App) | 2-3 weeks | Medium |
+| Phase 11 (Advanced SDD) | 4-5 weeks | Medium |
+| Phase 12 (AI-Enhanced) | 3-4 weeks | High |
+| Phase 13 (Collaboration) | 4-6 weeks | Low |
+| **Total** | **18-26 weeks** | **(4.5-6.5 months)** |
+
+---
+
+### Risk Mitigation
+
+**Technical Risks**:
+- **Constitution schema drift**: Ensure forms derive from JSON schema, validate continuously
+- **Code generation conflicts**: Git staging + rollback on failure, preserve manual edits
+- **Performance degradation**: Lazy loading, virtualization, caching strategies
+- **Breaking changes**: Feature flags, backward compatibility layer, migration tools
+
+**User Adoption Risks**:
+- **Complexity**: Progressive enhancement, optional features, clear documentation
+- **Learning curve**: In-app tutorials, example workflows, video guides
+- **Migration burden**: Automatic migration scripts, dual-mode support during transition
+
+---
+
+### Next Steps
+
+**Week 1**:
+1. Begin Quick Wins implementation (Command Palette, Snackbar)
+2. Design Speckit command interface
+3. Create constitution parser prototype
+4. Update repository structure for SDD templates
+
+**Week 2**:
+1. Complete Quick Wins
+2. Begin Workspace Hub (WorkspaceHub.vue, EntityPreview.vue)
+3. Implement M3 consistency pass
+4. Write Phase 10 implementation plan
+
+**Week 3+**:
+1. Phase 10.1: Speckit Commands Foundation
+2. Create SDD template library
+3. Implement constitutional gate validation
+4. Build Spec→Plan→Task pipeline
+
+---
+
 ## Glossary
 
 - **Context Repo**: Git repository containing YAML entity files + schemas + pipelines
