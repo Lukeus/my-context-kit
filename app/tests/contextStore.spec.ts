@@ -53,6 +53,10 @@ describe('contextStore repository workflows', () => {
   it('initializes using the active repository from registry', async () => {
     const reposApi = toMockApi(window.api.repos);
     const settingsApi = toMockApi(window.api.settings);
+    const reposWatch = vi.fn().mockResolvedValue({ ok: true });
+    const reposOnFileChanged = vi.fn().mockReturnValue(() => { /* noop */ });
+    reposApi.watch = reposWatch;
+    reposApi.onFileChanged = reposOnFileChanged;
 
     const registry: RepoRegistryPayload = {
       activeRepoId: 'alpha',
@@ -62,12 +66,15 @@ describe('contextStore repository workflows', () => {
       ],
     };
 
-    reposApi.list.mockResolvedValueOnce({ ok: true, registry });
+    reposApi.list.mockResolvedValue({ ok: true, registry });
     settingsApi.get.mockResolvedValue({ ok: true, value: '' });
     settingsApi.set.mockResolvedValue({ ok: true });
 
     const store = useContextStore();
-    await store.initializeStore();
+    // Wait for auto-initialization to complete
+    await vi.waitFor(() => {
+      expect(store.isInitialized).toBe(true);
+    }, { timeout: 1000 });
 
     expect(store.repoPath).toBe('C:/contexts/alpha');
     expect(store.availableRepos).toHaveLength(2);
@@ -78,6 +85,10 @@ describe('contextStore repository workflows', () => {
     const reposApi = toMockApi(window.api.repos);
     const settingsApi = toMockApi(window.api.settings);
     const contextApi = toMockApi(window.api.context);
+    const reposWatch = vi.fn().mockResolvedValue({ ok: true });
+    const reposOnFileChanged = vi.fn().mockReturnValue(() => { /* noop */ });
+    reposApi.watch = reposWatch;
+    reposApi.onFileChanged = reposOnFileChanged;
 
     const registry: RepoRegistryPayload = {
       activeRepoId: 'alpha',
@@ -87,15 +98,18 @@ describe('contextStore repository workflows', () => {
       ],
     };
 
-    reposApi.list.mockResolvedValueOnce({ ok: true, registry });
-    reposApi.list.mockResolvedValue({ ok: true, registry: { ...registry, activeRepoId: 'beta' } });
+    reposApi.list.mockResolvedValue({ ok: true, registry });
     settingsApi.get.mockResolvedValue({ ok: true, value: '' });
     settingsApi.set.mockResolvedValue({ ok: true });
     contextApi.buildGraph.mockResolvedValue({ nodes: [], edges: [] });
-    reposApi.setActive.mockResolvedValue({ ok: true, registry: { ...registry, activeRepoId: 'beta' } });
 
     const store = useContextStore();
-    await store.initializeStore();
+    // Wait for auto-initialization
+    await vi.waitFor(() => expect(store.isInitialized).toBe(true), { timeout: 1000 });
+
+    // Setup for switching repos
+    reposApi.list.mockResolvedValue({ ok: true, registry: { ...registry, activeRepoId: 'beta' } });
+    reposApi.setActive.mockResolvedValue({ ok: true, registry: { ...registry, activeRepoId: 'beta' } });
 
     contextApi.buildGraph.mockClear();
     settingsApi.set.mockClear();
@@ -112,6 +126,10 @@ describe('contextStore repository workflows', () => {
     const reposApi = toMockApi(window.api.repos);
     const settingsApi = toMockApi(window.api.settings);
     const contextApi = toMockApi(window.api.context);
+    const reposWatch = vi.fn().mockResolvedValue({ ok: true });
+    const reposOnFileChanged = vi.fn().mockReturnValue(() => { /* noop */ });
+    reposApi.watch = reposWatch;
+    reposApi.onFileChanged = reposOnFileChanged;
 
     const initialRegistry: RepoRegistryPayload = {
       activeRepoId: null,
@@ -130,7 +148,8 @@ describe('contextStore repository workflows', () => {
     reposApi.add.mockResolvedValue({ ok: true, registry: nextRegistry });
 
     const store = useContextStore();
-    await store.initializeStore();
+    // Wait for auto-initialization
+    await vi.waitFor(() => expect(store.isInitialized).toBe(true), { timeout: 1000 });
 
     const result = await store.addRepository({ label: '  Gamma Repo  ', path: '  E:/contexts/gamma  ' });
 
