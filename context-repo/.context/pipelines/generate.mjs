@@ -31,7 +31,7 @@ const entityDirs = {
   package: 'packages'
 };
 
-const supportedPromptTypes = new Set(['feature', 'userstory', 'spec']);
+const supportedPromptTypes = new Set(['feature', 'userstory', 'spec', 'governance']);
 
 // Helper function to get all YAML files
 function getAllYamlFiles(dir) {
@@ -79,7 +79,7 @@ try {
   const templateDir = join(REPO_ROOT, '.context/templates/prompts');
   const templates = {};
   
-  const templateFiles = ['feature.hbs', 'userstory.hbs', 'spec.hbs'];
+  const templateFiles = ['feature.hbs', 'userstory.hbs', 'spec.hbs', 'governance.hbs'];
   
   for (const templateFile of templateFiles) {
     try {

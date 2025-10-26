@@ -909,7 +909,9 @@ generated/
     // Create constitution file if summary provided
     if (constitutionSummary && constitutionSummary.trim()) {
       const { stringify: stringifyYAML } = await import('yaml');
-      const constitution = {
+      const crypto = await import('crypto');
+      
+      const constitution: any = {
         id: `CONST-${repoName.toUpperCase().replace(/[^A-Z0-9]/g, '-')}`,
         name: `${repoName} Constitution`,
         version: '1.0.0',
@@ -917,21 +919,55 @@ generated/
         ratifiedOn: new Date().toISOString().split('T')[0],
         summary: constitutionSummary.trim(),
         ...(projectPurpose && projectPurpose.trim() ? { purpose: projectPurpose.trim() } : {}),
-        principles: [],
+        principles: [
+          {
+            id: 'core-principle',
+            title: 'Core Principle',
+            summary: 'Placeholder principle - replace with your project-specific principles',
+            appliesTo: ['global'],
+            nonNegotiable: false,
+            requirements: []
+          }
+        ],
         governance: {
-          owners: [],
+          owners: ['@team'],
           reviewCadence: 'quarterly',
           changeControl: 'Updates require approval and documentation'
         },
         compliance: {
-          rules: [],
+          rules: [
+            {
+              id: 'placeholder-rule',
+              description: 'Placeholder rule - replace with your project-specific compliance rules',
+              targets: ['global'],
+              conditions: [
+                {
+                  path: 'id',
+                  operator: 'exists',
+                  message: 'All entities must have an ID'
+                }
+              ],
+              severity: 'medium'
+            }
+          ],
           exceptions: []
         }
       };
       
       const constitutionYaml = stringifyYAML(constitution);
       const constitutionPath = path.join(targetDir, 'contexts', 'governance', 'constitution.yaml');
+      
+      // Write file first
       await writeFile(constitutionPath, constitutionYaml, 'utf-8');
+      
+      // Generate checksum for the written file and add it
+      const fileBuffer = await readFile(constitutionPath);
+      const checksum = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+      constitution.checksum = checksum;
+      
+      // Rewrite with checksum included
+      const constitutionYamlWithChecksum = stringifyYAML(constitution);
+      await writeFile(constitutionPath, constitutionYamlWithChecksum, 'utf-8');
     }
     
     // Initialize git repository

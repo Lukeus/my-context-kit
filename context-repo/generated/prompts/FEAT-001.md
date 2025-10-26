@@ -36,5 +36,5 @@ for spec-driven software development with automated consistency checking.
 
 ---
 
-**Generated**: 2025-10-24T02:05:04.504Z  
+**Generated**: 2025-10-26T15:35:32.513Z  
 **Context Source**: C:\Users\lukeu\source\repos\my-context-kit\context-repo\contexts\features\FEAT-001-context-sync-mvp.yaml

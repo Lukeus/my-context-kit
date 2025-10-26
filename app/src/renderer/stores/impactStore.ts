@@ -178,8 +178,8 @@ export const useImpactStore = defineStore('impact', () => {
     error.value = null;
   }
 
-  function markIssueAsResolved(issueId: string, ruleId: string | undefined, message: string) {
-    const issueKey = `${issueId}-${ruleId || 'unknown'}-${message}`;
+  function markIssueAsResolved(issueId: string, ruleIdOrType: string | undefined, message: string) {
+    const issueKey = `${issueId}-${ruleIdOrType || ''}-${message}`;
     resolvedIssues.value.add(issueKey);
   }
 

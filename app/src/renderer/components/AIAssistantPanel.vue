@@ -155,36 +155,29 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
 
 <template>
   <div class="h-full flex flex-col bg-surface-1 text-secondary-900">
-    <div class="px-3 py-2 border-b border-primary-100 bg-primary-50 flex items-center justify-between gap-2">
-      <h2 class="text-xs font-semibold text-primary-900">Context Assistant</h2>
-      <div class="flex items-center gap-2 flex-wrap">
-        <button
-          class="px-2.5 py-1.5 text-[11px] rounded-m3-full border border-surface-variant hover:bg-surface-3"
-          title="Validate repository"
-          @click="runValidate"
-        >Validate</button>
-        <button
-          class="px-2.5 py-1.5 text-[11px] rounded-m3-full border border-surface-variant hover:bg-surface-3"
-          :disabled="!contextStore.activeEntityId"
-          title="Analyze impact for active entity"
-          @click="runImpact"
-        >Impact</button>
-        <button
-          class="px-2.5 py-1.5 text-[11px] rounded-m3-full border border-surface-variant hover:bg-surface-3"
-          :disabled="!contextStore.activeEntityId"
-          title="Generate prompt for active entity"
-          @click="runGeneratePrompt"
-        >Generate</button>
-        <button
-          class="p-2 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors"
-          title="AI Settings"
-          @click="openSettings"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 6.75a.75.75 0 011.5 0v.61a5.001 5.001 0 012.757 1.633l.432-.249a.75.75 0 11.75 1.299l-.432.249c.098.396.148.81.148 1.233s-.05.837-.148 1.233l.432.249a.75.75 0 11-.75 1.299l-.432-.249A5.001 5.001 0 0112.75 16.64v.61a.75.75 0 01-1.5 0v-.61a5.001 5.001 0 01-2.757-1.633l-.432.249a.75.75 0 01-.75-1.299l.432-.249A5.008 5.008 0 017.25 12c0-.423.05-.837.148-1.233l-.432-.249a.75.75 0 01.75-1.299l.432.249A5.001 5.001 0 0111.25 7.36v-.61zM12 9.75A2.25 2.25 0 1014.25 12 2.253 2.253 0 0012 9.75z" />
+    <!-- Material Design Header -->
+    <div class="px-4 py-3 border-b border-surface-variant bg-surface-2 shadow-elevation-1 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-primary-600 rounded-m3-lg shadow-elevation-1">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
-        </button>
+        </div>
+        <div>
+          <h2 class="text-sm font-semibold text-secondary-900">Context Assistant</h2>
+          <p class="text-xs text-secondary-600">AI-powered repository insights</p>
+        </div>
       </div>
+      <button
+        class="p-2 rounded-m3-full text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors"
+        title="AI Settings"
+        @click="openSettings"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
     </div>
 
     <div v-if="aiStore.error" class="m-4 bg-error-50 border border-error-200 rounded-m3-md px-3 py-3 flex items-start gap-2">

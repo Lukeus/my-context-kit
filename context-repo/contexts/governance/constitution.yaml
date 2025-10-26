@@ -1,12 +1,12 @@
 id: CONST-CTX-SYNC
 name: "Context-Sync System Constitution"
-version: "1.1.0"
+version: "1.2.0"
 status: "ratified"
 ratifiedOn: "2025-10-22"
-lastAmendedOn: "2025-10-22"
-checksum: "2a7f9d2b1c46108dfcbbcb1e1f908db8d2d5f1ef3ab9c4155a5d22443a4df366"
+lastAmendedOn: "2025-10-26"
+checksum: "64bb97f27ca5e81dfd56acfc6c2db6b279e056f427f0c90c3af1297aebbf13e9"
 summary: |
-  This Governs the Context-Sync platform with principles that enforce spec-driven development,
+  This Governs the Context-Sync platform with core principles that enforce spec-driven development,
   Git-backed single source of truth, and disciplined validation workflows for every entity.
 layers:
   - id: main
