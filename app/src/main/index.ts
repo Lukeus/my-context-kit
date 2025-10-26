@@ -400,6 +400,27 @@ ipcMain.handle('git:checkout', async (_event, { dir, branchName }: { dir: string
   }
 });
 
+ipcMain.handle('git:revertFile', async (_event, { dir, filePath }: { dir: string; filePath: string }) => {
+  try {
+    // Git should run from parent directory (project root)
+    const projectRoot = path.dirname(dir);
+    const git = simpleGit(projectRoot);
+    
+    // Check if file is staged
+    const status = await git.status();
+    if (status.staged.includes(filePath)) {
+      // Unstage the file first
+      await git.reset(['HEAD', filePath]);
+    }
+    
+    // Revert the file to HEAD version
+    await git.checkout(['HEAD', '--', filePath]);
+    return { ok: true };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+});
+
 ipcMain.handle('git:push', async (_event, { dir, remote, branch }: { dir: string; remote?: string; branch?: string }) => {
   try {
     // Git should run from parent directory (project root)
@@ -1626,6 +1647,160 @@ ipcMain.handle('ai:applyEdit', async (_event, { dir, filePath, updatedContent, s
     return { ok: true };
   } catch (error: any) {
     return { ok: false, error: error.message };
+  }
+});
+
+// ===== Speckit IPC Handlers (SDD Workflow) =====
+
+ipcMain.handle('speckit:specify', async (_event, { repoPath, description }: { repoPath: string; description: string }) => {
+  try {
+    const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'speckit.mjs');
+    
+    if (!existsSync(pipelinePath)) {
+      return {
+        ok: false,
+        error: 'speckit.mjs pipeline not found. Please ensure the SDD workflow pipeline is installed.'
+      };
+    }
+    
+    const result = await execa('node', [pipelinePath, 'specify', description], {
+      cwd: repoPath
+    });
+    
+    return JSON.parse(result.stdout);
+  } catch (error: any) {
+    return { ok: false, error: error.message, stack: error.stack };
+  }
+});
+
+ipcMain.handle('speckit:plan', async (_event, { repoPath, specPath, techStack }: { repoPath: string; specPath: string; techStack?: string[] }) => {
+  try {
+    const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'speckit.mjs');
+    
+    if (!existsSync(pipelinePath)) {
+      return {
+        ok: false,
+        error: 'speckit.mjs pipeline not found. Please ensure the SDD workflow pipeline is installed.'
+      };
+    }
+    
+    const result = await execa('node', [pipelinePath, 'plan', specPath], {
+      cwd: repoPath
+    });
+    
+    return JSON.parse(result.stdout);
+  } catch (error: any) {
+    return { ok: false, error: error.message, stack: error.stack };
+  }
+});
+
+ipcMain.handle('speckit:tasks', async (_event, { repoPath, planPath }: { repoPath: string; planPath: string }) => {
+  try {
+    const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'speckit.mjs');
+    
+    if (!existsSync(pipelinePath)) {
+      return {
+        ok: false,
+        error: 'speckit.mjs pipeline not found. Please ensure the SDD workflow pipeline is installed.'
+      };
+    }
+    
+    const result = await execa('node', [pipelinePath, 'tasks', planPath], {
+      cwd: repoPath
+    });
+    
+    return JSON.parse(result.stdout);
+  } catch (error: any) {
+    return { ok: false, error: error.message, stack: error.stack };
+  }
+});
+
+ipcMain.handle('speckit:toEntity', async (_event, { repoPath, specPath, options }:
+  { repoPath: string; specPath: string; options?: { createFeature?: boolean; createStories?: boolean } }) => {
+  try {
+    const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'spec-entity.mjs');
+    
+    if (!existsSync(pipelinePath)) {
+      return {
+        ok: false,
+        error: 'spec-entity.mjs pipeline not found. Please ensure the spec-to-entity pipeline is installed.'
+      };
+    }
+    
+    const result = await execa('node', [pipelinePath, 'spec', specPath], {
+      cwd: repoPath
+    });
+    
+    return JSON.parse(result.stdout);
+  } catch (error: any) {
+    return { ok: false, error: error.message, stack: error.stack };
+  }
+});
+
+ipcMain.handle('speckit:tasksToEntity', async (_event, { repoPath, tasksPath }:
+  { repoPath: string; tasksPath: string }) => {
+  try {
+    const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'spec-entity.mjs');
+    
+    if (!existsSync(pipelinePath)) {
+      return {
+        ok: false,
+        error: 'spec-entity.mjs pipeline not found. Please ensure the spec-to-entity pipeline is installed.'
+      };
+    }
+    
+    const result = await execa('node', [pipelinePath, 'tasks', tasksPath], {
+      cwd: repoPath
+    });
+    
+    return JSON.parse(result.stdout);
+  } catch (error: any) {
+    return { ok: false, error: error.message, stack: error.stack };
+  }
+});
+
+ipcMain.handle('speckit:aiGenerateSpec', async (_event, { repoPath, description }:
+  { repoPath: string; description: string }) => {
+  try {
+    const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'ai-spec-generator.mjs');
+    
+    if (!existsSync(pipelinePath)) {
+      return {
+        ok: false,
+        error: 'ai-spec-generator.mjs pipeline not found. Please ensure the AI spec generator pipeline is installed.'
+      };
+    }
+    
+    const result = await execa('node', [pipelinePath, 'generate', description], {
+      cwd: repoPath
+    });
+    
+    return JSON.parse(result.stdout);
+  } catch (error: any) {
+    return { ok: false, error: error.message, stack: error.stack };
+  }
+});
+
+ipcMain.handle('speckit:aiRefineSpec', async (_event, { repoPath, specPath, feedback }:
+  { repoPath: string; specPath: string; feedback: string }) => {
+  try {
+    const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'ai-spec-generator.mjs');
+    
+    if (!existsSync(pipelinePath)) {
+      return {
+        ok: false,
+        error: 'ai-spec-generator.mjs pipeline not found.'
+      };
+    }
+    
+    const fullSpecPath = path.join(repoPath, specPath);
+    const result = await execa('node', [pipelinePath, 'refine', fullSpecPath, feedback], {
+      cwd: repoPath
+    });
+    
+    return JSON.parse(result.stdout);
+  } catch (error: any) {
+    return { ok: false, error: error.message, stack: error.stack };
   }
 });
 
