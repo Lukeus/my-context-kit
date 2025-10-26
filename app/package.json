@@ -18,7 +18,12 @@
     "lint": "eslint --ext .ts,.tsx .",
     "format": "eslint --ext .ts,.tsx . --fix",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "pnpm package && playwright test",
+    "test:e2e:ui": "pnpm package && playwright test --ui",
+    "test:e2e:debug": "pnpm package && playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:all": "pnpm test && pnpm test:e2e"
   },
   "keywords": [],
   "author": {
@@ -36,6 +41,7 @@
     "@electron-forge/plugin-fuses": "^7.10.2",
     "@electron-forge/plugin-vite": "^7.10.2",
     "@electron/fuses": "^1.8.0",
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4.1.16",
     "@types/diff-match-patch": "^1.0.36",
     "@types/electron-squirrel-startup": "^1.0.2",
@@ -49,6 +55,7 @@
     "electron": "38.4.0",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
+    "playwright": "^1.56.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.16",
     "typescript": "^5.3.3",
