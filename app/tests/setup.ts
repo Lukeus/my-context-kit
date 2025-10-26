@@ -8,6 +8,8 @@ type RepoApi = {
   update: StubMethod;
   remove: StubMethod;
   setActive: StubMethod;
+  watch: StubMethod;
+  onFileChanged: StubMethod;
 };
 
 type SettingsApi = {
@@ -38,6 +40,8 @@ beforeEach(() => {
     update: createDefaultStub(),
     remove: createDefaultStub(),
     setActive: createDefaultStub(),
+    watch: createDefaultStub(),
+    onFileChanged: vi.fn().mockReturnValue(() => { /* noop */ }),
   };
 
   const settingsApi: SettingsApi = {
@@ -86,6 +90,9 @@ beforeEach(() => {
     generate: createDefaultStub(),
     assist: createDefaultStub(),
     applyEdit: createDefaultStub(),
+    assistStreamStart: createDefaultStub(),
+    onAssistStreamEvent: vi.fn().mockReturnValue(() => { /* noop */ }),
+    onAssistStreamEnd: vi.fn().mockReturnValue(() => { /* noop */ }),
   };
 
   const appApi: AppApi = {

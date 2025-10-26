@@ -90,3 +90,9 @@ typings/
 
 # Electron-Forge
 out/
+
+# Playwright E2E Test Artifacts
+playwright-report/
+test-results/
+.playwright/
+
