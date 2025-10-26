@@ -166,6 +166,23 @@ function getFileStatusColor(file: string): string {
   return 'text-gray-600 bg-gray-100';
 }
 
+async function handleRevertFile(file: string) {
+  const confirmed = confirm(`Are you sure you want to revert changes to ${file}? This cannot be undone.`);
+  if (!confirmed) return;
+
+  try {
+    const contextStore = await import('../stores/contextStore').then(m => m.useContextStore());
+    const result = await window.api.git.revertFile(contextStore.repoPath, file);
+    if (result.ok) {
+      await gitStore.loadStatus();
+    } else {
+      alert(`Failed to revert file: ${result.error}`);
+    }
+  } catch (error: any) {
+    alert(`Failed to revert file: ${error.message}`);
+  }
+}
+
 function parseDiff(diffText: string) {
   if (!diffText) return [];
   
@@ -280,25 +297,46 @@ onMounted(async () => {
         </div>
 
         <div v-else>
-          <h3 class="text-sm font-semibold text-secondary-700 mb-2">Changed Files ({{ gitStore.changedFilesCount }})</h3>
-          <div class="space-y-1">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-secondary-900">Changed Files ({{ gitStore.changedFilesCount }})</h3>
+            <div class="text-xs text-secondary-600">
+              Click to view diff • Right-click to revert
+            </div>
+          </div>
+          <div class="space-y-2">
             <div
               v-for="file in gitStore.changedFiles"
               :key="file"
-              class="flex items-center gap-2 p-2 hover:bg-surface-2 rounded-m3-sm text-sm cursor-pointer group"
-              @click="handleViewDiff(file)"
+              class="flex items-center gap-3 p-3 hover:bg-surface-2 rounded-m3-lg border border-surface-variant transition-all group hover:shadow-elevation-1"
             >
               <span
-                class="px-1.5 py-0.5 text-xs font-mono rounded"
+                class="px-2 py-1 text-xs font-bold font-mono rounded-m3-sm shadow-sm"
                 :class="getFileStatusColor(file)"
               >
                 {{ getFileStatus(file) }}
               </span>
-              <span class="flex-1 font-mono text-xs text-secondary-700">{{ file }}</span>
-              <svg class="w-4 h-4 text-secondary-400 group-hover:text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
+              <span class="flex-1 font-mono text-sm text-secondary-900 truncate" :title="file">{{ file }}</span>
+              <div class="flex items-center gap-1">
+                <button
+                  @click.stop="handleViewDiff(file)"
+                  class="p-2 rounded-m3-full hover:bg-primary-100 text-secondary-600 hover:text-primary-700 transition-colors"
+                  title="View diff"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+                <button
+                  @click.stop="handleRevertFile(file)"
+                  class="p-2 rounded-m3-full hover:bg-error-100 text-secondary-600 hover:text-error-700 transition-colors"
+                  title="Revert changes to this file"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -487,29 +525,33 @@ onMounted(async () => {
     <Teleport to="body">
       <div
         v-if="showBranchModal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
         @click.self="showBranchModal = false"
       >
-        <div class="bg-white rounded-lg shadow-xl w-96 p-6">
-          <h3 class="text-lg font-semibold mb-4">Create New Branch</h3>
-          <input
-            v-model="newBranchName"
-            type="text"
-            placeholder="feature/my-new-feature"
-            class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-            @keyup.enter="handleCreateBranch"
-          />
-          <div class="flex gap-2 justify-end">
+        <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-96 max-w-[90vw] border border-surface-variant overflow-hidden">
+          <div class="px-6 py-5 border-b border-surface-variant bg-surface-2">
+            <h3 class="text-xl font-semibold text-secondary-900">Create New Branch</h3>
+          </div>
+          <div class="px-6 py-5">
+            <input
+              v-model="newBranchName"
+              type="text"
+              placeholder="feature/my-new-feature"
+              class="w-full px-4 py-2.5 bg-surface-1 border border-surface-variant rounded-m3-lg text-sm text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              @keyup.enter="handleCreateBranch"
+            />
+          </div>
+          <div class="px-6 py-5 border-t border-surface-variant bg-surface-2 flex gap-3 justify-end">
             <button
               @click="showBranchModal = false"
-              class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+              class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 rounded-m3-lg transition-colors"
             >
               Cancel
             </button>
             <button
               @click="handleCreateBranch"
               :disabled="!newBranchName.trim() || gitStore.isLoading"
-              class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              class="px-5 py-2.5 text-sm font-medium bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-2 hover:shadow-elevation-3"
             >
               Create & Checkout
             </button>
@@ -522,31 +564,26 @@ onMounted(async () => {
     <Teleport to="body">
       <div
         v-if="showDiffModal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
         @click.self="showDiffModal = false"
       >
-        <div class="bg-white rounded-xl shadow-2xl w-3/4 h-3/4 flex flex-col overflow-hidden">
-          <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <svg class="w-6 h-6 text-blue-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <div>
-                <h3 class="text-lg font-semibold text-white">File Changes</h3>
-                <p class="text-xs text-blue-100 font-mono truncate max-w-2xl">{{ selectedFileForDiff }}</p>
-              </div>
+        <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-3/4 max-w-[95vw] h-3/4 max-h-[90vh] flex flex-col overflow-hidden border border-surface-variant">
+          <div class="px-6 py-5 border-b border-surface-variant bg-surface-2 flex items-center justify-between">
+            <div>
+              <h3 class="text-xl font-semibold text-secondary-900">File Changes</h3>
+              <p class="text-sm text-secondary-600 font-mono truncate max-w-2xl mt-1">{{ selectedFileForDiff }}</p>
             </div>
             <button
               @click="showDiffModal = false"
-              class="p-2 hover:bg-blue-800 rounded-lg transition-colors"
+              class="p-2 hover:bg-surface-3 rounded-m3-full transition-colors text-secondary-600 hover:text-secondary-900"
               title="Close"
             >
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <div class="flex-1 overflow-auto bg-slate-50">
+          <div class="flex-1 overflow-auto bg-surface">
             <div v-if="gitStore.diff" class="font-mono text-sm">
               <!-- Parse and render diff lines with syntax highlighting -->
               <div 
@@ -573,10 +610,10 @@ onMounted(async () => {
               </div>
             </div>
           </div>
-          <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+          <div class="px-6 py-5 border-t border-surface-variant bg-surface-2 flex justify-end">
             <button
               @click="showDiffModal = false"
-              class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+              class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 rounded-m3-lg transition-colors"
             >
               Close
             </button>

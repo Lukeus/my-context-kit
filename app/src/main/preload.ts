@@ -51,6 +51,7 @@ contextBridge.exposeInMainWorld('api', {
     branch: (dir: string) => ipcRenderer.invoke('git:branch', { dir }),
     createBranch: (dir: string, branchName: string, checkout?: boolean) => ipcRenderer.invoke('git:createBranch', { dir, branchName, checkout }),
     checkout: (dir: string, branchName: string) => ipcRenderer.invoke('git:checkout', { dir, branchName }),
+    revertFile: (dir: string, filePath: string) => ipcRenderer.invoke('git:revertFile', { dir, filePath }),
     push: (dir: string, remote?: string, branch?: string) => ipcRenderer.invoke('git:push', { dir, remote, branch }),
     createPR: (dir: string, title: string, body: string, base?: string) => ipcRenderer.invoke('git:createPR', { dir, title, body, base }),
   },
@@ -81,6 +82,22 @@ contextBridge.exposeInMainWorld('api', {
     },
     applyEdit: (dir: string, filePath: string, updatedContent: string, summary?: string) =>
       ipcRenderer.invoke('ai:applyEdit', { dir, filePath, updatedContent, summary }),
+  },
+  speckit: {
+    specify: (repoPath: string, description: string) =>
+      ipcRenderer.invoke('speckit:specify', { repoPath, description }),
+    plan: (repoPath: string, specPath: string, techStack?: string[]) =>
+      ipcRenderer.invoke('speckit:plan', { repoPath, specPath, techStack }),
+    tasks: (repoPath: string, planPath: string) =>
+      ipcRenderer.invoke('speckit:tasks', { repoPath, planPath }),
+    toEntity: (repoPath: string, specPath: string, options?: { createFeature?: boolean; createStories?: boolean }) =>
+      ipcRenderer.invoke('speckit:toEntity', { repoPath, specPath, options }),
+    tasksToEntity: (repoPath: string, tasksPath: string) =>
+      ipcRenderer.invoke('speckit:tasksToEntity', { repoPath, tasksPath }),
+    aiGenerateSpec: (repoPath: string, description: string) =>
+      ipcRenderer.invoke('speckit:aiGenerateSpec', { repoPath, description }),
+    aiRefineSpec: (repoPath: string, specPath: string, feedback: string) =>
+      ipcRenderer.invoke('speckit:aiRefineSpec', { repoPath, specPath, feedback }),
   },
 });
 
@@ -128,6 +145,7 @@ declare global {
         branch: (dir: string) => Promise<any>;
         createBranch: (dir: string, branchName: string, checkout?: boolean) => Promise<any>;
         checkout: (dir: string, branchName: string) => Promise<any>;
+        revertFile: (dir: string, filePath: string) => Promise<{ ok: boolean; error?: string }>;
         push: (dir: string, remote?: string, branch?: string) => Promise<any>;
         createPR: (dir: string, title: string, body: string, base?: string) => Promise<any>;
       };
@@ -160,6 +178,53 @@ declare global {
         onAssistStreamEnd: (listener: (payload: any) => void) => (() => void);
         applyEdit: (dir: string, filePath: string, updatedContent: string, summary?: string) =>
           Promise<{ ok: boolean; error?: string }>;
+      };
+      speckit: {
+        specify: (repoPath: string, description: string) => Promise<{
+          ok: boolean;
+          specNumber?: string;
+          branchName?: string;
+          specPath?: string;
+          created?: boolean;
+          message?: string;
+          error?: string;
+          stack?: string;
+        }>;
+        plan: (repoPath: string, specPath: string, techStack?: string[]) => Promise<{
+          ok: boolean;
+          planPath?: string;
+          gates?: {
+            passed: boolean;
+            warnings: string[];
+            checks?: {
+              simplicity?: { passed: boolean; issues: string[] };
+              antiAbstraction?: { passed: boolean; issues: string[] };
+              integrationFirst?: { passed: boolean; issues: string[] };
+            };
+          };
+          created?: boolean;
+          message?: string;
+          error?: string;
+          stack?: string;
+        }>;
+        tasks: (repoPath: string, planPath: string) => Promise<{
+          ok: boolean;
+          tasksPath?: string;
+          tasks?: Array<{ id: string; description: string; parallel: boolean }>;
+          parallelGroups?: Array<{ groupId: number; taskIds: string[] }>;
+          created?: boolean;
+          message?: string;
+          error?: string;
+          stack?: string;
+        }>;
+        toEntity: (repoPath: string, specPath: string, options?: { createFeature?: boolean; createStories?: boolean }) => 
+          Promise<{ ok: boolean; entities?: any; created?: string[]; error?: string; stack?: string }>;
+        tasksToEntity: (repoPath: string, tasksPath: string) => 
+          Promise<{ ok: boolean; tasks?: any[]; created?: string[]; error?: string; stack?: string }>;
+        aiGenerateSpec: (repoPath: string, description: string) => 
+          Promise<{ ok: boolean; spec?: any; usage?: any; error?: string; stack?: string }>;
+        aiRefineSpec: (repoPath: string, specPath: string, feedback: string) => 
+          Promise<{ ok: boolean; spec?: any; usage?: any; error?: string; stack?: string }>;
       };
       app: {
         getDefaultRepoPath: () => Promise<{ ok: boolean; path?: string; error?: string }>;
