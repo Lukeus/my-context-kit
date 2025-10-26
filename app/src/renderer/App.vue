@@ -17,13 +17,16 @@ import AIAssistantPanel from './components/AIAssistantPanel.vue';
 import Snackbar from './components/Snackbar.vue';
 import AppToolbar from './components/AppToolbar.vue';
 import CommandPalette from './components/CommandPalette.vue';
+import SpeckitWizard from './components/SpeckitWizard.vue';
 import { useContextStore } from './stores/contextStore';
 import { useBuilderStore } from './stores/builderStore';
 import { useAIStore } from './stores/aiStore';
+import { useGitStore } from './stores/gitStore';
 import { useSnackbar } from './composables/useSnackbar';
 
 const contextStore = useContextStore();
 const builderStore = useBuilderStore();
+const gitStore = useGitStore();
 const { show: showSnackbar, message: snackbarMessage, type: snackbarType, action: snackbarAction, hide: hideSnackbar, handleAction: handleSnackbarAction } = useSnackbar();
 
 const statusMessage = ref('Ready');
@@ -31,6 +34,7 @@ const showGraphModal = ref(false);
 const showGitModal = ref(false);
 const showAISettings = ref(false);
 const showRepoManager = ref(false);
+const showSpeckitWizard = ref(false);
 const newRepoLabel = ref('');
 const newRepoPath = ref('');
 const repoFormError = ref('');
@@ -83,6 +87,18 @@ const repoLastUsedDisplay = computed(() => {
   }
 });
 const totalEntities = computed(() => contextStore.entityCount);
+
+const totalChanges = computed(() => {
+  if (!gitStore.status) return 0;
+  const s = gitStore.status;
+  return (
+    s.modified.length + 
+    s.created.length + 
+    s.deleted.length + 
+    s.renamed.length + 
+    (s.not_added?.length || 0)
+  );
+});
 const typeLabelMap: Record<string, string> = {
   governance: 'Governance',
   feature: 'Feature',
@@ -228,6 +244,12 @@ onMounted(async () => {
   await contextStore.initializeStore();
   await contextStore.refreshRepoRegistry();
   
+  // Load git status if repo is configured
+  if (contextStore.repoPath) {
+    await gitStore.loadStatus();
+    await gitStore.loadBranches();
+  }
+  
   window.addEventListener('mousemove', handleMouseMove);
   window.addEventListener('mouseup', stopResize);
   window.addEventListener('keydown', handleKeyboard);
@@ -283,6 +305,9 @@ async function handleAskAboutEntity(entityId: string) {
 
 function handleCommandExecute(commandId: string) {
   switch (commandId) {
+    case 'speckit:workflow':
+      showSpeckitWizard.value = true;
+      break;
     case 'assistant:open':
       openAssistantPanel();
       break;
@@ -410,24 +435,59 @@ async function handleRemoveRepo(id: string) {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7a2 2 0 012-2h5l2 2h5a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
               </svg>
             </div>
-            <div class="min-w-0">
+            <div>
               <h1 class="text-xl font-semibold tracking-tight">Context-Sync</h1>
-              <div class="flex items-center gap-2 text-[11px] text-primary-100 truncate">
-                <span class="truncate">{{ activeRepoMeta ? activeRepoMeta.label : 'No repository selected' }}</span>
-                <span v-if="totalEntities" class="px-2 py-0.5 rounded-m3-full bg-white/20">Entities {{ totalEntities }}</span>
+              <div class="flex items-center gap-2 text-[11px] text-primary-100">
+                <span v-if="totalEntities" class="px-2 py-0.5 rounded-m3-full bg-white/20">{{ totalEntities }} {{ totalEntities === 1 ? 'Entity' : 'Entities' }}</span>
               </div>
             </div>
           </div>
+          
+          <!-- Center: Repo Info with Git Status -->
+          <button
+            v-if="isRepoConfigured"
+            @click="openRepoManager"
+            class="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-m3-lg border border-white/20 hover:bg-white/15 transition-all cursor-pointer"
+            title="Click to manage repositories"
+          >
+            <svg class="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7a2 2 0 012-2h5l2 2h5a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+            </svg>
+            <span class="text-sm font-medium text-white">{{ activeRepoMeta ? activeRepoMeta.label : 'Repository' }}</span>
+            
+            <!-- Branch Badge -->
+            <div v-if="gitStore.currentBranch" class="flex items-center gap-1 px-2 py-0.5 bg-white/90 text-primary-800 rounded-m3-full text-xs font-semibold shadow-sm">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+              </svg>
+              {{ gitStore.currentBranch }}
+            </div>
+            
+            <!-- Changes Count Badge -->
+            <div v-if="gitStore.status && totalChanges > 0" class="flex items-center gap-1 px-2 py-0.5 bg-yellow-400 text-yellow-900 rounded-m3-full text-xs font-semibold shadow-sm">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              {{ totalChanges }}
+            </div>
+          </button>
+          
           <div class="flex items-center gap-2 flex-wrap">
-            <button @click="openBuilderModal()" class="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-m3-full bg-white/15 hover:bg-white/25 border border-white/20 transition-all hover:shadow-elevation-2" title="Create new entity (Ctrl+N)">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-              New Entity
-            </button>
             <button @click="openDocs" class="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-m3-full bg-white/15 hover:bg-white/25 border border-white/20 transition-all hover:shadow-elevation-2" title="Open Docs">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20l9-16H3l9 16z"/></svg>
               Docs
             </button>
-            <button @click="openRepoManager" class="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-m3-full bg-white/15 hover:bg-white/25 border border-white/20 transition-all hover:shadow-elevation-2" title="Manage repositories">Manage</button>
+            <button
+              @click="toggleRightPanel"
+              class="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-m3-full border transition-all"
+              :class="rightPanelOpen ? 'bg-white text-primary-700 border-white shadow-elevation-2' : 'bg-white/15 hover:bg-white/25 border-white/20'"
+              :title="rightPanelOpen ? 'Hide AI Assistant (Ctrl+Shift+A)' : 'Show AI Assistant (Ctrl+Shift+A)'"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              AI Assistant
+            </button>
           </div>
         </div>
       </div>
@@ -645,6 +705,9 @@ async function handleRemoveRepo(id: string) {
     <!-- Context Builder Modal -->
     <ContextBuilderModal />
     <AISettingsModal v-if="showAISettings" @close="showAISettings = false" />
+    
+    <!-- Speckit Workflow Modal -->
+    <SpeckitWizard :show="showSpeckitWizard" @close="showSpeckitWizard = false" />
     
     
     <!-- Global Snackbar -->

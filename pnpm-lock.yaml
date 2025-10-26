@@ -47,6 +47,9 @@ importers:
       isomorphic-git:
         specifier: ^1.34.0
         version: 1.34.0
+      marked:
+        specifier: ^16.4.1
+        version: 16.4.1
       path-browserify:
         specifier: ^1.0.1
         version: 1.0.1
@@ -2545,6 +2548,11 @@ packages:
   map-age-cleaner@0.1.3:
     resolution: {integrity: sha512-bJzx6nMoP6PDLPBFmg7+xRKeFZvFboMrGlxmNj9ClvX53KrmvM5bXFXEWjbz4cz1AFn+jWJ9z/DJSz7hrs0w3w==}
     engines: {node: '>=6'}
+
+  marked@16.4.1:
+    resolution: {integrity: sha512-ntROs7RaN3EvWfy3EZi14H4YxmT6A5YvywfhO+0pm+cH/dnSQRmdAmoFIc3B9aiwTehyk7pESH4ofyBY+V5hZg==}
+    engines: {node: '>= 20'}
+    hasBin: true
 
   matcher@3.0.0:
     resolution: {integrity: sha512-OkeDaAZ/bQCxeFAozM55PKcKU0yJMPGifLwV4Qgjitu+5MoAfSQN4lsLJeXZ1b8w0x+/Emda6MZgXS1jvsapng==}
@@ -6706,6 +6714,8 @@ snapshots:
   map-age-cleaner@0.1.3:
     dependencies:
       p-defer: 1.0.0
+
+  marked@16.4.1: {}
 
   matcher@3.0.0:
     dependencies:
