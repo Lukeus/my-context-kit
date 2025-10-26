@@ -1,6 +1,7 @@
 id: US-002
 title: "to visualize the dependency graph of my context entities"
 status: "proposed"
+feature: "FEAT-001"
 asA: "developer"
 iWant: "to visualize the dependency graph of my context entities"
 soThat: "I can understand how features, specs, tasks, and services are related"
