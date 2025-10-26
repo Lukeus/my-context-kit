@@ -202,14 +202,27 @@ watch(() => searchQuery.value, (newQuery) => {
         </button>
       </div>
       
-      <!-- Stats -->
-      <div class="mt-2 text-xs text-secondary-600">
-        <span v-if="totalSearchResults !== null" class="font-semibold text-primary-700">
-          {{ totalSearchResults }} {{ totalSearchResults === 1 ? 'result' : 'results' }} found
-        </span>
-        <span v-else>
-          {{ contextStore.entityCount }} entities
-        </span>
+      <!-- Stats and Actions -->
+      <div class="mt-2 flex items-center justify-between gap-2">
+        <div class="text-xs text-secondary-600">
+          <span v-if="totalSearchResults !== null" class="font-semibold text-primary-700">
+            {{ totalSearchResults }} {{ totalSearchResults === 1 ? 'result' : 'results' }} found
+          </span>
+          <span v-else>
+            {{ contextStore.entityCount }} entities
+          </span>
+        </div>
+        <button
+          @click="createNewEntity('feature')"
+          :disabled="!hasRepoConfigured"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-m3-full bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white transition-all shadow-elevation-1 hover:shadow-elevation-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Create new entity (Ctrl+N)"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          New
+        </button>
       </div>
     </div>
 

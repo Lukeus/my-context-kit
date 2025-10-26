@@ -15,6 +15,7 @@ const selectedIndex = ref(0);
 
 // Minimal command set for quick navigation and actions
 const commands = ref<CommandItem[]>([
+  { id: 'speckit:workflow', title: 'Speckit Workflow', subtitle: 'Start SDD specification-to-tasks workflow', keywords: ['speckit','sdd','spec','workflow','specify','plan','tasks'] },
   { id: 'assistant:open', title: 'Open AI Assistant', subtitle: 'Toggle the right assistant panel', keywords: ['ai','assistant','chat'] },
   { id: 'impact:analyze', title: 'Open Impact Analysis', subtitle: 'Analyze impact for active entity', keywords: ['impact','analysis'] },
   { id: 'graph:open', title: 'Open Graph View', subtitle: 'Visualize dependency graph', keywords: ['graph','visualize'] },

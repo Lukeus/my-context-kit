@@ -1,36 +1,88 @@
 id: FEAT-001
+
 title: "Context-Sync MVP"
-domain: "developer-tools"
+
 status: "in-progress"
-owners:
-  - "@lukeus"
-objective: |
-  Build a desktop application that manages a GitHub-versioned context repository
-  for spec-driven software development with automated consistency checking.
-acceptance:
-  - "App launches and displays UI"
-  - "Can validate YAML entities against JSON schemas"
-  - "Can build dependency graph from entities"
-  - "UI shows validation status"
-requires:
-  - "svc-git"
-produces:
-  - "pkg-context-sync"
+
+domain: "developer-tools"
+
+objective: "Build a desktop application that manages a GitHub-versioned context repository for spec-driven software development with automated consistency checking."
+
 userStories:
-  - "US-001"
-  - "US-002"
+- "US-001"
+- "US-002"
+
 specs:
-  - "SPEC-001"
+- "SPEC-001"
+
 tasks:
-  - "T-001"
-  - "T-002"
-  - "T-003"
-prompts:
-  instructions:
-    - "Use TypeScript for all code"
-    - "Use Vue 3 Composition API"
-    - "Follow Tailwind utility conventions"
-    - "Ensure strict type safety"
-  contextRefs:
-    - "WARP.md"
-    - "docs/spec.md"
+- "T-001"
+- "T-002"
+- "T-003"
+
+requires:
+- "svc-git"
+
+linkedUserStories:
+- 
+  id: "US-001"
+  title: "to validate my context repository against defined schemas"
+  status: "proposed"
+- 
+  id: "US-002"
+  title: "to visualize the dependency graph of my context entities"
+  status: "proposed"
+
+linkedSpecs:
+- 
+  id: "SPEC-001"
+  title: "Validation Pipeline Implementation"
+  type: "technical"
+
+linkedTasks:
+- 
+  id: "T-001"
+  title: "Implement validation pipeline script"
+  status: "done"
+  owner: "@lukeu"
+- 
+  id: "T-002"
+  title: "Set up Electron Forge app with Vue and Tailwind"
+  status: "done"
+  owner: "@lukeu"
+- 
+  id: "T-003"
+  title: "Build core UI components"
+  status: "todo"
+  owner: "@lukeu"
+
+validationRules:
+- 
+  id: "feature-spec-driven"
+  title: "Spec-Driven Development Compliance"
+  appliesTo: ["feature"]
+  conditions:
+  - 
+    path: "objective"
+    operator: "nonEmpty"
+    message: "Feature objective must be non-empty"
+  - 
+    path: "domain"
+    operator: "exists"
+    message: "Feature must specify a domain"
+  - 
+    path: "userStories"
+    operator: "nonEmpty"
+    message: "Feature must have at least one user story"
+  - 
+    path: "specs"
+    operator: "nonEmpty"
+    message: "Feature must have at least one spec"
+  - 
+    path: "tasks"
+    operator: "nonEmpty"
+    message: "Feature must have at least one task"
+  severity: "high"
+  references: ["docs/spec.md"]
+
+complianceRules: []
