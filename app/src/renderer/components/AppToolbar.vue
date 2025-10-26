@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { useContextStore } from '../stores/contextStore';
 
 const contextStore = useContextStore();
@@ -69,17 +68,6 @@ function goWorkspace() {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M5 7h14" />
         </svg>
         Validate
-      </button>
-      <button
-        @click="emit('toggle-assistant')"
-        class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-md border transition-all"
-        :class="rightPanelOpen ? 'bg-primary-600 text-white border-primary-400 shadow-elevation-2' : 'border-surface-variant bg-surface-2 hover:bg-surface-3 hover:shadow-elevation-1'"
-        :title="rightPanelOpen ? 'Hide AI Assistant (Ctrl+Shift+A)' : 'Show AI Assistant (Ctrl+Shift+A)'"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-        AI Assistant
       </button>
     </div>
   </div>

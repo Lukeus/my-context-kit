@@ -16,7 +16,7 @@ export interface ElectronFixtures {
  * Automatically launches and closes Electron app for each test
  */
 export const test = base.extend<ElectronFixtures>({
-  electronApp: async ({}, use) => {
+  electronApp: async (_, use) => {
     // Path to the packaged app.asar
     const appPath = path.join(
       __dirname,

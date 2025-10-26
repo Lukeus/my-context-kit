@@ -95,10 +95,9 @@ function openSettings() {
     <Transition name="modal">
       <div
         v-if="show"
-        class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-        style="background-color: rgba(0, 0, 0, 0.5);"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       >
-        <div class="pointer-events-auto bg-surface rounded-m3-xl shadow-elevation-5 w-[960px] max-w-[95vw] max-h-[92vh] flex flex-col border border-surface-variant">
+        <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[960px] max-w-[95vw] max-h-[92vh] flex flex-col border border-surface-variant">
           <!-- Header -->
           <div class="px-6 py-5 border-b border-surface-variant bg-surface-2 flex items-center justify-between">
             <div>
@@ -307,16 +306,16 @@ function openSettings() {
   opacity: 0;
 }
 
-.modal-enter-active .bg-surface-1,
-.modal-leave-active .bg-surface-1 {
+.modal-enter-active > div > div,
+.modal-leave-active > div > div {
   transition: transform 0.2s ease;
 }
 
-.modal-enter-from .bg-surface-1 {
-  transform: scale(0.96);
+.modal-enter-from > div > div {
+  transform: scale(0.95);
 }
 
-.modal-leave-to .bg-surface-1 {
-  transform: scale(0.96);
+.modal-leave-to > div > div {
+  transform: scale(0.95);
 }
 </style>
