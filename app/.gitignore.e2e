@@ -1,0 +1,18 @@
+# Playwright E2E Test Artifacts
+
+# Test results and reports
+playwright-report/
+test-results/
+
+# Playwright trace files
+*.zip
+
+# Screenshots and videos
+screenshots/
+videos/
+
+# Playwright cache
+.playwright/
+
+# Test state
+.auth/
