@@ -94,7 +94,7 @@ export const useBuilderStore = defineStore('builder', () => {
         Object.entries(partialEntity.value).filter(([, v]) => v !== undefined && v !== null && v !== '')
       );
       return stringifyYAML(cleanEntity);
-    } catch (error) {
+    } catch {
       return '# Error generating YAML preview';
     }
   });
@@ -447,7 +447,6 @@ export const useBuilderStore = defineStore('builder', () => {
         // Handle bulk creation mode
         if (createRelatedEntities.value && entityType.value === 'feature' && relatedEntitiesToCreate.value.length > 0) {
           const featureId = partialEntity.value.id;
-          const featureTitle = partialEntity.value.title;
           
           closeBuilder();
           

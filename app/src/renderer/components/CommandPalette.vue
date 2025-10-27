@@ -19,6 +19,7 @@ const commands = ref<CommandItem[]>([
   { id: 'assistant:open', title: 'Open AI Assistant', subtitle: 'Toggle the right assistant panel', keywords: ['ai','assistant','chat'] },
   { id: 'impact:analyze', title: 'Open Impact Analysis', subtitle: 'Analyze impact for active entity', keywords: ['impact','analysis'] },
   { id: 'graph:open', title: 'Open Graph View', subtitle: 'Visualize dependency graph', keywords: ['graph','visualize'] },
+  { id: 'c4:open', title: 'Open C4 Diagrams', subtitle: 'View architecture diagrams', keywords: ['c4','architecture','diagram','mermaid'] },
   { id: 'git:open', title: 'Open Git Workflow', subtitle: 'View changes, stage and commit', keywords: ['git','commit','pr'] },
   { id: 'create:feature', title: 'Create Feature', subtitle: 'Start feature wizard', keywords: ['new','feature','create'] },
   { id: 'create:userstory', title: 'Create User Story', subtitle: 'Start user story wizard', keywords: ['new','user story','story','create'] },

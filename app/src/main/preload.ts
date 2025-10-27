@@ -102,6 +102,9 @@ contextBridge.exposeInMainWorld('api', {
     aiRefineSpec: (repoPath: string, specPath: string, feedback: string) =>
       ipcRenderer.invoke('speckit:aiRefineSpec', { repoPath, specPath, feedback }),
   },
+  c4: {
+    loadDiagrams: (dir: string) => ipcRenderer.invoke('c4:load-diagrams', { dir }),
+  },
 });
 
 // Type definitions for window.api
@@ -231,6 +234,9 @@ declare global {
           Promise<{ ok: boolean; spec?: any; usage?: any; error?: string; stack?: string }>;
         aiRefineSpec: (repoPath: string, specPath: string, feedback: string) => 
           Promise<{ ok: boolean; spec?: any; usage?: any; error?: string; stack?: string }>;
+      };
+      c4: {
+        loadDiagrams: (dir: string) => Promise<{ success: boolean; diagrams?: any[]; error?: string }>;
       };
       app: {
         getDefaultRepoPath: () => Promise<{ ok: boolean; path?: string; error?: string }>;

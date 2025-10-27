@@ -1,4 +1,4 @@
-# Feature Blueprint: Context-Sync MVP (FEAT-001)
+# Feature Blueprint: Context-Sync MVPs (FEAT-001)
 
 **Domain**: developer-tools  
 **Status**: in-progress  
@@ -52,5 +52,5 @@ Build a desktop application that manages a GitHub-versioned context repository f
 
 ---
 
-**Generated**: 2025-10-27T15:53:49.018Z  
-**Context Source**: C:\Users\ladams\source\repos\my-context-kit\context-repo\contexts\features\FEAT-001-context-sync-mvp.yaml
+**Generated**: 2025-10-27T22:38:12.731Z  
+**Context Source**: C:\Users\lukeu\source\repos\my-context-kit\context-repo\contexts\features\FEAT-001-context-sync-mvp.yaml
