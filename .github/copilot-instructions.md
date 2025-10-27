@@ -13,6 +13,8 @@ Context-Sync is a desktop application built with Electron Forge, Vue 3, and Tail
 - Follow the repository's existing architecture - do not change it
 - Maintain separation between Electron main process, preload, and renderer
 - All context-repo operations execute through IPC to pipeline scripts
+- C4 diagrams are treated as first-class entities in the Context Tree
+- Single left panel architecture - avoid duplicate navigation panels
 
 ### Code Quality
 - Never take shortcuts for speed - prioritize quality and correctness
@@ -54,7 +56,7 @@ app/
     main/           # Electron main process + IPC handlers
     renderer/       # Vue 3 application
       components/   # Vue components
-      stores/       # Pinia stores
+      stores/       # Pinia stores (contextStore loads C4 diagrams)
       styles/       # Tailwind CSS
 
 context-repo/
@@ -64,6 +66,7 @@ context-repo/
     templates/      # Handlebars templates
   contexts/         # YAML entity storage
   generated/        # Auto-generated artifacts
+  c4/               # C4 architecture diagrams (Mermaid)
 ```
 
 ## Commands

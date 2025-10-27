@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "c4.schema.json",
+  "title": "C4 Diagram",
+  "description": "Validated C4 architecture diagram projection",
+  "type": "object",
+  "required": ["system", "level", "nodes", "relationships"],
+  "properties": {
+    "system": {
+      "type": "string",
+      "minLength": 1,
+      "description": "System name"
+    },
+    "level": {
+      "type": "string",
+      "enum": ["C1", "C2", "C3", "C4"],
+      "description": "C4 abstraction level (Context, Container, Component, Code)"
+    },
+    "feature": {
+      "type": "string",
+      "pattern": "^FEAT-[0-9]{3,}$",
+      "description": "Optional parent feature ID"
+    },
+    "specs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^SPEC-[0-9]{3,}$"
+      },
+      "description": "Optional related spec IDs"
+    },
+    "stories": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^US-[0-9]{3,}$"
+      },
+      "description": "Optional related user story IDs"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "kind"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Node identifier from Mermaid diagram"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "system",
+              "container",
+              "component",
+              "datastore",
+              "queue",
+              "external"
+            ],
+            "description": "C4 element type"
+          },
+          "tech": {
+            "type": "string",
+            "description": "Technology stack"
+          }
+        }
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "target", "description"],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Source node ID"
+          },
+          "target": {
+            "type": "string",
+            "description": "Target node ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Relationship description"
+          },
+          "restPath": {
+            "type": "string",
+            "description": "REST API path (e.g., /api/invoices)"
+          },
+          "emit": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Events emitted"
+          },
+          "consume": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Events consumed"
+          }
+        }
+      }
+    },
+    "sourceDiagram": {
+      "type": "string",
+      "description": "Path to source Mermaid file"
+    }
+  }
+}

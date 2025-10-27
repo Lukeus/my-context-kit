@@ -5,6 +5,7 @@
   "description": "Context repository for Context-Sync",
   "private": true,
   "scripts": {
+    "c4": "node .context/pipelines/c4-validate.mjs",
     "validate": "node .context/pipelines/validate.mjs",
     "build-graph": "node .context/pipelines/build-graph.mjs",
     "impact": "node .context/pipelines/impact.mjs",

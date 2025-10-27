@@ -190,9 +190,10 @@ test.describe('SDD Workflow E2E', () => {
 
       // Step 8: Verify files exist on filesystem
       if (specNumber) {
-        const specDir = path.join(testRepoPath, 'specs', `${specNumber}-*`);
-        const featuresDir = path.join(testRepoPath, 'contexts', 'features');
-        const storiesDir = path.join(testRepoPath, 'contexts', 'userstories');
+        // Variables kept for potential future file verification
+        // const specDir = path.join(testRepoPath, 'specs', `${specNumber}-*`);
+        // const featuresDir = path.join(testRepoPath, 'contexts', 'features');
+        // const storiesDir = path.join(testRepoPath, 'contexts', 'userstories');
 
         // Check if directories exist (after workflow completes)
         await window.waitForTimeout(3000); // Allow file system operations to complete

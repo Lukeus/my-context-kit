@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
-import { simpleGit, type SimpleGit, type StatusResult } from 'simple-git';
+import { simpleGit, type SimpleGit } from 'simple-git';
 import { execa } from 'execa';
 import { GitError, ValidationError } from '../errors/AppError';
 
@@ -83,7 +83,7 @@ export class GitService {
             const lines = content.split('\n');
             const diff = lines.map(line => `+${line}`).join('\n');
             return `New file: ${filePath}\n\n${diff}`;
-          } catch (readError) {
+          } catch {
             return 'New file (unable to read content)';
           }
         }

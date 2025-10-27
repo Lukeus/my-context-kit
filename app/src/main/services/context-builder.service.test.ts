@@ -1,16 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fsPromises from 'node:fs/promises';
-import type { Dirent } from 'node:fs';
 import { execa } from 'execa';
 import { parse as parseYAML } from 'yaml';
-import path from 'node:path';
 
 vi.mock('node:fs/promises');
 vi.mock('execa');
 vi.mock('yaml');
 vi.mock('electron', () => ({
   app: {
-    getPath: vi.fn((name: string) => `/mock/user/data`),
+    getPath: vi.fn(() => `/mock/user/data`),
     getAppPath: vi.fn(() => '/mock/app/path'),
     isReady: vi.fn(() => true),
     whenReady: vi.fn(() => Promise.resolve()),
