@@ -1,53 +1,130 @@
-# Feature Context: {{title}} ({{id}})
+# Feature Blueprint: {{title}} ({{id}})
 
-**Domain**: {{domain}}  
-**Status**: {{status}}  
-**Owners**: {{#each owners}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+**Domain**: {{#if domain}}{{domain}}{{else}}_Not specified_{{/if}}  
+**Status**: {{#if status}}{{status}}{{else}}_Not set_{{/if}}  
+**Owners**: {{#if owners}}{{#each owners}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}_Unassigned_{{/if}}
 
-## Objective
-{{objective}}
+## Intent Narrative
+{{#if objective}}{{objective}}{{else}}_Pending articulation in source YAML_{{/if}}
 
+## Customer Outcomes
+{{#if outcomes}}
+{{#each outcomes}}
+- {{this}}
+{{/each}}
+{{else}}
+- Derive primary outcomes from objective and acceptance signals.
+{{/if}}
+
+## Scope Definition
+### In Scope
+{{#if scope.includes}}
+{{#each scope.includes}}
+- {{this}}
+{{/each}}
+{{else}}
+- _Infer concrete inclusions during clarification; capture in checklist._
+{{/if}}
+### Out of Scope
+{{#if scope.excludes}}
+{{#each scope.excludes}}
+- {{this}}
+{{/each}}
+{{else}}
+- _Document explicit exclusions to protect team boundaries._
+{{/if}}
+
+## Success Criteria (Technology-Agnostic)
+{{#if successCriteria}}
+{{#each successCriteria}}
+- {{this}}
+{{/each}}
+{{else}}
 {{#if acceptance}}
-## Acceptance Criteria
 {{#each acceptance}}
 - {{this}}
 {{/each}}
+{{else}}
+- _Translate acceptance criteria into measurable outcomes before planning._
+{{/if}}
 {{/if}}
 
-## Dependencies
+## Dependencies & Interfaces
 {{#if requires}}
-**Requires**: {{#each requires}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}  
+- **Requires**: {{#each requires}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{else}}
+- _Document upstream services, packages, or governance dependencies._
 {{/if}}
 {{#if produces}}
-**Produces**: {{#each produces}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+- **Produces**: {{#each produces}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
 
-## Linked Artifacts
-{{#if userStories}}
+## Linked Execution Artifacts
+{{#if linkedUserStories}}
+- **Stories**:
+	{{#each linkedUserStories}}
+	- {{id}} — {{title}} ({{#if status}}{{status}}{{else}}unknown{{/if}})
+	{{/each}}
+{{else if userStories}}
 - **Stories**: {{#each userStories}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
-{{#if specs}}
+{{#if linkedSpecs}}
+- **Specs**:
+	{{#each linkedSpecs}}
+	- {{id}} — {{title}} ({{#if type}}{{type}}{{else}}unspecified{{/if}})
+	{{/each}}
+{{else if specs}}
 - **Specs**: {{#each specs}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
-{{#if tasks}}
+{{#if linkedTasks}}
+- **Tasks**:
+	{{#each linkedTasks}}
+	- {{id}} — {{title}} ({{#if status}}{{status}}{{else}}pending{{/if}})
+	{{/each}}
+{{else if tasks}}
 - **Tasks**: {{#each tasks}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
 
-{{#if prompts}}
-{{#if prompts.instructions}}
-## Coding Constraints
-{{#each prompts.instructions}}
-- {{this}}
+## Outstanding Clarifications (Limit 3)
+{{#if clarifications}}
+{{#each clarifications}}
+- [NEEDS CLARIFICATION] {{this}}
 {{/each}}
+{{else}}
+- _Capture the top three ambiguities impacting scope, security, or UX._
 {{/if}}
 
-{{#if prompts.contextRefs}}
-## Attached References
-{{#each prompts.contextRefs}}
+## Assumptions In Play
+{{#if assumptions}}
+{{#each assumptions}}
 - {{this}}
 {{/each}}
+{{else}}
+- _Record explicit assumptions so they can be validated or removed._
 {{/if}}
+
+## Constraints & Non-Functional Requirements
+{{#if constraints}}
+{{#each constraints}}
+- {{this}}
+{{/each}}
+{{else}}
+- _Enumerate performance, compliance, and operational constraints._
 {{/if}}
+
+## Constitution Gates
+{{#if validationRules}}
+{{#each validationRules}}
+- {{title}} — {{severity}} (applies to: {{#each appliesTo}}{{this}}{{#unless @last}}, {{/unless}}{{/each}})
+{{/each}}
+{{else}}
+- _Align this feature with the governance constitution before planning._
+{{/if}}
+
+## Next Actions
+- Review `{{id}}.checklist.md` and close outstanding items.
+- Resolve clarifications or log them for `/speckit.clarify`-style follow-up.
+- Ensure linked specs, stories, and tasks share a coherent success narrative.
 
 ---
 

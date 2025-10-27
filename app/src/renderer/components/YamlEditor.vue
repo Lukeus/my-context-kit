@@ -3,6 +3,13 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { EditorView, basicSetup } from 'codemirror';
 import { yaml } from '@codemirror/lang-yaml';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { lineNumbers, highlightActiveLineGutter } from '@codemirror/view';
+import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
+import { history, defaultKeymap, historyKeymap } from '@codemirror/commands';
+import { bracketMatching, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+import { closeBrackets, autocompletion, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete';
+import { keymap, highlightSpecialChars, drawSelection, highlightActiveLine, dropCursor, rectangularSelection, crosshairCursor } from '@codemirror/view';
+import { EditorState } from '@codemirror/state';
 import { useContextStore } from '../stores/contextStore';
 
 const contextStore = useContextStore();
@@ -122,9 +129,74 @@ function initEditor() {
   
   editorView.value = new EditorView({
     extensions: [
-      basicSetup,
+      // Enhanced editing experience similar to markdown editors
+      lineNumbers(),
+      highlightActiveLineGutter(),
+      highlightSpecialChars(),
+      history(),
+      drawSelection(),
+      dropCursor(),
+      EditorState.allowMultipleSelections.of(true),
+      indentOnInput(),
+      bracketMatching(),
+      closeBrackets(),
+      autocompletion(),
+      rectangularSelection(),
+      crosshairCursor(),
+      highlightActiveLine(),
+      highlightSelectionMatches(),
+      
+      // Language and syntax
       yaml(),
-      oneDark,
+      syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      
+      // Keymaps for enhanced functionality
+      keymap.of([
+        ...closeBracketsKeymap,
+        ...defaultKeymap,
+        ...searchKeymap,
+        ...historyKeymap,
+        ...completionKeymap,
+      ]),
+      
+      // Word wrap for better readability (like markdown)
+      EditorView.lineWrapping,
+      
+      // Custom theme adjustments for better readability
+      EditorView.theme({
+        '&': {
+          fontSize: '14px',
+          fontFamily: 'JetBrains Mono, Consolas, "Courier New", monospace'
+        },
+        '.cm-content': {
+          padding: '16px',
+          lineHeight: '1.6',
+          minHeight: '200px'
+        },
+        '.cm-focused': {
+          outline: 'none'
+        },
+        '.cm-line': {
+          padding: '0 4px'
+        },
+        '.cm-activeLine': {
+          backgroundColor: 'rgba(6, 104, 181, 0.05)'
+        },
+        '.cm-selectionMatch': {
+          backgroundColor: 'rgba(6, 104, 181, 0.15)'
+        },
+        '.cm-gutters': {
+          backgroundColor: '#f8fbff',
+          color: '#6b7280',
+          border: 'none',
+          paddingRight: '8px'
+        },
+        '.cm-activeLineGutter': {
+          backgroundColor: 'rgba(6, 104, 181, 0.1)'
+        }
+      }),
+      
+      // Track changes
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           isDirty.value = true;
@@ -228,13 +300,21 @@ onBeforeUnmount(() => {
     
     <!-- Status Bar -->
     <div class="flex items-center justify-between px-4 py-2 border-t border-surface-variant bg-surface-2 text-xs text-secondary-700">
-      <span v-if="contextStore.activeEntity">
-        Editing: <span class="font-mono text-primary-700">{{ contextStore.activeEntity.id }}</span>
-      </span>
-      <span v-else class="text-secondary-500">
-        No file loaded
-      </span>
-      <span class="text-secondary-500">YAML Mode</span>
+      <div class="flex items-center gap-4">
+        <span v-if="contextStore.activeEntity">
+          Editing: <span class="font-mono text-primary-700">{{ contextStore.activeEntity.id }}</span>
+        </span>
+        <span v-else class="text-secondary-500">
+          No file loaded
+        </span>
+        <span v-if="isDirty" class="text-tertiary-600 font-medium">
+          • Modified
+        </span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="text-secondary-500">YAML • UTF-8</span>
+        <span class="text-secondary-400">Ctrl+S to save • Ctrl+F to search</span>
+      </div>
     </div>
   </div>
 </template>

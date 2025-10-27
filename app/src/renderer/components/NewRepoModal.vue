@@ -16,20 +16,22 @@ const isCreating = ref(false);
 const isGeneratingSummary = ref(false);
 const error = ref<string | null>(null);
 const success = ref(false);
+const warning = ref<string | null>(null);
 
 const isValid = computed(() => {
   return repoName.value.trim().length > 0 && parentDirectory.value.trim().length > 0;
 });
 
 async function browseFolderLocation() {
-  const { dialog } = window.require('@electron/remote');
-  const result = await dialog.showOpenDialog({
-    properties: ['openDirectory', 'createDirectory'],
-    title: 'Select Parent Directory for New Context Repository'
-  });
-  
-  if (result.filePaths && result.filePaths.length > 0) {
-    parentDirectory.value = result.filePaths[0];
+  try {
+    const result = await window.api.dialog.selectDirectory();
+    if (result.ok && Array.isArray(result.paths) && result.paths.length > 0) {
+      parentDirectory.value = result.paths[0];
+    } else if (!result.ok) {
+      error.value = result.error || 'Unable to open directory picker';
+    }
+  } catch (err: any) {
+    error.value = err?.message || 'Unable to open directory picker';
   }
 }
 
@@ -69,6 +71,7 @@ async function createRepository() {
   isCreating.value = true;
   error.value = null;
   success.value = false;
+  warning.value = null;
   
   try {
     const result = await window.api.context.scaffoldNewRepo(
@@ -84,6 +87,7 @@ async function createRepository() {
     }
     
     success.value = true;
+    warning.value = result.warning || null;
     
     // Add to registry and activate
     if (result.path) {
@@ -94,9 +98,11 @@ async function createRepository() {
     }
     
     // Close modal after brief delay
-    setTimeout(() => {
-      emit('close');
-    }, 1500);
+    if (!warning.value) {
+      setTimeout(() => {
+        emit('close');
+      }, 1500);
+    }
   } catch (err: any) {
     error.value = err.message || 'An unexpected error occurred';
   } finally {
@@ -147,6 +153,9 @@ function close() {
           <div>
             <h3 class="text-sm font-semibold text-green-900">Repository Created Successfully!</h3>
             <p class="text-sm text-green-700 mt-1">Your new context repository has been scaffolded and activated.</p>
+            <p v-if="warning" class="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-m3-md px-3 py-2 mt-2">
+              {{ warning }}
+            </p>
           </div>
         </div>
 
@@ -312,7 +321,7 @@ function close() {
           </svg>
           <span v-if="isCreating">Creating...</span>
           <span v-else-if="success">Created!</span>
-          <span v-else">Create Repository</span>
+          <span v-else>Create Repository</span>
         </button>
       </div>
     </div>

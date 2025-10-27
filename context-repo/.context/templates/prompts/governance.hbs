@@ -3,10 +3,16 @@
 
 {{summary}}
 
+{{#if layers}}
+## System Layers
+{{#each layers}}
+- **{{name}}** (`{{id}}`): {{description}}
+	- Paths: {{#each paths}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/each}}
+{{/if}}
 
 {{#if principles}}
 ## Core Principles
-
 {{#each principles}}
 ### {{title}}{{#if nonNegotiable}} (NON-NEGOTIABLE){{/if}}
 <!-- ID: {{id}} | Position: {{@index}} -->
@@ -29,59 +35,57 @@
 
 **Applies To**: {{#each appliesTo}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 
+---
 {{/each}}
 {{/if}}
 
-{{#if governance}}
-## Governance
-
-**Owners**: {{#each governance.owners}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}  
-**Review Cadence**: {{governance.reviewCadence}}  
-
-{{governance.changeControl}}
-
-{{#if governance.adrReferences}}
-**References**:
-{{#each governance.adrReferences}}
-- {{this}}
-{{/each}}
-{{/if}}
-{{/if}}
-
-{{#if compliance}}
-## Compliance & Enforcement
-
+## Enforcement Gates
+- Run constitutional checks before `/speckit.plan` or equivalent planning workflows.
+- Fail fast if non-negotiable principles are violated; document rationale in complexity tracking.
+{{#if compliance.rules}}
 {{#each compliance.rules}}
-### {{description}}
-<!-- Rule ID: {{id}} -->
-
-**Severity**: {{severity}}  
-**Targets**: {{#each targets}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
-
-**Conditions**:
-{{#each conditions}}
-- `{{path}}` must {{operator}}{{#if value}} `{{value}}`{{/if}}{{#if message}} - _{{message}}_{{/if}}
+- **{{description}}** ({{severity}} → targets: {{#each targets}}{{this}}{{#unless @last}}, {{/unless}}{{/each}})
+	- Conditions:
+		{{#each conditions}}
+		- `{{path}}` must {{operator}}{{#if value}} `{{value}}`{{/if}}{{#if message}} — _{{message}}_{{/if}}
+		{{/each}}
 {{/each}}
-
-{{#if remediation}}
-**Remediation**: {{remediation}}
 {{/if}}
 
-{{#if references}}
-**References**: {{#each references}}`{{this}}`{{#unless @last}}, {{/unless}}{{/each}}
+## Governance
+{{#if governance}}
+- **Owners**: {{#each governance.owners}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+- **Review Cadence**: {{governance.reviewCadence}}
+- **Change Control**: {{governance.changeControl}}
+{{#if governance.adrReferences}}
+- **ADR References**:
+	{{#each governance.adrReferences}}
+	- {{this}}
+	{{/each}}
+{{/if}}
+{{else}}
+- _Document owners and review cadence to keep constitution active._
 {{/if}}
 
-{{/each}}
+## Amendment Ledger
+- Version: {{version}}
+- Ratified: {{ratifiedOn}}
+- Last Amended: {{lastAmendedOn}}
+- Maintain changelog entries alongside ADRs for transparency.
 
+## Exception Management
 {{#if compliance.exceptions}}
-### Approved Exceptions
 {{#each compliance.exceptions}}
-- **{{id}}**: {{justification}} (Expires: {{expiresOn}})
+- **{{id}}** — {{justification}} (Expires: {{expiresOn}})
 {{/each}}
+{{else}}
+- No active exceptions recorded.
 {{/if}}
-{{/if}}
+
+## Next Actions
+- Embed constitutional gates in feature/spec/task prompts and checklists.
+- Audit repository artifacts for compliance drift on each release.
 
 ---
 
-**Version**: {{version}} | **Ratified**: {{ratifiedOn}} | **Last Amended**: {{lastAmendedOn}}  
 **Generated**: {{timestamp}} | **Source**: {{_file}}

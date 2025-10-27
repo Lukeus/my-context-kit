@@ -15,3 +15,9 @@ doneCriteria:
   - "All components render correctly"
   - "Components communicate via Pinia"
   - "UI is responsive"
+acceptanceCriteria:
+  - "Each component passes unit and integration tests"
+  - "GraphView displays nodes and edges per US-002 requirements"
+  - "Component states sync accurately via Pinia"
+  - "UI meets accessibility and responsiveness standards"
+  - "UI errors and loading states are handled and displayed as per US-002"

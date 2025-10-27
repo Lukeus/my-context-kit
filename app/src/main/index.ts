@@ -1,13 +1,13 @@
-import { app, BrowserWindow, ipcMain, clipboard, safeStorage } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, safeStorage, dialog } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFile, writeFile, readdir, rename, mkdir, access, cp } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import started from 'electron-squirrel-startup';
 import { execa } from 'execa';
 import { simpleGit } from 'simple-git';
-import { parse as parseYAML } from 'yaml';
+import { parse as parseYAML, stringify as stringifyYAML } from 'yaml';
 import chokidar, { type FSWatcher } from 'chokidar';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,6 +19,125 @@ if (started) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+
+const parsePipelineError = (error: unknown, fallbackMessage: string) => {
+  const execError = error as { stdout?: string; message?: string };
+  if (execError.stdout) {
+    try {
+      return JSON.parse(execError.stdout);
+    } catch {
+      // ignore parse errors and fall through to fallback handling
+    }
+  }
+  const message = typeof execError.message === 'string' ? execError.message : fallbackMessage;
+  return { ok: false, error: message };
+};
+
+const toErrorMessage = (error: unknown, fallback = 'Unknown error'): string => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === 'string' && error.length > 0) {
+    return error;
+  }
+  return fallback;
+};
+
+const resolveContextTemplatePath = async (): Promise<{ path: string | null; candidates: string[] }> => {
+  if (!app.isReady()) {
+    await app.whenReady();
+  }
+
+  const appPath = app.getAppPath();
+  const cwd = process.cwd();
+  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+  const explicitPath = process.env.CONTEXT_REPO_TEMPLATE_DIR ? path.resolve(process.env.CONTEXT_REPO_TEMPLATE_DIR) : null;
+
+  const devRoots = [
+    appPath,
+    path.resolve(appPath, '..'),
+    path.resolve(appPath, '..', '..'),
+    path.resolve(appPath, '..', '..', '..'),
+    cwd,
+    path.resolve(cwd, '..'),
+    path.resolve(cwd, '..', '..'),
+  ];
+
+  const prodRoots = [
+    path.join(process.resourcesPath, 'context-repo-template'),
+    path.join(appPath, 'context-repo-template'),
+  ];
+
+  const candidateSet = new Set<string>();
+  if (explicitPath) {
+    candidateSet.add(explicitPath);
+  }
+
+  if (isDev) {
+    for (const root of devRoots) {
+      candidateSet.add(path.join(root, 'context-repo'));
+      candidateSet.add(path.join(root, 'context-repo-template'));
+    }
+  } else {
+    for (const root of prodRoots) {
+      candidateSet.add(root);
+    }
+  }
+
+  const candidatePaths = Array.from(candidateSet);
+
+  for (const candidate of candidatePaths) {
+    try {
+      await access(path.join(candidate, '.context'));
+      return { path: candidate, candidates: candidatePaths };
+    } catch {
+      // continue searching other candidates
+    }
+  }
+
+  return { path: null, candidates: candidatePaths };
+};
+
+const copyIfExists = async (
+  source: string,
+  destination: string,
+  options?: Parameters<typeof cp>[2]
+): Promise<'copied' | 'missing' | 'failed'> => {
+  try {
+    await access(source);
+  } catch (error: any) {
+    if (error?.code === 'ENOENT') {
+      return 'missing';
+    }
+    throw error;
+  }
+
+  try {
+    await cp(source, destination, options);
+    return 'copied';
+  } catch (error) {
+    console.warn(`Failed to copy template resource from ${source} to ${destination}`, error);
+    return 'failed';
+  }
+};
+
+interface AIConfig {
+  provider: string;
+  endpoint: string;
+  model: string;
+  enabled: boolean;
+  [key: string]: unknown;
+}
+
+type WritableAIConfig = AIConfig & { apiKey?: string };
+
+interface TestConnectionPayload {
+  dir?: string;
+  provider: string;
+  endpoint: string;
+  model: string;
+  useStoredKey: boolean;
+}
 
 const createWindow = (): void => {
   mainWindow = new BrowserWindow({
@@ -73,12 +192,12 @@ const aiStreamProcs = new Map<string, ReturnType<typeof execa>>();
 const repoWatchers = new Map<string, FSWatcher>();
 ipcMain.handle('context:validate', async (_event, { dir }: { dir: string }) => {
   try {
-    const result = await execa('node', [path.join(dir, '.context', 'pipelines', 'validate.mjs')], { 
+    const result = await execa('node', [path.join(dir, '.context', 'pipelines', 'validate.mjs')], {
       cwd: dir
     });
     return JSON.parse(result.stdout);
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return parsePipelineError(error, 'Validation pipeline failed to execute.');
   }
 });
 
@@ -96,8 +215,17 @@ ipcMain.handle('context:buildGraph', async (_event, { dir }: { dir: string }) =>
       cwd: dir
     });
     return JSON.parse(result.stdout);
-  } catch (error: any) {
-    const message = typeof error?.message === 'string' ? error.message : 'Failed to run build graph pipeline.';
+  } catch (error: unknown) {
+    const execError = error as { stdout?: string; message?: string };
+    if (execError.stdout) {
+      try {
+        return JSON.parse(execError.stdout);
+      } catch {
+        // ignore parse failure and continue with fallback messaging
+      }
+    }
+
+    const message = typeof execError.message === 'string' ? execError.message : 'Failed to run build graph pipeline.';
     if (message.includes('Cannot find module')) {
       return {
         error: 'build-graph.mjs failed to execute. Ensure all pipeline dependencies are installed inside the selected repository.'
@@ -114,8 +242,8 @@ ipcMain.handle('context:impact', async (_event, { dir, changedIds }: { dir: stri
       cwd: dir
     });
     return JSON.parse(result.stdout);
-  } catch (error: any) {
-    return { error: error.message };
+  } catch (error: unknown) {
+    return parsePipelineError(error, 'Impact analysis pipeline failed to execute.');
   }
 });
 
@@ -125,15 +253,35 @@ ipcMain.handle('context:generate', async (_event, { dir, ids }: { dir: string; i
       cwd: dir
     });
     return JSON.parse(result.stdout);
-  } catch (error: any) {
-    if (error?.stdout) {
+  } catch (error: unknown) {
+    // Narrow unknown error to an object with optional stdout
+    const execError = error as { stdout?: string };
+    if (typeof execError.stdout === 'string') {
       try {
-        return JSON.parse(error.stdout);
+        return JSON.parse(execError.stdout);
       } catch {
         // Fall through to default error return if stdout isn't valid JSON
       }
     }
-    return { ok: false, error: error.message };
+    // TODO: introduce a shared error typing utility for pipeline executions.
+    return parsePipelineError(error, 'Content generation pipeline failed to execute.');
+  }
+});
+
+ipcMain.handle('dialog:selectDirectory', async () => {
+  try {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Select Directory'
+    });
+
+    if (result.canceled || !result.filePaths?.length) {
+      return { ok: true, paths: [] };
+    }
+
+    return { ok: true, paths: result.filePaths };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error, 'Failed to open directory picker.') };
   }
 });
 
@@ -142,8 +290,9 @@ ipcMain.handle('clipboard:writeText', async (_event, { text }: { text: string })
   try {
     clipboard.writeText(text);
     return { ok: true };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to save AI configuration';
+    return { ok: false, error: message };
   }
 });
 
@@ -152,8 +301,9 @@ ipcMain.handle('fs:readFile', async (_event, { filePath }: { filePath: string })
   try {
     const content = await readFile(filePath, 'utf-8');
     return { ok: true, content };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to cancel AI assistance stream';
+    return { ok: false, error: message };
   }
 });
 
@@ -161,8 +311,8 @@ ipcMain.handle('fs:writeFile', async (_event, { filePath, content }: { filePath:
   try {
     await writeFile(filePath, content, 'utf-8');
     return { ok: true };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
@@ -178,7 +328,7 @@ ipcMain.handle('fs:findEntityFile', async (_event, { dir, entityType, entityId }
       service: 'services',
       package: 'packages'
     };
-    
+
     const typeDir = typeDirMap[entityType] || entityType + 's';
     const entityDir = path.join(dir, 'contexts', typeDir);
     const files = await readdir(entityDir);
@@ -191,7 +341,6 @@ ipcMain.handle('fs:findEntityFile', async (_event, { dir, entityType, entityId }
 
     if (!matchingFile) {
       // Fallback: parse YAML files to match entities whose filenames omit the ID (e.g. constitution)
-      const { parse: parseYAML } = await import('yaml');
       for (const fileName of files) {
         if (!fileName.endsWith('.yaml') && !fileName.endsWith('.yml')) {
           continue;
@@ -209,14 +358,14 @@ ipcMain.handle('fs:findEntityFile', async (_event, { dir, entityType, entityId }
         }
       }
     }
-    
+
     if (matchingFile) {
       return { ok: true, filePath: path.join(entityDir, matchingFile) };
     } else {
       return { ok: false, error: `File not found for entity ${entityId}` };
     }
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
@@ -245,8 +394,8 @@ ipcMain.handle('repo:watch', async (event, { dir }: { dir: string }) => {
 
     repoWatchers.set(abs, watcher);
     return { ok: true };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
@@ -259,19 +408,18 @@ ipcMain.handle('repo:unwatch', async (_event, { dir }: { dir: string }) => {
       repoWatchers.delete(abs);
     }
     return { ok: true };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
 // Git handlers
 ipcMain.handle('git:status', async (_event, { dir }: { dir: string }) => {
   try {
-    // Git should run from parent directory (project root) not context-repo
-    const projectRoot = path.dirname(dir);
-    const git = simpleGit(projectRoot);
+    const repoRoot = path.resolve(dir);
+    const git = simpleGit(repoRoot);
     const status = await git.status();
-    
+
     // Serialize status object for IPC (remove non-serializable properties)
     const serializedStatus = {
       modified: status.modified || [],
@@ -286,30 +434,29 @@ ipcMain.handle('git:status', async (_event, { dir }: { dir: string }) => {
       behind: status.behind || 0,
       not_added: status.not_added || []
     };
-    
+
     return { ok: true, status: serializedStatus };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
 ipcMain.handle('git:diff', async (_event, { dir, filePath }: { dir: string; filePath?: string }) => {
   try {
-    // Git should run from parent directory (project root)
-    const projectRoot = path.dirname(dir);
-    const git = simpleGit(projectRoot);
-    
+    const repoRoot = path.resolve(dir);
+    const git = simpleGit(repoRoot);
+
     if (filePath) {
       // Check file status
       const status = await git.status();
-      const isNewFile = status.created.includes(filePath) || 
-                        status.not_added.includes(filePath);
+      const isNewFile = status.created.includes(filePath) ||
+        status.not_added.includes(filePath);
       const isStaged = status.staged.includes(filePath);
-      
+
       if (isNewFile && !isStaged) {
         // For new untracked files, show the entire file content as "added"
         try {
-          const content = await readFile(path.join(projectRoot, filePath), 'utf-8');
+          const content = await readFile(path.join(repoRoot, filePath), 'utf-8');
           const lines = content.split('\n');
           const diff = lines.map(line => `+${line}`).join('\n');
           return { ok: true, diff: `New file: ${filePath}\n\n${diff}` };
@@ -317,13 +464,13 @@ ipcMain.handle('git:diff', async (_event, { dir, filePath }: { dir: string; file
           return { ok: true, diff: 'New file (unable to read content)' };
         }
       }
-      
+
       // For staged files, use --cached flag
       if (isStaged) {
         const diff = await git.diff(['--cached', filePath]);
         return { ok: true, diff: diff || 'No changes in staged file' };
       }
-      
+
       // For modified tracked files, use normal diff
       const diff = await git.diff([filePath]);
       return { ok: true, diff: diff || 'No changes' };
@@ -332,125 +479,118 @@ ipcMain.handle('git:diff', async (_event, { dir, filePath }: { dir: string; file
       const diff = await git.diff();
       return { ok: true, diff };
     }
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
 ipcMain.handle('git:commit', async (_event, { dir, message, files }: { dir: string; message: string; files?: string[] }) => {
   try {
-    // Git should run from parent directory (project root)
-    const projectRoot = path.dirname(dir);
-    const git = simpleGit(projectRoot);
-    
+    const repoRoot = path.resolve(dir);
+    const git = simpleGit(repoRoot);
+
     // Add files (or all if not specified)
     if (files && files.length > 0) {
       await git.add(files);
     } else {
       await git.add('.');
     }
-    
+
     // Commit
     const result = await git.commit(message);
     return { ok: true, commit: result.commit };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
 ipcMain.handle('git:branch', async (_event, { dir }: { dir: string }) => {
   try {
-    // Git should run from parent directory (project root)
-    const projectRoot = path.dirname(dir);
-    const git = simpleGit(projectRoot);
+    const repoRoot = path.resolve(dir);
+    const git = simpleGit(repoRoot);
     const branch = await git.branchLocal();
     return { ok: true, current: branch.current, branches: branch.all };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
 ipcMain.handle('git:createBranch', async (_event, { dir, branchName, checkout }: { dir: string; branchName: string; checkout?: boolean }) => {
   try {
-    // Git should run from parent directory (project root)
-    const projectRoot = path.dirname(dir);
-    const git = simpleGit(projectRoot);
-    
+    const repoRoot = path.resolve(dir);
+    const git = simpleGit(repoRoot);
+
     if (checkout) {
       await git.checkoutLocalBranch(branchName);
     } else {
       await git.branch([branchName]);
     }
-    
+
     return { ok: true, branch: branchName };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
 ipcMain.handle('git:checkout', async (_event, { dir, branchName }: { dir: string; branchName: string }) => {
   try {
-    // Git should run from parent directory (project root)
-    const projectRoot = path.dirname(dir);
-    const git = simpleGit(projectRoot);
+    const repoRoot = path.resolve(dir);
+    const git = simpleGit(repoRoot);
     await git.checkout(branchName);
     return { ok: true, branch: branchName };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
 ipcMain.handle('git:revertFile', async (_event, { dir, filePath }: { dir: string; filePath: string }) => {
   try {
-    // Git should run from parent directory (project root)
-    const projectRoot = path.dirname(dir);
-    const git = simpleGit(projectRoot);
-    
+    const repoRoot = path.resolve(dir);
+    const git = simpleGit(repoRoot);
+
     // Check if file is staged
     const status = await git.status();
     if (status.staged.includes(filePath)) {
       // Unstage the file first
       await git.reset(['HEAD', filePath]);
     }
-    
+
     // Revert the file to HEAD version
     await git.checkout(['HEAD', '--', filePath]);
     return { ok: true };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
 ipcMain.handle('git:push', async (_event, { dir, remote, branch }: { dir: string; remote?: string; branch?: string }) => {
   try {
-    // Git should run from parent directory (project root)
-    const projectRoot = path.dirname(dir);
-    const git = simpleGit(projectRoot);
+    const repoRoot = path.resolve(dir);
+    const git = simpleGit(repoRoot);
     await git.push(remote || 'origin', branch);
     return { ok: true };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
 ipcMain.handle('git:createPR', async (_event, { dir, title, body, base }: { dir: string; title: string; body: string; base?: string }) => {
   try {
-    // Git should run from parent directory (project root)
-    const projectRoot = path.dirname(dir);
-    
+    const repoRoot = path.resolve(dir);
+
     // Use GitHub CLI to create PR
     const args = ['pr', 'create', '--title', title, '--body', body];
     if (base) {
       args.push('--base', base);
     }
-    
+
     const result = await execa('gh', args, {
-      cwd: projectRoot
+      cwd: repoRoot
     });
-    
+
     return { ok: true, url: result.stdout };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
@@ -485,8 +625,8 @@ ipcMain.handle('app:getDefaultRepoPath', async () => {
     }
 
     return { ok: true, path: '' };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
@@ -494,8 +634,8 @@ ipcMain.handle('repos:list', async () => {
   try {
     const registry = await loadRepoRegistry();
     return { ok: true, registry };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
@@ -515,8 +655,8 @@ ipcMain.handle('repos:add', async (_event, { label, path: repoPath, setActive, a
     });
 
     return { ok: true, registry };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
@@ -550,8 +690,8 @@ ipcMain.handle('repos:update', async (_event, { id, label, path: repoPath, autoD
 
     await saveRepoRegistry(registry);
     return { ok: true, registry };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
@@ -559,8 +699,8 @@ ipcMain.handle('repos:remove', async (_event, { id }: { id: string }) => {
   try {
     const registry = await removeRepoEntry(id);
     return { ok: true, registry };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: toErrorMessage(error) };
   }
 });
 
@@ -595,27 +735,27 @@ ipcMain.handle('context:nextId', async (_event, { dir, entityType }: { dir: stri
       service: 'services',
       package: 'packages'
     };
-    
+
     const typeDir = typeDirMap[entityType];
     if (!typeDir) {
       return { ok: false, error: `Unknown entity type: ${entityType}` };
     }
-    
+
     const entityDir = path.join(dir, 'contexts', typeDir);
-    
+
     try {
       const files = await readdir(entityDir);
-      
+
       // Extract numeric IDs from existing files
       const idPattern = entityType === 'feature' ? /FEAT-(\d+)/ :
-                       entityType === 'userstory' ? /US-(\d+)/ :
-                       entityType === 'spec' ? /SPEC-(\d+)/ :
-                       entityType === 'task' ? /T-(\d+)/ :
-                       entityType === 'service' ? /svc-(.+)/ :
-                       /pkg-(.+)/;
-      
+        entityType === 'userstory' ? /US-(\d+)/ :
+          entityType === 'spec' ? /SPEC-(\d+)/ :
+            entityType === 'task' ? /T-(\d+)/ :
+              entityType === 'service' ? /svc-(.+)/ :
+                /pkg-(.+)/;
+
       const numericIds: number[] = [];
-      
+
       for (const file of files) {
         const match = file.match(idPattern);
         if (match && match[1]) {
@@ -625,11 +765,11 @@ ipcMain.handle('context:nextId', async (_event, { dir, entityType }: { dir: stri
           }
         }
       }
-      
+
       // Find next available ID
       const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
       const nextId = maxId + 1;
-      
+
       // Format based on entity type
       let formattedId: string;
       switch (entityType) {
@@ -654,16 +794,16 @@ ipcMain.handle('context:nextId', async (_event, { dir, entityType }: { dir: stri
         default:
           formattedId = `${entityType}-${nextId}`;
       }
-      
+
       return { ok: true, id: formattedId };
     } catch (readError: any) {
       // Directory might not exist yet - return first ID
       const firstId = entityType === 'feature' ? 'FEAT-001' :
-                      entityType === 'userstory' ? 'US-001' :
-                      entityType === 'spec' ? 'SPEC-001' :
-                      entityType === 'task' ? 'T-0001' :
-                      entityType === 'service' ? 'svc-new-1' :
-                      'pkg-new-1';
+        entityType === 'userstory' ? 'US-001' :
+          entityType === 'spec' ? 'SPEC-001' :
+            entityType === 'task' ? 'T-0001' :
+              entityType === 'service' ? 'svc-new-1' :
+                'pkg-new-1';
       return { ok: true, id: firstId };
     }
   } catch (error: any) {
@@ -692,32 +832,29 @@ ipcMain.handle('context:createEntity', async (_event, { dir, entity, entityType 
       service: 'services',
       package: 'packages'
     };
-    
+
     const typeDir = typeDirMap[entityType];
     if (!typeDir) {
       return { ok: false, error: `Unknown entity type: ${entityType}` };
     }
-    
+
     if (!entity.id) {
       return { ok: false, error: 'Entity ID is required' };
     }
-    
-    // Import yaml module dynamically
-    const { stringify: stringifyYAML } = await import('yaml');
-    
+
     const entityDir = path.join(dir, 'contexts', typeDir);
-    
+
     // Create filename from ID and title
     const sanitizedTitle = entity.title ? entity.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 40) : 'untitled';
     const filename = `${entity.id}-${sanitizedTitle}.yaml`;
     const filePath = path.join(entityDir, filename);
-    
+
     // Convert entity to YAML
     const yamlContent = stringifyYAML(entity);
-    
+
     // Write file
     await writeFile(filePath, yamlContent, 'utf-8');
-    
+
     return { ok: true, filePath };
   } catch (error: any) {
     return { ok: false, error: error.message };
@@ -733,7 +870,7 @@ ipcMain.handle('context:getSuggestions', async (_event, { dir, command, params }
       }
       return param;
     });
-    
+
     const args = [path.join(dir, '.context', 'pipelines', 'context-builder.mjs'), command, ...encodedParams];
     const result = await execa('node', args, {
       cwd: dir
@@ -746,19 +883,18 @@ ipcMain.handle('context:getSuggestions', async (_event, { dir, command, params }
 
 ipcMain.handle('context:getTemplates', async (_event, { dir, entityType }: { dir: string; entityType?: string }) => {
   try {
-    const { parse: parseYAML } = await import('yaml');
     const templatesDir = path.join(dir, '.context', 'templates', 'builder');
-    
+
     try {
       const files = await readdir(templatesDir);
       const templates = [];
-      
+
       for (const file of files) {
         if (file.endsWith('.yaml') || file.endsWith('.yml')) {
           try {
             const content = await readFile(path.join(templatesDir, file), 'utf-8');
             const data = parseYAML(content);
-            
+
             // Extract template metadata
             if (data._template) {
               const template = {
@@ -766,7 +902,7 @@ ipcMain.handle('context:getTemplates', async (_event, { dir, entityType }: { dir
                 ...data._template,
                 content: data
               };
-              
+
               // Filter by entity type if specified
               if (!entityType || template.entityType === entityType) {
                 templates.push(template);
@@ -777,7 +913,7 @@ ipcMain.handle('context:getTemplates', async (_event, { dir, entityType }: { dir
           }
         }
       }
-      
+
       return { ok: true, templates };
     } catch (readError: any) {
       return { ok: false, error: `Templates directory not found: ${readError.message}`, templates: [] };
@@ -790,7 +926,7 @@ ipcMain.handle('context:getTemplates', async (_event, { dir, entityType }: { dir
 ipcMain.handle('context:scaffoldNewRepo', async (_event, { dir, repoName, projectPurpose, constitutionSummary }: { dir: string; repoName: string; projectPurpose?: string; constitutionSummary?: string }) => {
   try {
     const targetDir = path.join(dir, repoName);
-    
+
     // Check if directory already exists
     try {
       await access(targetDir);
@@ -798,35 +934,24 @@ ipcMain.handle('context:scaffoldNewRepo', async (_event, { dir, repoName, projec
     } catch {
       // Directory doesn't exist, which is what we want
     }
-    
-    // Get the reference template path from the app resources
-    // In development, use context-repo from parent directory
-    // In production, this would be bundled with the app
-    const isDev = process.env.NODE_ENV === 'development';
-    const templateSourcePath = isDev 
-      ? path.join(__dirname, '..', '..', '..', '..', 'context-repo')
-      : path.join(process.resourcesPath, 'context-repo-template');
-    
-    // Check if template exists
-    try {
-      await access(templateSourcePath);
-    } catch {
+
+    // Resolve template source directory (handles dev/prod differences)
+    const { path: templateSourcePath, candidates: templateCandidates } = await resolveContextTemplatePath();
+
+    if (!templateSourcePath) {
+      console.warn(`Context repo template not found. Checked paths: ${templateCandidates.join(', ')}`);
       return { ok: false, error: 'Context repo template not found' };
     }
-    
+
     // Create target directory
     await mkdir(targetDir, { recursive: true });
-    
+
     // Create required folder structure
     const requiredDirs = [
       '.context',
-      '.context/pipelines',
       '.context/rules',
       '.context/schemas',
       '.context/templates',
-      '.context/templates/builder',
-      '.context/templates/docs',
-      '.context/templates/prompts',
       'contexts',
       'contexts/features',
       'contexts/governance',
@@ -840,61 +965,143 @@ ipcMain.handle('context:scaffoldNewRepo', async (_event, { dir, repoName, projec
       'generated/prompts',
       'generated/docs/impact',
     ];
-    
+
     for (const dir of requiredDirs) {
       await mkdir(path.join(targetDir, dir), { recursive: true });
     }
-    
-    // Copy pipeline files from template
-    const pipelineFiles = [
-      'build-graph.mjs',
-      'validate.mjs',
-      'impact.mjs',
-      'generate.mjs',
-      'context-builder.mjs',
-      'ai-assistant.mjs'
-    ];
-    
-    for (const file of pipelineFiles) {
-      try {
-        const sourcePath = path.join(templateSourcePath, '.context', 'pipelines', file);
-        const destPath = path.join(targetDir, '.context', 'pipelines', file);
-        await cp(sourcePath, destPath);
-      } catch (err) {
-        console.warn(`Failed to copy pipeline file ${file}:`, err);
-      }
+
+    // Copy entire pipelines directory
+    const pipelinesSource = path.join(templateSourcePath, '.context', 'pipelines');
+    const pipelinesDest = path.join(targetDir, '.context', 'pipelines');
+    const pipelinesCopyResult = await copyIfExists(pipelinesSource, pipelinesDest, { recursive: true });
+    if (pipelinesCopyResult !== 'copied') {
+      return { ok: false, error: 'Template pipelines directory could not be copied.' };
     }
-    
-    // Copy template files (handlebars)
-    const templateDirs = ['builder', 'docs', 'prompts'];
+
+    // Copy template directories dynamically
+    const templatesRoot = path.join(templateSourcePath, '.context', 'templates');
+    let templateDirs: string[] = [];
+    try {
+      const entries = await readdir(templatesRoot, { withFileTypes: true });
+      templateDirs = entries.filter(entry => entry.isDirectory()).map(entry => entry.name);
+    } catch (error) {
+      console.warn('Failed to enumerate template directories:', error);
+    }
+
+    if (templateDirs.length === 0) {
+      templateDirs = ['builder', 'prompts', 'sdd'];
+    }
+
     for (const templateDir of templateDirs) {
-      try {
-        const sourcePath = path.join(templateSourcePath, '.context', 'templates', templateDir);
-        const destPath = path.join(targetDir, '.context', 'templates', templateDir);
-        await cp(sourcePath, destPath, { recursive: true });
-      } catch (err) {
-        console.warn(`Failed to copy template directory ${templateDir}:`, err);
+      const sourcePath = path.join(templatesRoot, templateDir);
+      const destPath = path.join(targetDir, '.context', 'templates', templateDir);
+      const result = await copyIfExists(sourcePath, destPath, { recursive: true });
+      if (result === 'missing') {
+        console.warn(`Template directory ${templateDir} is missing in ${templateSourcePath}`);
+        await mkdir(destPath, { recursive: true });
+      } else if (result === 'failed') {
+        console.warn(`Failed to copy template directory ${templateDir} from ${sourcePath}`);
       }
     }
-    
+
+    // Ensure SDD templates exist for Speckit workflows
+    const sddTemplateDir = path.join(targetDir, '.context', 'templates', 'sdd');
+    await mkdir(sddTemplateDir, { recursive: true });
+
+    const ensureTemplateFile = async (filename: string, content: string) => {
+      const templatePath = path.join(sddTemplateDir, filename);
+      try {
+        await access(templatePath);
+      } catch {
+        await writeFile(templatePath, content, 'utf-8');
+      }
+    };
+
+    await ensureTemplateFile('feature-spec-template.md', `# Feature Specification: {{description}}
+
+**Spec Number**: {{number}}  
+**Branch**: \`{{branchName}}\`  
+**Date**: {{date}}
+
+## Overview
+
+Describe the intent and context for this feature.
+
+## User Stories
+
+- As a persona, I want capability, so that benefit.
+
+## Acceptance Criteria
+
+- Criterion describing observable outcome.
+
+## Constraints & Assumptions
+
+- Outline any constraints, assumptions, or integrations.
+`);
+
+    await ensureTemplateFile('implementation-plan-template.md', `# Implementation Plan: {{specNumber}}
+
+**Spec Title**: {{specTitle}}
+**Tech Stack**: {{techStack}}
+**Date**: {{date}}
+
+## Milestones
+
+- [ ] Define architecture decisions
+- [ ] Implement core flows
+- [ ] Validate against constitutional gates
+
+## Dependencies
+
+- List upstream/downstream dependencies
+
+## Risks & Mitigations
+
+- Risk: ...
+- Mitigation: ...
+`);
+
+    await ensureTemplateFile('task-list-template.md', `# Task List for Spec {{specNumber}}
+
+Generated on {{date}}
+
+## Tasks
+
+{{taskList}}
+
+## Parallelization Notes
+
+- Group related tasks to run concurrently when feasible.
+`);
+
     // Copy schema files
-    try {
-      const sourcePath = path.join(templateSourcePath, '.context', 'schemas');
-      const destPath = path.join(targetDir, '.context', 'schemas');
-      await cp(sourcePath, destPath, { recursive: true });
-    } catch (err) {
-      console.warn('Failed to copy schema files:', err);
+    const schemaCopyResult = await copyIfExists(
+      path.join(templateSourcePath, '.context', 'schemas'),
+      path.join(targetDir, '.context', 'schemas'),
+      { recursive: true }
+    );
+    if (schemaCopyResult === 'missing') {
+      console.warn('Schema templates were not found in the source template. Generated repo will contain empty schemas directory.');
     }
-    
+
     // Copy package.json for dependencies
-    try {
-      const sourcePath = path.join(templateSourcePath, 'package.json');
-      const destPath = path.join(targetDir, 'package.json');
-      await cp(sourcePath, destPath);
-    } catch (err) {
-      console.warn('Failed to copy package.json:', err);
+    const packageResult = await copyIfExists(
+      path.join(templateSourcePath, 'package.json'),
+      path.join(targetDir, 'package.json')
+    );
+    if (packageResult === 'missing') {
+      console.warn('Template package.json was not found; generated repo will be missing dependency metadata.');
     }
-    
+
+    const optionalTemplateFiles = ['pnpm-lock.yaml', 'pnpm-workspace.yaml', '.npmrc'];
+    for (const filename of optionalTemplateFiles) {
+      await copyIfExists(
+        path.join(templateSourcePath, filename),
+        path.join(targetDir, filename)
+      );
+    }
+
     // Create a default README.md
     const readmeContent = `# ${repoName}
 
@@ -918,7 +1125,7 @@ This is a Context-Kit repository for managing project context, specifications, a
 Create a constitution in \`contexts/governance/constitution.yaml\` to define principles and compliance rules.
 `;
     await writeFile(path.join(targetDir, 'README.md'), readmeContent, 'utf-8');
-    
+
     // Create .gitignore
     const gitignoreContent = `node_modules/
 generated/
@@ -926,12 +1133,9 @@ generated/
 *.log
 `;
     await writeFile(path.join(targetDir, '.gitignore'), gitignoreContent, 'utf-8');
-    
+
     // Create constitution file if summary provided
     if (constitutionSummary && constitutionSummary.trim()) {
-      const { stringify: stringifyYAML } = await import('yaml');
-      const crypto = await import('crypto');
-      
       const constitution: any = {
         id: `CONST-${repoName.toUpperCase().replace(/[^A-Z0-9]/g, '-')}`,
         name: `${repoName} Constitution`,
@@ -974,23 +1178,32 @@ generated/
           exceptions: []
         }
       };
-      
+
       const constitutionYaml = stringifyYAML(constitution);
       const constitutionPath = path.join(targetDir, 'contexts', 'governance', 'constitution.yaml');
-      
+
       // Write file first
       await writeFile(constitutionPath, constitutionYaml, 'utf-8');
-      
+
       // Generate checksum for the written file and add it
       const fileBuffer = await readFile(constitutionPath);
-      const checksum = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+      const checksum = createHash('sha256').update(fileBuffer).digest('hex');
       constitution.checksum = checksum;
-      
+
       // Rewrite with checksum included
       const constitutionYamlWithChecksum = stringifyYAML(constitution);
       await writeFile(constitutionPath, constitutionYamlWithChecksum, 'utf-8');
     }
-    
+
+    // Install dependencies so pipelines can execute immediately
+    let installWarning: string | undefined;
+    try {
+      await execa('pnpm', ['install'], { cwd: targetDir });
+    } catch (installError: any) {
+      console.warn('Failed to install dependencies for new repo automatically.', installError);
+      installWarning = 'Dependencies were not installed automatically. Run "pnpm install" inside the new repository before using pipelines.';
+    }
+
     // Initialize git repository
     try {
       const git = simpleGit(targetDir);
@@ -1000,8 +1213,8 @@ generated/
     } catch (err) {
       console.warn('Failed to initialize git repository:', err);
     }
-    
-    return { ok: true, path: targetDir };
+
+    return { ok: true, path: targetDir, warning: installWarning };
   } catch (error: any) {
     return { ok: false, error: error.message };
   }
@@ -1227,39 +1440,47 @@ const ensureRepoRegistryActivePath = async (): Promise<string | null> => {
 };
 
 // App Settings handlers
+const getSettingsFilePath = () => path.join(app.getPath('userData'), APP_SETTINGS_FILE);
+
+const loadAppSettings = async (): Promise<Record<string, unknown>> => {
+  try {
+    const content = await readFile(getSettingsFilePath(), 'utf-8');
+    const parsed = JSON.parse(content);
+    if (isPlainObject(parsed)) {
+      return parsed;
+    }
+    console.warn('App settings file was not a plain object; resetting.');
+    return {};
+  } catch (error: any) {
+    if (error?.code === 'ENOENT') {
+      return {};
+    }
+    console.warn('Failed to load app settings; returning empty object.', error);
+    return {};
+  }
+};
+
+const saveAppSettings = async (settings: Record<string, unknown>): Promise<void> => {
+  await writeFile(getSettingsFilePath(), JSON.stringify(settings, null, 2), 'utf-8');
+};
+
 ipcMain.handle('settings:get', async (_event, { key }: { key: string }) => {
   try {
-    const settingsPath = path.join(app.getPath('userData'), APP_SETTINGS_FILE);
-    const content = await readFile(settingsPath, 'utf-8');
-    const settings = JSON.parse(content);
+    const settings = await loadAppSettings();
     return { ok: true, value: settings[key] };
-  } catch (error: any) {
-    // Return default if file doesn't exist or key not found
-    return { ok: true, value: null };
+  } catch (error) {
+    return { ok: false, error: toErrorMessage(error, 'Failed to load setting') };
   }
 });
 
-ipcMain.handle('settings:set', async (_event, { key, value }: { key: string; value: any }) => {
+ipcMain.handle('settings:set', async (_event, { key, value }: { key: string; value: unknown }) => {
   try {
-    const settingsPath = path.join(app.getPath('userData'), APP_SETTINGS_FILE);
-    let settings: Record<string, any> = {};
-    
-    // Load existing settings if file exists
-    try {
-      const content = await readFile(settingsPath, 'utf-8');
-      settings = JSON.parse(content);
-    } catch {
-      // File doesn't exist yet, use empty object
-    }
-    
-    // Update setting
+    const settings = await loadAppSettings();
     settings[key] = value;
-    
-    // Save back to file
-    await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+    await saveAppSettings(settings);
     return { ok: true };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error) {
+    return { ok: false, error: toErrorMessage(error, 'Failed to save setting') };
   }
 });
 
@@ -1282,14 +1503,15 @@ ipcMain.handle('ai:getConfig', async (_event, { dir }: { dir: string }) => {
   }
 });
 
-ipcMain.handle('ai:saveConfig', async (_event, { dir, config }: { dir: string; config: any }) => {
+ipcMain.handle('ai:saveConfig', async (_event, { dir, config }: { dir: string; config: WritableAIConfig }) => {
   try {
     const configPath = path.join(dir, '.context', AI_CONFIG_FILE);
     // Never save API keys in config file
-    const safeConfig = { ...config };
-    delete safeConfig.apiKey;
-    
-    await writeFile(configPath, JSON.stringify(safeConfig, null, 2), 'utf-8');
+    const { apiKey: removedApiKey, ...persistableConfig } = config;
+    if (removedApiKey) {
+      // TODO: route API keys through secure credential storage when settings UI supports it.
+    }
+    await writeFile(configPath, JSON.stringify(persistableConfig, null, 2), 'utf-8');
     return { ok: true };
   } catch (error: any) {
     return { ok: false, error: error.message };
@@ -1304,14 +1526,15 @@ ipcMain.handle('ai:saveCredentials', async (_event, { provider, apiKey }: { prov
 
     // Encrypt the API key
     const encrypted = safeStorage.encryptString(apiKey);
-    
+
     // Store encrypted credentials in app data directory
     const credPath = path.join(app.getPath('userData'), `${provider}-${CREDENTIALS_FILE}`);
     await writeFile(credPath, encrypted);
-    
+
     return { ok: true };
-  } catch (error: any) {
-    console.error('Failed to save credentials (error logged without sensitive data)');
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Failed to save credentials (error logged without sensitive data)', detail);
     return { ok: false, error: 'Failed to save credentials securely' };
   }
 });
@@ -1324,20 +1547,20 @@ ipcMain.handle('ai:getCredentials', async (_event, { provider }: { provider: str
 
     const credPath = path.join(app.getPath('userData'), `${provider}-${CREDENTIALS_FILE}`);
     const encrypted = await readFile(credPath);
-    const decrypted = safeStorage.decryptString(encrypted);
-    
+    safeStorage.decryptString(encrypted);
+
     // Return indicator that credentials exist, but not the actual key
     return { ok: true, hasCredentials: true };
-  } catch (error: any) {
+  } catch {
     return { ok: true, hasCredentials: false };
   }
 });
 
-ipcMain.handle('ai:testConnection', async (_event, { dir, provider, endpoint, model, useStoredKey }: 
-  { dir: string; provider: string; endpoint: string; model: string; useStoredKey: boolean }) => {
+ipcMain.handle('ai:testConnection', async (_event, payload: TestConnectionPayload) => {
   try {
+    const { provider, endpoint, model, useStoredKey } = payload;
     let apiKey = '';
-    
+
     if (useStoredKey) {
       const credPath = path.join(app.getPath('userData'), `${provider}-${CREDENTIALS_FILE}`);
       const encrypted = await readFile(credPath);
@@ -1349,7 +1572,7 @@ ipcMain.handle('ai:testConnection', async (_event, { dir, provider, endpoint, mo
       // Ollama doesn't require API key
       const response = await fetch(`${endpoint}/api/tags`);
       if (response.ok) {
-        return { ok: true, message: 'Connected to Ollama successfully' };
+        return { ok: true, message: `Connected to Ollama model ${model} successfully` };
       } else {
         return { ok: false, error: 'Failed to connect to Ollama' };
       }
@@ -1359,12 +1582,13 @@ ipcMain.handle('ai:testConnection', async (_event, { dir, provider, endpoint, mo
         return { ok: false, error: 'No API key found' };
       }
       // Azure test would go here
-      return { ok: true, message: 'Azure OpenAI configuration saved' };
+      return { ok: true, message: `Azure OpenAI model ${model} configuration saved` };
     }
-    
+
     return { ok: false, error: 'Unknown provider' };
-  } catch (error: any) {
-    console.error('Connection test failed (error logged without sensitive data)');
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Connection test failed (error logged without sensitive data)', detail);
     return { ok: false, error: 'Connection test failed' };
   }
 });
@@ -1373,10 +1597,10 @@ ipcMain.handle('ai:generate', async (_event, { dir, entityType, userPrompt }:
   { dir: string; entityType: string; userPrompt: string }) => {
   try {
     const configPath = path.join(dir, '.context', AI_CONFIG_FILE);
-    let config;
+    let config: AIConfig;
     try {
       const content = await readFile(configPath, 'utf-8');
-      config = JSON.parse(content);
+      config = JSON.parse(content) as AIConfig;
     } catch {
       return { ok: false, error: 'AI not configured. Please configure AI settings first.' };
     }
@@ -1418,12 +1642,14 @@ ipcMain.handle('ai:generate', async (_event, { dir, entityType, userPrompt }:
     });
 
     return JSON.parse(result.stdout);
-  } catch (error: any) {
-    console.error('AI generation failed:', error.stderr || error.stdout || error.message);
-    const errorMsg = error.stdout || error.stderr || 'AI generation failed. Check configuration.';
-    if (error?.stdout) {
+  } catch (error: unknown) {
+    const execError = error as { stdout?: string; stderr?: string; message?: string };
+    const diagnostic = execError.stderr ?? execError.stdout ?? execError.message ?? 'Unknown error';
+    console.error('AI generation failed:', diagnostic);
+    const errorMsg = execError.stdout || execError.stderr || execError.message || 'AI generation failed. Check configuration.';
+    if (execError.stdout) {
       try {
-        return JSON.parse(error.stdout);
+        return JSON.parse(execError.stdout);
       } catch {
         // ignore JSON parsing errors and fall through
       }
@@ -1440,10 +1666,10 @@ ipcMain.handle('ai:assist', async (_event, { dir, question, mode, focusId }:
     }
 
     const configPath = path.join(dir, '.context', AI_CONFIG_FILE);
-    let config;
+    let config: AIConfig;
     try {
       const content = await readFile(configPath, 'utf-8');
-      config = JSON.parse(content);
+      config = JSON.parse(content) as AIConfig;
     } catch {
       return { ok: false, error: 'AI not configured. Please configure AI settings first.' };
     }
@@ -1487,12 +1713,14 @@ ipcMain.handle('ai:assist', async (_event, { dir, question, mode, focusId }:
     });
 
     return JSON.parse(result.stdout);
-  } catch (error: any) {
-    console.error('AI assistant failed:', error.stderr || error.stdout || error.message);
-    const errorMsg = error.stdout || error.stderr || 'AI assistant request failed. Check configuration.';
-    if (error?.stdout) {
+  } catch (error: unknown) {
+    const execError = error as { stdout?: string; stderr?: string; message?: string };
+    const diagnostic = execError.stderr ?? execError.stdout ?? execError.message ?? 'Unknown error';
+    console.error('AI assistant failed:', diagnostic);
+    const errorMsg = execError.stdout || execError.stderr || execError.message || 'AI assistant request failed. Check configuration.';
+    if (execError.stdout) {
       try {
-        return JSON.parse(error.stdout);
+        return JSON.parse(execError.stdout);
       } catch {
         // fall through if not JSON
       }
@@ -1509,10 +1737,10 @@ ipcMain.handle('ai:assistStreamStart', async (event, { dir, question, mode, focu
     }
 
     const configPath = path.join(dir, '.context', AI_CONFIG_FILE);
-    let config;
+    let config: AIConfig;
     try {
       const content = await readFile(configPath, 'utf-8');
-      config = JSON.parse(content);
+      config = JSON.parse(content) as AIConfig;
     } catch {
       return { ok: false, error: 'AI not configured. Please configure AI settings first.' };
     }
@@ -1560,16 +1788,44 @@ ipcMain.handle('ai:assistStreamStart', async (event, { dir, question, mode, focu
     aiStreamProcs.set(streamId, child);
 
     // Stream stdout lines as JSON events
+    child.stdout?.setEncoding('utf8');
+
+    let stdoutBuffer = '';
+
+    const emitLine = (line: string) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        return;
+      }
+
+      try {
+        const payload = JSON.parse(trimmed);
+        event.sender.send('ai:assistStream:event', { streamId, ...payload });
+      } catch {
+        // ignore parser errors caused by provider logs or partial lines
+      }
+    };
+
+    const drainBuffer = () => {
+      let newlineIndex = stdoutBuffer.indexOf('\n');
+      while (newlineIndex !== -1) {
+        const line = stdoutBuffer.slice(0, newlineIndex).replace(/\r$/, '');
+        stdoutBuffer = stdoutBuffer.slice(newlineIndex + 1);
+        emitLine(line);
+        newlineIndex = stdoutBuffer.indexOf('\n');
+      }
+    };
+
     child.stdout?.on('data', (data: Buffer | string) => {
-      const text = data.toString();
-      const lines = text.split(/\r?\n/).filter(Boolean);
-      for (const line of lines) {
-        try {
-          const payload = JSON.parse(line);
-          event.sender.send('ai:assistStream:event', { streamId, ...payload });
-        } catch {
-          // ignore non-JSON line
-        }
+      stdoutBuffer += data.toString();
+      drainBuffer();
+    });
+
+    child.stdout?.on('end', () => {
+      const residual = stdoutBuffer.trim();
+      stdoutBuffer = '';
+      if (residual) {
+        emitLine(residual);
       }
     });
 
@@ -1580,14 +1836,16 @@ ipcMain.handle('ai:assistStreamStart', async (event, { dir, question, mode, focu
 
     child.on('close', cleanup);
     child.on('exit', cleanup);
-    child.on('error', (err: any) => {
-      event.sender.send('ai:assistStream:event', { streamId, type: 'error', ok: false, error: err?.message || 'Stream error' });
+    child.on('error', (err: unknown) => {
+      const message = err instanceof Error ? err.message : typeof err === 'string' ? err : 'Stream error';
+      event.sender.send('ai:assistStream:event', { streamId, type: 'error', ok: false, error: message });
       cleanup();
     });
 
     return { ok: true, streamId };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to start AI assistance stream';
+    return { ok: false, error: message };
   }
 });
 
@@ -1625,28 +1883,31 @@ ipcMain.handle('ai:applyEdit', async (_event, { dir, filePath, updatedContent, s
 
     try {
       parseYAML(updatedContent);
-    } catch (error: any) {
-      const errorMsg = error.message || 'Unknown YAML parsing error';
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown YAML parsing error';
       const lineMatch = errorMsg.match(/at line (\d+)/);
       const columnMatch = errorMsg.match(/column (\d+)/);
       let detailedError = `Updated content is not valid YAML: ${errorMsg}`;
-      
+
       if (lineMatch || columnMatch) {
         const line = lineMatch ? lineMatch[1] : '?';
         const column = columnMatch ? columnMatch[1] : '?';
         detailedError += ` (Line ${line}, Column ${column})`;
       }
-      
+
       detailedError += '\n\nThe AI generated invalid YAML. Please try asking again or edit the YAML manually.';
       return { ok: false, error: detailedError };
     }
 
     await writeFile(targetPath, updatedContent, 'utf-8');
 
-    // TODO: capture summary in an activity log once telemetry module is available.
+    if (summary && summary.trim()) {
+      // TODO: capture summary in an activity log once telemetry module is available.
+    }
     return { ok: true };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to apply AI edit';
+    return { ok: false, error: message };
   }
 });
 
@@ -1655,18 +1916,18 @@ ipcMain.handle('ai:applyEdit', async (_event, { dir, filePath, updatedContent, s
 ipcMain.handle('speckit:specify', async (_event, { repoPath, description }: { repoPath: string; description: string }) => {
   try {
     const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'speckit.mjs');
-    
+
     if (!existsSync(pipelinePath)) {
       return {
         ok: false,
         error: 'speckit.mjs pipeline not found. Please ensure the SDD workflow pipeline is installed.'
       };
     }
-    
+
     const result = await execa('node', [pipelinePath, 'specify', description], {
       cwd: repoPath
     });
-    
+
     return JSON.parse(result.stdout);
   } catch (error: any) {
     return { ok: false, error: error.message, stack: error.stack };
@@ -1676,18 +1937,18 @@ ipcMain.handle('speckit:specify', async (_event, { repoPath, description }: { re
 ipcMain.handle('speckit:plan', async (_event, { repoPath, specPath, techStack }: { repoPath: string; specPath: string; techStack?: string[] }) => {
   try {
     const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'speckit.mjs');
-    
+
     if (!existsSync(pipelinePath)) {
       return {
         ok: false,
         error: 'speckit.mjs pipeline not found. Please ensure the SDD workflow pipeline is installed.'
       };
     }
-    
+
     const result = await execa('node', [pipelinePath, 'plan', specPath], {
       cwd: repoPath
     });
-    
+
     return JSON.parse(result.stdout);
   } catch (error: any) {
     return { ok: false, error: error.message, stack: error.stack };
@@ -1697,18 +1958,18 @@ ipcMain.handle('speckit:plan', async (_event, { repoPath, specPath, techStack }:
 ipcMain.handle('speckit:tasks', async (_event, { repoPath, planPath }: { repoPath: string; planPath: string }) => {
   try {
     const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'speckit.mjs');
-    
+
     if (!existsSync(pipelinePath)) {
       return {
         ok: false,
         error: 'speckit.mjs pipeline not found. Please ensure the SDD workflow pipeline is installed.'
       };
     }
-    
+
     const result = await execa('node', [pipelinePath, 'tasks', planPath], {
       cwd: repoPath
     });
-    
+
     return JSON.parse(result.stdout);
   } catch (error: any) {
     return { ok: false, error: error.message, stack: error.stack };
@@ -1719,18 +1980,18 @@ ipcMain.handle('speckit:toEntity', async (_event, { repoPath, specPath, options 
   { repoPath: string; specPath: string; options?: { createFeature?: boolean; createStories?: boolean } }) => {
   try {
     const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'spec-entity.mjs');
-    
+
     if (!existsSync(pipelinePath)) {
       return {
         ok: false,
         error: 'spec-entity.mjs pipeline not found. Please ensure the spec-to-entity pipeline is installed.'
       };
     }
-    
+
     const result = await execa('node', [pipelinePath, 'spec', specPath], {
       cwd: repoPath
     });
-    
+
     return JSON.parse(result.stdout);
   } catch (error: any) {
     return { ok: false, error: error.message, stack: error.stack };
@@ -1741,18 +2002,18 @@ ipcMain.handle('speckit:tasksToEntity', async (_event, { repoPath, tasksPath }:
   { repoPath: string; tasksPath: string }) => {
   try {
     const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'spec-entity.mjs');
-    
+
     if (!existsSync(pipelinePath)) {
       return {
         ok: false,
         error: 'spec-entity.mjs pipeline not found. Please ensure the spec-to-entity pipeline is installed.'
       };
     }
-    
+
     const result = await execa('node', [pipelinePath, 'tasks', tasksPath], {
       cwd: repoPath
     });
-    
+
     return JSON.parse(result.stdout);
   } catch (error: any) {
     return { ok: false, error: error.message, stack: error.stack };
@@ -1763,18 +2024,18 @@ ipcMain.handle('speckit:aiGenerateSpec', async (_event, { repoPath, description 
   { repoPath: string; description: string }) => {
   try {
     const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'ai-spec-generator.mjs');
-    
+
     if (!existsSync(pipelinePath)) {
       return {
         ok: false,
         error: 'ai-spec-generator.mjs pipeline not found. Please ensure the AI spec generator pipeline is installed.'
       };
     }
-    
+
     const result = await execa('node', [pipelinePath, 'generate', description], {
       cwd: repoPath
     });
-    
+
     return JSON.parse(result.stdout);
   } catch (error: any) {
     return { ok: false, error: error.message, stack: error.stack };
@@ -1785,19 +2046,19 @@ ipcMain.handle('speckit:aiRefineSpec', async (_event, { repoPath, specPath, feed
   { repoPath: string; specPath: string; feedback: string }) => {
   try {
     const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'ai-spec-generator.mjs');
-    
+
     if (!existsSync(pipelinePath)) {
       return {
         ok: false,
         error: 'ai-spec-generator.mjs pipeline not found.'
       };
     }
-    
+
     const fullSpecPath = path.join(repoPath, specPath);
     const result = await execa('node', [pipelinePath, 'refine', fullSpecPath, feedback], {
       cwd: repoPath
     });
-    
+
     return JSON.parse(result.stdout);
   } catch (error: any) {
     return { ok: false, error: error.message, stack: error.stack };
