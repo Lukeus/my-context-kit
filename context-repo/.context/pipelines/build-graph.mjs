@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseYAML } from 'yaml';
+import { loadYamlFile, getAllYamlFiles } from './lib/file-utils.mjs';
+import { withErrorHandling, exitWithError, ErrorCodes } from './lib/error-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,32 +20,14 @@ const entityDirs = {
   package: 'packages'
 };
 
-// Helper function to get all YAML files in a directory
-function getAllYamlFiles(dir) {
-  const files = [];
-  try {
-    const items = readdirSync(dir);
-    for (const item of items) {
-      const fullPath = join(dir, item);
-      const stat = statSync(fullPath);
-      if (stat.isDirectory()) {
-        files.push(...getAllYamlFiles(fullPath));
-      } else if (item.endsWith('.yaml') || item.endsWith('.yml')) {
-        files.push(fullPath);
-      }
-    }
-  } catch (error) {
-    // Directory doesn't exist or can't be read - skip it
-  }
-  return files;
-}
+/**
+ * Build dependency graph from all entities
+ */
+async function buildGraph() {
+  const nodes = [];
+  const edges = [];
+  const entities = {};
 
-// Build the graph
-const nodes = [];
-const edges = [];
-const entities = {};
-
-try {
   // Load all entities
   for (const [entityType, dirName] of Object.entries(entityDirs)) {
     const entityDir = join(REPO_ROOT, 'contexts', dirName);
@@ -53,8 +35,7 @@ try {
     
     for (const file of files) {
       try {
-        const content = readFileSync(file, 'utf8');
-        const data = parseYAML(content);
+        const data = loadYamlFile(file);
         
         if (data && data.id) {
           // Create node
@@ -192,12 +173,10 @@ try {
   };
   
   console.log(JSON.stringify(graph, null, 2));
-  process.exit(0);
-  
-} catch (error) {
-  console.error(JSON.stringify({ 
-    error: `Failed to build graph: ${error.message}`,
-    stack: error.stack
-  }));
-  process.exit(1);
+  return graph;
 }
+
+// Run with error handling
+withErrorHandling(buildGraph)()
+  .then(() => process.exit(0))
+  .catch(() => process.exit(1));
