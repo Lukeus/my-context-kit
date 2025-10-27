@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { callProvider } from './ai-common.mjs';
+import { withErrorHandling, assert, ErrorCodes } from './lib/error-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -111,15 +111,11 @@ if (process.argv[2] === 'generate') {
   const entityType = process.argv[7];
   const userPrompt = process.argv[8];
 
-  generateEntity(provider, endpoint, model, apiKey, entityType, userPrompt)
-    .then(result => {
-      console.log(JSON.stringify(result));
-      process.exit(result.ok ? 0 : 1);
-    })
-    .catch(error => {
-      console.log(JSON.stringify({ ok: false, error: error.message }));
-      process.exit(1);
-    });
+  withErrorHandling(async () => {
+    const result = await generateEntity(provider, endpoint, model, apiKey, entityType, userPrompt);
+    console.log(JSON.stringify(result));
+    process.exit(result.ok ? 0 : 1);
+  })();
 }
 
 export { generateEntity, SYSTEM_PROMPTS };

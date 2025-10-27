@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseYAML } from 'yaml';
 import { callProvider, callProviderStream } from './ai-common.mjs';
+import { loadYamlFile, getAllYamlFiles, getRelativePath } from './lib/file-utils.mjs';
+import { withErrorHandling, assert, ErrorCodes } from './lib/error-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -22,24 +22,6 @@ const ENTITY_DIRS = {
 
 const DEFAULT_MODE = 'general';
 
-function getAllYamlFiles(dir) {
-  const files = [];
-  try {
-    const items = readdirSync(dir);
-    for (const item of items) {
-      const fullPath = join(dir, item);
-      const stat = statSync(fullPath);
-      if (stat.isDirectory()) {
-        files.push(...getAllYamlFiles(fullPath));
-      } else if (item.endsWith('.yaml') || item.endsWith('.yml')) {
-        files.push(fullPath);
-      }
-    }
-  } catch (error) {
-    // Directory missing is acceptable
-  }
-  return files;
-}
 
 function loadEntities() {
   const byType = {
@@ -60,15 +42,12 @@ function loadEntities() {
 
     for (const file of files) {
       try {
-        const raw = readFileSync(file, 'utf8');
-        const data = parseYAML(raw);
+        const data = loadYamlFile(file);
         if (!data || !data.id) {
           continue;
         }
 
-        const relativePath = file.startsWith(REPO_ROOT)
-          ? file.slice(REPO_ROOT.length + 1)
-          : file;
+        const relativePath = getRelativePath(file, REPO_ROOT);
 
         const entity = {
           ...data,

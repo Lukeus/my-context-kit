@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseYAML } from 'yaml';
 import Handlebars from 'handlebars';
+import { loadYamlFile, getAllYamlFiles } from './lib/file-utils.mjs';
+import { withErrorHandling, PipelineError, ErrorCodes, assert } from './lib/error-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,12 +26,11 @@ Handlebars.registerHelper('hasItems', value => {
 // Get entity IDs from command line arguments
 const entityIds = process.argv.slice(2);
 
-if (entityIds.length === 0) {
-  console.error(JSON.stringify({ 
-    error: 'No entity IDs provided. Usage: node generate.mjs <entity-id1> [entity-id2] ...' 
-  }));
-  process.exit(1);
-}
+assert(
+  entityIds.length > 0,
+  'No entity IDs provided. Usage: node generate.mjs <entity-id1> [entity-id2] ...',
+  ErrorCodes.VALIDATION_ERROR
+);
 
 // Entity type to directory mapping
 const entityDirs = {
@@ -45,25 +45,6 @@ const entityDirs = {
 
 const supportedPromptTypes = new Set(['feature', 'userstory', 'spec', 'governance', 'task']);
 
-// Helper function to get all YAML files
-function getAllYamlFiles(dir) {
-  const files = [];
-  try {
-    const items = readdirSync(dir);
-    for (const item of items) {
-      const fullPath = join(dir, item);
-      const stat = statSync(fullPath);
-      if (stat.isDirectory()) {
-        files.push(...getAllYamlFiles(fullPath));
-      } else if (item.endsWith('.yaml') || item.endsWith('.yml')) {
-        files.push(fullPath);
-      }
-    }
-  } catch (error) {
-    // Directory doesn't exist - skip it
-  }
-  return files;
-}
 
 // Load all entities
 const entities = {};
@@ -75,8 +56,7 @@ try {
     
     for (const file of files) {
       try {
-        const content = readFileSync(file, 'utf8');
-        const data = parseYAML(content);
+        const data = loadYamlFile(file);
         
         if (data && data.id) {
           entities[data.id] = { ...data, _type: entityType, _file: file };
