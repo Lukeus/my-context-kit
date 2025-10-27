@@ -1,9 +1,6 @@
 id: FEAT-001
-
-title: "Context-Sync MVP"
-
+title: "Context-Sync MVPs"
 status: "in-progress"
-
 domain: "developer-tools"
 
 objective: "Build a desktop application that manages a GitHub-versioned context repository for spec-driven software development with automated consistency checking."

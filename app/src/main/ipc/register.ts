@@ -8,6 +8,7 @@ import { registerClipboardHandlers } from './handlers/clipboard.handlers';
 import { registerDialogHandlers } from './handlers/dialog.handlers';
 import { registerAIHandlers } from './handlers/ai.handlers';
 import { registerSpeckitHandlers } from './handlers/speckit.handlers';
+import { registerC4Handlers } from './handlers/c4.handlers';
 
 /**
  * Registers all IPC handlers for the application
@@ -45,4 +46,7 @@ export function registerAllHandlers(): void {
   
   // Speckit (SDD workflow) operations
   registerSpeckitHandlers();
+  
+  // C4 diagram operations
+  registerC4Handlers();
 }

@@ -299,7 +299,7 @@ export class ContextService {
         default:
           return `${entityType}-${nextId}`;
       }
-    } catch (readError: unknown) {
+    } catch {
       // Directory might not exist yet - return first ID
       switch (entityType) {
         case 'feature':

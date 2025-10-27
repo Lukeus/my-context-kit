@@ -73,7 +73,8 @@ const entityTypeLabels: Record<string, string> = {
   spec: 'Specifications',
   task: 'Tasks',
   service: 'Services',
-  package: 'Packages'
+  package: 'Packages',
+  c4diagram: 'C4 Architecture'
 };
 
 const typesWithCreation = new Set(['feature', 'userstory', 'spec', 'task', 'service', 'package']);
@@ -105,6 +106,9 @@ function getStatusColor(status: string | undefined, type: string): string {
   if (!status) {
     if (type === 'governance') {
       return 'bg-indigo-500';
+    }
+    if (type === 'c4diagram') {
+      return 'bg-purple-500';
     }
     return 'bg-gray-400';
   }
@@ -318,11 +322,17 @@ watch(() => searchQuery.value, (newQuery) => {
 
               <!-- Entity info -->
               <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium truncate text-secondary-900">
-                  {{ entity.id }}
+                <div class="flex items-center gap-2">
+                  <div class="text-sm font-medium truncate text-secondary-900">
+                    {{ entity._type === 'c4diagram' ? entity.title : entity.id }}
+                  </div>
+                  <span v-if="entity._type === 'c4diagram' && entity.level" class="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-m3-full flex-shrink-0">
+                    {{ entity.level }}
+                  </span>
                 </div>
                 <div class="text-xs text-secondary-600 line-clamp-2 leading-snug">
-                  {{ entity.title || entity.name || entity.iWant || 'Untitled' }}
+                  <span v-if="entity._type === 'c4diagram' && entity.system">{{ entity.system }}</span>
+                  <span v-else>{{ entity.title || entity.name || entity.iWant || 'Untitled' }}</span>
                 </div>
               </div>
             </button>

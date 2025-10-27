@@ -23,6 +23,7 @@ import { useBuilderStore } from './stores/builderStore';
 import { useAIStore } from './stores/aiStore';
 import { useGitStore } from './stores/gitStore';
 import { useSnackbar } from './composables/useSnackbar';
+import C4DiagramRenderer from './components/C4DiagramRenderer.vue';
 
 const contextStore = useContextStore();
 const builderStore = useBuilderStore();
@@ -62,8 +63,8 @@ const lastValidationAt = ref<string | null>(null);
 const lastValidationStatus = ref<'success' | 'error' | null>(null);
 const lastGraphRefresh = ref<string | null>(null);
 
-type NavId = 'hub' | 'entities' | 'graph' | 'git' | 'validate' | 'docs' | 'ai' | 'entity';
-type NavRailId = Exclude<NavId, 'entity'>;
+type NavId = 'hub' | 'entities' | 'graph' | 'git' | 'validate' | 'docs' | 'ai' | 'c4' | 'entity';
+type NavRailId = Exclude<NavId, 'entity' | 'c4'>;
 
 const activeNavId = ref<NavId>('hub');
 
@@ -277,7 +278,12 @@ watch(showRepoManager, async (isOpen) => {
 
 watch(activeEntity, (entity) => {
   if (entity) {
-    activeNavId.value = 'entities';
+    if (entity._type === 'c4diagram') {
+      activeNavId.value = 'c4';
+      centerTab.value = 'preview'; // Auto-select preview tab for diagrams
+    } else {
+      activeNavId.value = 'entities';
+    }
   } else {
     activeNavId.value = showDocsCenter.value ? 'docs' : 'hub';
   }
@@ -440,6 +446,7 @@ function openWorkspace() {
   contextStore.setActiveEntity(null);
   activeNavId.value = 'hub';
 }
+
 
 function openNewRepoModal() {
   showNewRepoModal.value = true;
@@ -807,6 +814,7 @@ async function handleRemoveRepo(id: string) {
         <div v-if="activeEntity" class="h-full flex flex-col">
           <div class="flex items-center gap-2 border-b border-surface-variant bg-surface-1 px-4">
             <button 
+              v-if="activeEntity._type !== 'c4diagram'"
               @click="setCenterTab('yaml')" 
               :class="centerTab==='yaml' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
               class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
@@ -821,15 +829,16 @@ async function handleRemoveRepo(id: string) {
               @click="setCenterTab('preview')" 
               :class="centerTab==='preview' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
               class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
-              title="View formatted entity details"
+              :title="activeEntity._type === 'c4diagram' ? 'View diagram' : 'View formatted entity details'"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
-              Preview
+              {{ activeEntity._type === 'c4diagram' ? 'Diagram' : 'Preview' }}
             </button>
             <button 
+              v-if="activeEntity._type !== 'c4diagram'"
               @click="setCenterTab('diff')" 
               :class="centerTab==='diff' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
               class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
@@ -841,6 +850,7 @@ async function handleRemoveRepo(id: string) {
               Diff
             </button>
             <button 
+              v-if="activeEntity._type !== 'c4diagram'"
               @click="setCenterTab('graph')" 
               :class="centerTab==='graph' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
               class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
@@ -852,6 +862,7 @@ async function handleRemoveRepo(id: string) {
               Graph
             </button>
             <button 
+              v-if="activeEntity._type !== 'c4diagram'"
               @click="setCenterTab('impact')" 
               :class="centerTab==='impact' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
               class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
@@ -863,6 +874,7 @@ async function handleRemoveRepo(id: string) {
               Impact
             </button>
             <button 
+              v-if="activeEntity._type !== 'c4diagram'"
               @click="setCenterTab('prompt')" 
               :class="centerTab==='prompt' ? 'border-primary text-primary-700' : 'border-transparent text-secondary-600'" 
               class="flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-all"
@@ -875,7 +887,8 @@ async function handleRemoveRepo(id: string) {
             </button>
           </div>
           <div class="flex-1 min-h-0">
-            <YamlEditor v-if="centerTab==='yaml'" />
+            <YamlEditor v-if="centerTab==='yaml' && activeEntity._type !== 'c4diagram'" />
+            <C4DiagramRenderer v-else-if="centerTab==='preview' && activeEntity._type === 'c4diagram'" />
             <EntityPreview v-else-if="centerTab==='preview'" />
             <EntityDiff v-else-if="centerTab==='diff'" />
             <EntityDependencyGraph v-else-if="centerTab==='graph'" />

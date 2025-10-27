@@ -8,17 +8,77 @@ on:
     paths:
       - 'context-repo/.context/**'
       - 'context-repo/contexts/**'
+      - 'context-repo/c4/**'
   push:
     branches:
       - main
     paths:
       - 'context-repo/.context/**'
       - 'context-repo/contexts/**'
+      - 'context-repo/c4/**'
 
 jobs:
+  c4:
+    name: Validate C4 Diagrams
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: context-repo/package.json
+      
+      - name: Install dependencies
+        run: |
+          cd context-repo
+          npm install
+      
+      - name: Validate C4 diagrams
+        id: c4-validate
+        run: |
+          cd context-repo
+          node .context/pipelines/c4-build.mjs > c4-result.json
+          echo "c4_output=$(cat c4-result.json)" >> $GITHUB_OUTPUT
+        continue-on-error: true
+      
+      - name: Check C4 validation result
+        run: |
+          cd context-repo
+          if [ ! -f c4-result.json ]; then
+            echo "❌ C4 validation failed to produce output"
+            exit 1
+          fi
+          
+          if ! jq -e '.ok == true' c4-result.json > /dev/null; then
+            echo "❌ C4 diagram validation failed"
+            echo "Errors:"
+            jq -r '.errors[]' c4-result.json || echo "No detailed errors available"
+            exit 1
+          fi
+          
+          echo "✅ C4 diagrams validated successfully"
+          echo "Stats:"
+          jq '.stats' c4-result.json
+      
+      - name: Upload C4 artifacts
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: c4-diagrams
+          path: |
+            context-repo/c4/out/**/*.json
+            context-repo/c4-result.json
+          retention-days: 30
+
   validate:
     name: Validate YAML Schemas
     runs-on: ubuntu-latest
+    needs: c4
     
     steps:
       - name: Checkout repository
