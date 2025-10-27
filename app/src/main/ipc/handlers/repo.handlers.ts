@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { toErrorMessage } from '../../utils/errorHandler';
 import { RepoService } from '../../services/repo.service';
+import { successWith, error } from '../types';
 
 const repoService = new RepoService();
 
@@ -14,28 +15,28 @@ export function registerRepoHandlers(): void {
   ipcMain.handle('app:getDefaultRepoPath', async () => {
     try {
       const path = await repoService.getDefaultRepoPath();
-      return { ok: true, path };
-    } catch (error: unknown) {
-      return { ok: false, error: toErrorMessage(error) };
+      return successWith({ path });
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
     }
   });
 
   ipcMain.handle('repos:list', async () => {
     try {
       const registry = await repoService.loadRepoRegistry();
-      return { ok: true, registry };
-    } catch (error: unknown) {
-      return { ok: false, error: toErrorMessage(error) };
+      return successWith({ registry });
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
     }
   });
 
   ipcMain.handle('repos:add', async (_event, { label, path: repoPath, setActive, autoDetected }: { label: string; path: string; setActive?: boolean; autoDetected?: boolean }) => {
     try {
       if (!repoPath || !label) {
-        return { ok: false, error: 'Repository label and path are required' };
+        return error('Repository label and path are required', 'VALIDATION_ERROR');
       }
       if (!existsSync(repoPath)) {
-        return { ok: false, error: 'Repository path does not exist' };
+        return error('Repository path does not exist', 'PATH_NOT_FOUND');
       }
 
       const registry = await repoService.upsertRepoEntry(repoPath, {
@@ -44,9 +45,9 @@ export function registerRepoHandlers(): void {
         autoDetected
       });
 
-      return { ok: true, registry };
-    } catch (error: unknown) {
-      return { ok: false, error: toErrorMessage(error) };
+      return successWith({ registry });
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
     }
   });
 
@@ -57,27 +58,27 @@ export function registerRepoHandlers(): void {
         path: repoPath,
         autoDetected
       });
-      return { ok: true, registry };
-    } catch (error: unknown) {
-      return { ok: false, error: toErrorMessage(error) };
+      return successWith({ registry });
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
     }
   });
 
   ipcMain.handle('repos:remove', async (_event, { id }: { id: string }) => {
     try {
       const registry = await repoService.removeRepoEntry(id);
-      return { ok: true, registry };
-    } catch (error: unknown) {
-      return { ok: false, error: toErrorMessage(error) };
+      return successWith({ registry });
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
     }
   });
 
   ipcMain.handle('repos:setActive', async (_event, { id }: { id: string }) => {
     try {
       const registry = await repoService.setActiveRepo(id);
-      return { ok: true, registry };
-    } catch (error: unknown) {
-      return { ok: false, error: toErrorMessage(error) };
+      return successWith({ registry });
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
     }
   });
 
@@ -88,9 +89,9 @@ export function registerRepoHandlers(): void {
       await repoService.watchRepo(abs, (evt, changedPath) => {
         event.sender.send('repo:fileChanged', { dir: abs, event: evt, file: changedPath });
       });
-      return { ok: true };
-    } catch (error: unknown) {
-      return { ok: false, error: toErrorMessage(error) };
+      return successWith({});
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
     }
   });
 
@@ -98,9 +99,9 @@ export function registerRepoHandlers(): void {
     try {
       const abs = path.resolve(dir);
       await repoService.unwatchRepo(abs);
-      return { ok: true };
-    } catch (error: unknown) {
-      return { ok: false, error: toErrorMessage(error) };
+      return successWith({});
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
     }
   });
 }

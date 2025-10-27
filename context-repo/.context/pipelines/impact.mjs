@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseYAML } from 'yaml';
 import { execSync } from 'node:child_process';
+import { loadYamlFile, getAllYamlFiles } from './lib/file-utils.mjs';
+import { withErrorHandling, PipelineError, ErrorCodes, assert } from './lib/error-utils.mjs';
 
 // Helper function to get git diff for a file
 function getFileDiff(filePath) {
@@ -90,12 +91,11 @@ const REPO_ROOT = join(__dirname, '../..');
 // Get changed entity IDs from command line arguments
 const changedIds = process.argv.slice(2);
 
-if (changedIds.length === 0) {
-  console.error(JSON.stringify({ 
-    error: 'No entity IDs provided. Usage: node impact.mjs <entity-id1> [entity-id2] ...' 
-  }));
-  process.exit(1);
-}
+assert(
+  changedIds.length > 0,
+  'No entity IDs provided. Usage: node impact.mjs <entity-id1> [entity-id2] ...',
+  ErrorCodes.VALIDATION_ERROR
+);
 
 // Entity type to directory mapping
 const entityDirs = {
@@ -108,33 +108,13 @@ const entityDirs = {
   package: 'packages'
 };
 
-// Helper function to get all YAML files
-function getAllYamlFiles(dir) {
-  const files = [];
-  try {
-    const items = readdirSync(dir);
-    for (const item of items) {
-      const fullPath = join(dir, item);
-      const stat = statSync(fullPath);
-      if (stat.isDirectory()) {
-        files.push(...getAllYamlFiles(fullPath));
-      } else if (item.endsWith('.yaml') || item.endsWith('.yml')) {
-        files.push(fullPath);
-      }
-    }
-  } catch (error) {
-    // Directory doesn't exist - skip it
-  }
-  return files;
-}
 
 // Load consistency rules
 let consistencyRules = [];
 try {
   const rulesPath = join(REPO_ROOT, '.context', 'rules', 'consistency.rules.yaml');
   if (existsSync(rulesPath)) {
-    const rulesContent = readFileSync(rulesPath, 'utf8');
-    const rulesData = parseYAML(rulesContent);
+    const rulesData = loadYamlFile(rulesPath);
     consistencyRules = rulesData.rules || [];
   }
 } catch (error) {
@@ -154,8 +134,7 @@ try {
     
     for (const file of files) {
       try {
-        const content = readFileSync(file, 'utf8');
-        const data = parseYAML(content);
+        const data = loadYamlFile(file);
         
         if (data && data.id) {
           entities[data.id] = { ...data, _type: entityType, _file: file };

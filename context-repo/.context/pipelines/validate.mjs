@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { parse as parseYAML } from 'yaml';
+import { loadYamlFile, getAllYamlFiles } from './lib/file-utils.mjs';
+import { withErrorHandling, PipelineError, ErrorCodes } from './lib/error-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,20 +19,29 @@ addFormats(ajv);
 const schemaDir = join(REPO_ROOT, '.context/schemas');
 const schemas = {};
 
-try {
-  const schemaFiles = readdirSync(schemaDir).filter(f => f.endsWith('.schema.json'));
-  
-  for (const file of schemaFiles) {
-    const schemaPath = join(schemaDir, file);
-    const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
-    const entityType = file.replace('.schema.json', '');
-    schemas[entityType] = schema;
-    ajv.addSchema(schema, entityType);
+function loadSchemas() {
+  try {
+    const schemaFiles = getAllYamlFiles(schemaDir, {
+      extensions: ['.json'],
+      filter: (path) => path.endsWith('.schema.json')
+    });
+    
+    for (const schemaPath of schemaFiles) {
+      const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
+      const entityType = schemaPath.split(/[\\/]/).pop().replace('.schema.json', '');
+      schemas[entityType] = schema;
+      ajv.addSchema(schema, entityType);
+    }
+  } catch (error) {
+    throw new PipelineError(
+      `Failed to load schemas: ${error.message}`,
+      ErrorCodes.FILE_READ_ERROR,
+      { schemaDir }
+    );
   }
-} catch (error) {
-  console.error(JSON.stringify({ ok: false, error: `Failed to load schemas: ${error.message}` }));
-  process.exit(1);
 }
+
+loadSchemas();
 
 // Entity type to directory mapping
 const entityDirs = {
@@ -50,24 +60,6 @@ const constitutionErrors = [];
 const complianceErrors = [];
 let constitution = null;
 
-function getAllYamlFiles(dir) {
-  const files = [];
-  try {
-    const items = readdirSync(dir);
-    for (const item of items) {
-      const fullPath = join(dir, item);
-      const stat = statSync(fullPath);
-      if (stat.isDirectory()) {
-        files.push(...getAllYamlFiles(fullPath));
-      } else if (item.endsWith('.yaml') || item.endsWith('.yml')) {
-        files.push(fullPath);
-      }
-    }
-  } catch (error) {
-    // Directory doesn't exist or can't be read - skip it
-  }
-  return files;
-}
 
 function resolvePath(obj, path) {
   if (!path) return undefined;
@@ -167,8 +159,7 @@ for (const [entityType, dirName] of Object.entries(entityDirs)) {
   
   for (const file of files) {
     try {
-      const content = readFileSync(file, 'utf8');
-      const data = parseYAML(content);
+      const data = loadYamlFile(file);
       
       // Validate against schema
       const validate = ajv.getSchema(entityType);
@@ -212,8 +203,7 @@ try {
       error: 'Constitution schema not registered'
     });
   } else {
-    const constitutionContent = readFileSync(constitutionPath, 'utf8');
-    const constitutionData = parseYAML(constitutionContent);
+    const constitutionData = loadYamlFile(constitutionPath);
     const valid = constitutionSchema(constitutionData);
     if (!valid) {
       constitutionErrors.push({
