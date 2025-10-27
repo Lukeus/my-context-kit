@@ -1,10 +1,37 @@
-# Specification: {{title}} ({{id}})
+# Specification Blueprint: {{title}} ({{id}})
 
-**Type**: {{type}}  
+**Type**: {{#if type}}{{type}}{{else}}unspecified{{/if}}  
 **Status**: {{#if status}}{{status}}{{else}}draft{{/if}}
 
-{{#if related}}
+## Summary
+{{#if summary}}{{summary}}{{else}}_Provide a concise explanation of the system capability this spec enables._{{/if}}
+
+## Scope & Boundaries
+### Includes
+- _List functional areas or scenarios explicitly covered by this spec._
+### Excludes
+- _Document scenarios intentionally deferred or handled elsewhere._
+
+## Assumptions
+{{#if assumptions}}
+{{#each assumptions}}
+- {{this}}
+{{/each}}
+{{else}}
+- _Capture the assumptions that underpin this implementation approach._
+{{/if}}
+
+## Outstanding Clarifications (Limit 3)
+{{#if clarifications}}
+{{#each clarifications}}
+- [NEEDS CLARIFICATION] {{this}}
+{{/each}}
+{{else}}
+- _Identify the top uncertainties that must be resolved before planning._
+{{/if}}
+
 ## Related Entities
+{{#if related}}
 {{#if related.features}}
 - **Features**: {{#each related.features}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
@@ -14,22 +41,36 @@
 {{#if related.packages}}
 - **Packages**: {{#each related.packages}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
+{{else}}
+- _Link this spec to features, services, and packages it informs._
 {{/if}}
 
-## Content
+## Detailed Narrative
+{{#if content}}
 {{content}}
+{{else}}
+_Populate the specification narrative, covering behavior, data, and interfaces._
+{{/if}}
 
+## Constraints & Compliance
 {{#if constraints}}
-## Constraints
 {{#each constraints}}
 - {{this}}
 {{/each}}
+{{else}}
+- _Enumerate non-functional constraints (performance, security, regulatory)._ 
 {{/if}}
 
+## Examples & Reference Flows
 {{#if examples}}
-## Examples
 {{examples}}
+{{else}}
+- _Provide worked examples, sequence diagrams, or contract snippets._
 {{/if}}
+
+## Constitution Alignment
+- Validate against governance articles before `/speckit.plan`-style planning.
+- Record checklist status in `{{id}}.checklist.md`.
 
 ---
 

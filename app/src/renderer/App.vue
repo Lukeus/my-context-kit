@@ -5,17 +5,17 @@ import YamlEditor from './components/YamlEditor.vue';
 import GraphView from './components/GraphView.vue';
 import GitPanel from './components/GitPanel.vue';
 import WelcomeDocumentation from './components/WelcomeDocumentation.vue';
-import WorkspaceHub from './components/WorkspaceHub.vue';
+import DeveloperHub from './components/DeveloperHub.vue';
 import EntityPreview from './components/EntityPreview.vue';
 import EntityDiff from './components/EntityDiff.vue';
 import EntityDependencyGraph from './components/EntityDependencyGraph.vue';
 import PromptPanel from './components/PromptPanel.vue';
 import ImpactReportPanel from './components/ImpactReportPanel.vue';
 import ContextBuilderModal from './components/ContextBuilderModal.vue';
+import NewRepoModal from './components/NewRepoModal.vue';
 import AISettingsModal from './components/AISettingsModal.vue';
 import AIAssistantPanel from './components/AIAssistantPanel.vue';
 import Snackbar from './components/Snackbar.vue';
-import AppToolbar from './components/AppToolbar.vue';
 import CommandPalette from './components/CommandPalette.vue';
 import SpeckitWizard from './components/SpeckitWizard.vue';
 import { useContextStore } from './stores/contextStore';
@@ -27,13 +27,21 @@ import { useSnackbar } from './composables/useSnackbar';
 const contextStore = useContextStore();
 const builderStore = useBuilderStore();
 const gitStore = useGitStore();
-const { show: showSnackbar, message: snackbarMessage, type: snackbarType, action: snackbarAction, hide: hideSnackbar, handleAction: handleSnackbarAction } = useSnackbar();
+const {
+  show: snackbarVisible,
+  message: snackbarMessage,
+  type: snackbarType,
+  action: snackbarAction,
+  hide: hideSnackbar,
+  handleAction: handleSnackbarAction,
+  showSnackbar: triggerSnackbar
+} = useSnackbar();
 
-const statusMessage = ref('Ready');
 const showGraphModal = ref(false);
 const showGitModal = ref(false);
 const showAISettings = ref(false);
 const showRepoManager = ref(false);
+const showNewRepoModal = ref(false);
 const showSpeckitWizard = ref(false);
 const newRepoLabel = ref('');
 const newRepoPath = ref('');
@@ -42,13 +50,32 @@ const isSavingRepo = ref(false);
 const repoActionMessage = ref('');
 const removingRepoId = ref<string | null>(null);
 const repoSelection = ref('');
-const isHeaderExpanded = ref(false);
+      openImpactView();
 
 // Command palette visibility
 const showCommandPalette = ref(false);
 
-// Docs view toggle (when no entity selected)
+
 const showDocsCenter = ref(false);
+
+const lastValidationAt = ref<string | null>(null);
+const lastValidationStatus = ref<'success' | 'error' | null>(null);
+const lastGraphRefresh = ref<string | null>(null);
+
+type NavId = 'hub' | 'entities' | 'graph' | 'git' | 'validate' | 'docs' | 'ai' | 'entity';
+type NavRailId = Exclude<NavId, 'entity'>;
+
+const activeNavId = ref<NavId>('hub');
+
+const navRailItems: Array<{ id: NavRailId; label: string; requiresRepo?: boolean; shortcut?: string }> = [
+  { id: 'hub', label: 'Hub', shortcut: 'Home' },
+  { id: 'entities', label: 'Tree', shortcut: 'Toggle' },
+  { id: 'graph', label: 'Graph', requiresRepo: true, shortcut: 'View' },
+  { id: 'git', label: 'Git', requiresRepo: true, shortcut: 'Status' },
+  { id: 'validate', label: 'Validate', requiresRepo: true, shortcut: 'Run' },
+  { id: 'docs', label: 'Docs', shortcut: 'Docs' },
+  { id: 'ai', label: 'Assistant', shortcut: 'Ctrl+Shift+A' },
+];
 
 // Panel state
 const leftPanelOpen = ref(true);
@@ -145,6 +172,56 @@ function startResizeRight() {
   document.body.style.userSelect = 'none';
 }
 
+async function handleNavClick(id: NavRailId) {
+  switch (id) {
+    case 'hub':
+      openWorkspace();
+      activeNavId.value = 'hub';
+      break;
+    case 'entities':
+      leftPanelOpen.value = !leftPanelOpen.value;
+      break;
+    case 'graph':
+      await openGraphModal();
+      break;
+    case 'git':
+      await openGitPanel();
+      break;
+    case 'validate':
+      await runValidation();
+      break;
+    case 'docs':
+      openDocs();
+      activeNavId.value = 'docs';
+      break;
+    case 'ai':
+      openAssistantPanel();
+      break;
+    default:
+      break;
+  }
+}
+
+function isNavActive(id: NavRailId) {
+  switch (id) {
+    case 'hub':
+      return activeNavId.value === 'hub';
+    case 'entities':
+      return leftPanelOpen.value;
+    case 'graph':
+      return showGraphModal.value;
+    case 'git':
+      return showGitModal.value;
+    case 'docs':
+      return activeNavId.value === 'docs';
+    case 'ai':
+      return rightPanelOpen.value;
+    case 'validate':
+    default:
+      return false;
+  }
+}
+
 function handleMouseMove(e: MouseEvent) {
   if (isResizingLeft.value) {
     const newWidth = e.clientX;
@@ -169,14 +246,46 @@ watch(
 
 watch(
   () => contextStore.repoPath,
-  () => {
+  async (path, previousPath) => {
     repoActionMessage.value = '';
+    if (path && path !== previousPath) {
+      lastValidationAt.value = null;
+      lastValidationStatus.value = null;
+      await gitStore.loadStatus();
+      await gitStore.loadBranches();
+    }
+    if (!path) {
+      lastGraphRefresh.value = null;
+    }
+  }
+);
+
+watch(
+  () => contextStore.graph,
+  (graph) => {
+    if (graph) {
+      lastGraphRefresh.value = new Date().toISOString();
+    }
   }
 );
 
 watch(showRepoManager, async (isOpen) => {
   if (isOpen) {
     await contextStore.refreshRepoRegistry();
+  }
+});
+
+watch(activeEntity, (entity) => {
+  if (entity) {
+    activeNavId.value = 'entities';
+  } else {
+    activeNavId.value = showDocsCenter.value ? 'docs' : 'hub';
+  }
+});
+
+watch(showDocsCenter, (isDocs) => {
+  if (!activeEntity.value) {
+    activeNavId.value = isDocs ? 'docs' : 'hub';
   }
 });
 
@@ -244,8 +353,12 @@ onMounted(async () => {
   await contextStore.initializeStore();
   await contextStore.refreshRepoRegistry();
   
-  // Load git status if repo is configured
+  // Load repo data if configured
   if (contextStore.repoPath) {
+    const graphLoaded = await contextStore.loadGraph();
+    if (graphLoaded) {
+      lastGraphRefresh.value = new Date().toISOString();
+    }
     await gitStore.loadStatus();
     await gitStore.loadBranches();
   }
@@ -262,35 +375,90 @@ onBeforeUnmount(() => {
 });
 
 const runValidation = async () => {
-  statusMessage.value = 'Validating...';
+  if (!isRepoConfigured.value) {
+    triggerSnackbar({ message: 'Connect a context repository to run validation.', type: 'warning' });
+    return;
+  }
   const result = await contextStore.validateRepo();
-  statusMessage.value = result.ok ? 'Validation passed ✓' : `Validation failed: ${result.error || 'Unknown error'}`;
+  lastValidationAt.value = new Date().toISOString();
+  lastValidationStatus.value = result.ok ? 'success' : 'error';
+
+  if (result.ok) {
+    triggerSnackbar({ message: 'Validation passed', type: 'success' });
+  } else {
+    triggerSnackbar({ message: result.error || 'Validation failed', type: 'error' });
+  }
+  await gitStore.loadStatus();
 };
 
-const reloadGraph = async () => {
-  statusMessage.value = 'Refreshing graph...';
+const reloadGraph = async (options?: { silent?: boolean }) => {
+  if (!isRepoConfigured.value) {
+    triggerSnackbar({ message: 'Connect a context repository to refresh the graph.', type: 'warning' });
+    return;
+  }
   const isSuccess = await contextStore.loadGraph();
-  const fallbackMessage = 'Failed to refresh graph';
-  const errorDetail = typeof contextStore.error === 'string' ? contextStore.error : null;
-  statusMessage.value = isSuccess ? 'Graph refreshed ✓' : (errorDetail || fallbackMessage);
+  if (isSuccess) {
+    lastGraphRefresh.value = new Date().toISOString();
+    if (!options?.silent) {
+      triggerSnackbar({ message: 'Graph refreshed', type: 'success' });
+    }
+  } else {
+    const errorDetail = typeof contextStore.error === 'string' ? contextStore.error : 'Failed to refresh graph';
+    triggerSnackbar({ message: errorDetail, type: 'error' });
+  }
 };
+
+async function openGraphModal() {
+  if (!isRepoConfigured.value) {
+    triggerSnackbar({ message: 'Connect a context repository to view the graph.', type: 'warning' });
+    return;
+  }
+  await reloadGraph({ silent: true });
+  showGraphModal.value = true;
+  activeNavId.value = 'graph';
+}
+
+async function openGitPanel() {
+  if (!isRepoConfigured.value) {
+    triggerSnackbar({ message: 'Connect a context repository to use Git workflows.', type: 'warning' });
+    return;
+  }
+  await gitStore.loadStatus();
+  await gitStore.loadBranches();
+  showGitModal.value = true;
+  activeNavId.value = 'git';
+}
 
 function openDocs() {
   showDocsCenter.value = true;
   contextStore.setActiveEntity(null);
+  activeNavId.value = 'docs';
 }
 
 function openWorkspace() {
   showDocsCenter.value = false;
   contextStore.setActiveEntity(null);
+  activeNavId.value = 'hub';
+}
+
+function openNewRepoModal() {
+  showNewRepoModal.value = true;
 }
 
 function toggleRightPanel() {
   rightPanelOpen.value = !rightPanelOpen.value;
+  if (rightPanelOpen.value) {
+    activeNavId.value = 'ai';
+  } else if (activeEntity.value) {
+    activeNavId.value = 'entities';
+  } else {
+    activeNavId.value = showDocsCenter.value ? 'docs' : 'hub';
+  }
 }
 
 function openAssistantPanel() {
   rightPanelOpen.value = true;
+  activeNavId.value = 'ai';
 }
 
 const aiStore = useAIStore();
@@ -303,7 +471,7 @@ async function handleAskAboutEntity(entityId: string) {
   await aiStore.ask(prompt, { mode: 'general', focusId: entityId });
 }
 
-function handleCommandExecute(commandId: string) {
+async function handleCommandExecute(commandId: string) {
   switch (commandId) {
     case 'speckit:workflow':
       showSpeckitWizard.value = true;
@@ -312,15 +480,13 @@ function handleCommandExecute(commandId: string) {
       openAssistantPanel();
       break;
     case 'impact:analyze':
-      if (contextStore.activeEntity) {
-        setCenterTab('impact');
-      }
+      openImpactView();
       break;
     case 'graph:open':
-      showGraphModal.value = true;
+      await openGraphModal();
       break;
     case 'git:open':
-      showGitModal.value = true;
+      await openGitPanel();
       break;
     case 'create:feature':
       openBuilderModal('feature');
@@ -340,6 +506,32 @@ function handleCommandExecute(commandId: string) {
   showCommandPalette.value = false;
 }
 
+function openImpactView() {
+  if (contextStore.activeEntity) {
+    setCenterTab('impact');
+    return;
+  }
+  triggerSnackbar({ message: 'Select an entity to review impact insights.', type: 'info' });
+}
+
+async function handleOpenDiff() {
+  if (contextStore.activeEntity) {
+    setCenterTab('diff');
+  } else if (isRepoConfigured.value) {
+    await openGitPanel();
+  } else {
+    triggerSnackbar({ message: 'Configure a repository to inspect diffs.', type: 'warning' });
+  }
+}
+
+function handleOpenPrompts() {
+  if (contextStore.activeEntity) {
+    setCenterTab('prompt');
+  } else {
+    triggerSnackbar({ message: 'Select an entity to generate prompts.', type: 'info' });
+  }
+}
+
 function openBuilderModal(type: string = 'feature') {
   if (!contextStore.repoPath) {
     showRepoManager.value = true;
@@ -353,6 +545,11 @@ function openBuilderModal(type: string = 'feature') {
 
 function toggleLeftPanel() {
   leftPanelOpen.value = !leftPanelOpen.value;
+  if (leftPanelOpen.value) {
+    activeNavId.value = 'entities';
+  } else if (!activeEntity.value) {
+    activeNavId.value = showDocsCenter.value ? 'docs' : 'hub';
+  }
 }
 
 async function handleRepoChange(event: Event) {
@@ -424,7 +621,7 @@ async function handleRemoveRepo(id: string) {
   <div class="flex flex-col h-full bg-surface">
     <!-- Simplified App Header (Material 3) -->
     <header class="sticky top-0 z-50 shadow-elevation-3">
-      <div class="bg-primary-800 text-white">
+      <div class="bg-primary text-white">
         <div class="px-6 py-3 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3 min-w-0">
             <button @click="toggleLeftPanel" class="p-2 rounded-m3-full hover:bg-white/15 border border-white/10" title="Toggle Context Tree">
@@ -436,8 +633,8 @@ async function handleRemoveRepo(id: string) {
               </svg>
             </div>
             <div>
-              <h1 class="text-xl font-semibold tracking-tight">Context-Sync</h1>
-              <div class="flex items-center gap-2 text-[11px] text-primary-100">
+              <h1 class="text-xl font-semibold tracking-tight">FCS Context-Sync</h1>
+              <div class="flex items-center gap-2 text-[11px] text-white/70">
                 <span v-if="totalEntities" class="px-2 py-0.5 rounded-m3-full bg-white/20">{{ totalEntities }} {{ totalEntities === 1 ? 'Entity' : 'Entities' }}</span>
               </div>
             </div>
@@ -493,17 +690,64 @@ async function handleRemoveRepo(id: string) {
       </div>
     </header>
 
-    <!-- Toolbar with quick actions -->
-    <AppToolbar
-      :left-panel-open="leftPanelOpen"
-      :right-panel-open="rightPanelOpen"
-      :is-repo-configured="isRepoConfigured"
-      @show-graph="showGraphModal = true"
-      @show-git="showGitModal = true"
-      @validate="runValidation"
-      @toggle-assistant="toggleRightPanel"
-      @go-workspace="openWorkspace"
-    />
+    <!-- Quick actions for compact layouts -->
+    <div class="border-b border-surface-variant bg-surface-1 shadow-elevation-1 lg:hidden">
+      <div class="px-4 py-2 flex flex-wrap gap-2">
+        <button
+          @click="openWorkspace"
+          class="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 transition-all"
+          title="Open Workspace Hub"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          Home
+        </button>
+        <button
+          @click="openGraphModal"
+          :disabled="!isRepoConfigured"
+          class="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Open dependency graph"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+          Graph
+        </button>
+        <button
+          @click="openGitPanel"
+          :disabled="!isRepoConfigured"
+          class="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Open Git workflow"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
+          Git
+        </button>
+        <button
+          @click="runValidation"
+          :disabled="!isRepoConfigured"
+          class="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Run schema validation"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M5 7h14" />
+          </svg>
+          Validate
+        </button>
+        <button
+          @click="toggleRightPanel"
+          class="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 transition-all"
+          title="Toggle AI assistant"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Assistant
+        </button>
+      </div>
+    </div>
 
     <div
       v-if="!isRepoConfigured"
@@ -517,6 +761,30 @@ async function handleRemoveRepo(id: string) {
 
     <!-- Main content -->
     <main class="flex-1 flex overflow-hidden relative">
+      <!-- Navigation Rail -->
+      <aside class="hidden lg:flex flex-col items-center py-6 gap-4 w-20 bg-surface-1 border-r border-surface-variant shadow-elevation-1">
+        <div class="text-xs font-semibold text-secondary-600 uppercase tracking-[0.2em]">Hub</div>
+        <button
+          v-for="item in navRailItems"
+          :key="item.id"
+          class="relative flex flex-col items-center gap-2 px-3 py-2 rounded-m3-lg text-xs font-medium transition-all"
+          :class="[
+            isNavActive(item.id) ? 'bg-primary-50 text-primary-700 shadow-elevation-1' : 'text-secondary-500 hover:bg-surface-2 hover:text-secondary-800',
+            item.requiresRepo && !isRepoConfigured ? 'opacity-30 cursor-not-allowed hover:bg-transparent hover:text-secondary-500' : ''
+          ]"
+          :disabled="item.requiresRepo && !isRepoConfigured"
+          :title="item.shortcut ? `${item.label} (${item.shortcut})` : item.label"
+          @click="handleNavClick(item.id)"
+        >
+          <span class="text-base font-semibold">{{ item.label.charAt(0) }}</span>
+          <span class="text-[10px] uppercase tracking-wide">{{ item.label }}</span>
+          <div
+            v-if="isNavActive(item.id)"
+            class="absolute left-0 inset-y-0 w-1 rounded-r-full bg-primary-500"
+          ></div>
+        </button>
+      </aside>
+
       <!-- Left Panel (Context Tree) -->
       <aside
         v-if="leftPanelOpen"
@@ -618,7 +886,20 @@ async function handleRemoveRepo(id: string) {
 
         <!-- Workspace Hub/Docs when no entity selected -->
         <WelcomeDocumentation v-else-if="showDocsCenter" />
-        <WorkspaceHub v-else @palette="showCommandPalette = true" />
+        <DeveloperHub
+          v-else
+          :last-validation-status="lastValidationStatus"
+          :last-validation-at="lastValidationAt"
+          :last-graph-refresh="lastGraphRefresh"
+          @run-validation="runValidation"
+          @refresh-graph="reloadGraph"
+          @open-impact="openImpactView"
+          @open-git="openGitPanel"
+          @open-assistant="openAssistantPanel"
+          @open-diff="handleOpenDiff"
+          @open-prompts="handleOpenPrompts"
+          @create-repo="openNewRepoModal"
+        />
       </section>
 
       <!-- Right Panel (AI Assistant) -->
@@ -701,6 +982,11 @@ async function handleRemoveRepo(id: string) {
         </div>
       </Transition>
     </Teleport>
+
+    <!-- New Repo Modal -->
+    <Teleport to="body">
+      <NewRepoModal v-if="showNewRepoModal" @close="showNewRepoModal = false" />
+    </Teleport>
     
     <!-- Context Builder Modal -->
     <ContextBuilderModal />
@@ -712,7 +998,7 @@ async function handleRemoveRepo(id: string) {
     
     <!-- Global Snackbar -->
     <Snackbar
-      :show="showSnackbar"
+      :show="snackbarVisible"
       :message="snackbarMessage"
       :type="snackbarType"
       :action="snackbarAction"

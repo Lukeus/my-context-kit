@@ -1,34 +1,52 @@
-# User Story: {{id}}
+# User Story Blueprint: {{id}}
 
 **Feature**: {{feature}}  
 **Status**: {{#if status}}{{status}}{{else}}active{{/if}}
 
-## Story
-**As a** {{asA}}  
-**I want** {{iWant}}  
-**So that** {{soThat}}
+## Persona & Intent
+**As a** {{#if asA}}{{asA}}{{else}}_persona not specified_{{/if}}  
+**I want** {{#if iWant}}{{iWant}}{{else}}_goal not captured_{{/if}}  
+**So that** {{#if soThat}}{{soThat}}{{else}}_outcome pending_{{/if}}
 
+## Value Statement
+- Clarify how this story advances the feature outcomes and constitution goals.
+- Identify measurable success indicators for this persona.
+
+## Scenario Matrix
+- **Primary Flow**: _Describe the happy path interaction, referencing acceptance criteria._
+- **Alternate Flows**: _Capture secondary journeys or permissions differences._
+- **Edge Cases**: _List failure or exception handling expectations._
+
+## Acceptance Signals
 {{#if acceptanceCriteria}}
-## Acceptance Criteria
 {{#each acceptanceCriteria}}
-- {{this}}
+- [ ] {{this}}
 {{/each}}
+{{else}}
+- _Translate stakeholder expectations into testable acceptance criteria._
 {{/if}}
 
-{{#if impacts}}
-## Impact
+## Dependencies & Impact Radius
 {{#if impacts.services}}
-**Services**: {{#each impacts.services}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+- **Services**: {{#each impacts.services}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
 {{#if impacts.packages}}
-**Packages**: {{#each impacts.packages}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+- **Packages**: {{#each impacts.packages}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
-{{/if}}
+{{#unless (hasItems impacts)}}
+- _Document affected services, packages, or external systems._
+{{/unless}}
 
-{{#if notes}}
-## Additional Notes
-{{notes}}
-{{/if}}
+## Outstanding Clarifications (Limit 3)
+- _Record top uncertainties that block implementation._
+
+## Test Signals & Instrumentation
+- Define success metrics observable via UI, logs, or telemetry.
+- Align with integration-first testing by identifying contract or end-to-end checkpoints.
+
+## Next Actions
+- Sync with feature checklist `{{id}}.checklist.md` to validate quality gates.
+- Link derived tasks to `/speckit.tasks` style phases to maintain traceability.
 
 ---
 

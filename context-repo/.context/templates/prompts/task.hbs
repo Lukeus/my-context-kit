@@ -1,0 +1,79 @@
+# Task Execution Brief: {{title}} ({{id}})
+
+**Status**: {{#if status}}{{status}}{{else}}pending{{/if}}{{#if owner}}  
+**Owner**: {{owner}}{{/if}}
+
+## Linked Context
+{{#if related}}
+{{#if related.feature}}- Feature: {{related.feature}}
+{{/if}}{{#if related.userstory}}- User Story: {{related.userstory}}
+{{/if}}{{#if related.spec}}- Spec: {{related.spec}}
+{{/if}}{{#if related.service}}- Service: {{related.service}}
+{{/if}}{{#if related.package}}- Package: {{related.package}}
+{{/if}}
+{{else}}
+- _Connect this task to its originating feature/spec/story for traceability._
+{{/if}}
+
+## Outcome Statement
+{{#if summary}}{{summary}}{{else}}_Summarize the value delivered when this task completes._{{/if}}
+
+## Execution Gates
+- Confirm constitution rules for tasks (ownership, validation-first) are satisfied.
+- Ensure prerequisites from feature/spec checklists are complete before starting.
+
+## Phase Breakdown
+### Phase 0 — Setup & Discovery
+- Identify research or environment prep needed before implementation.
+
+### Phase 1 — Core Implementation Checklist
+{{#if steps}}
+{{#each steps}}
+- [ ] {{padTaskId @index}} {{this}}
+{{/each}}
+{{else}}
+- _Derive actionable steps using `/speckit.tasks` conventions (tests → implementation → polish)._ 
+{{/if}}
+
+### Phase 2 — Validation & Integration
+{{#if doneCriteria}}
+{{#each doneCriteria}}
+- [ ] {{this}}
+{{/each}}
+{{else}}
+- _Document measurable done criteria aligned with validation-first principle._
+{{/if}}
+
+## Risks & Follow-ups
+{{#if risks}}
+{{#each risks}}
+- {{this}}
+{{/each}}
+{{else}}
+- _Capture known risks, dependencies, or open decisions._
+{{/if}}
+
+## Blockers
+{{#if blockers}}
+{{#each blockers}}
+- {{this}}
+{{/each}}
+{{else}}
+- None reported.
+{{/if}}
+
+## Notes & References
+{{#if notes}}
+{{#each notes}}
+- {{this}}
+{{/each}}
+{{else}}
+- _Link to supporting research, ADRs, or design artifacts._
+{{/if}}
+
+---
+
+**Next Action**: Provide guidance, clarifications, or implementation details to progress this task. Use the context above when drafting the response.
+
+**Generated**: {{timestamp}}
+**Context Source**: {{_file}}

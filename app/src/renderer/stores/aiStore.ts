@@ -191,6 +191,231 @@ function generateId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 }
 
+function looksLikeStructuredPayload(value: string | undefined | null) {
+  if (!value || typeof value !== 'string') {
+    return false;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  return trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.startsWith('```');
+}
+
+function resolveAnswer(...candidates: Array<string | undefined | null>) {
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') {
+      continue;
+    }
+    const trimmed = candidate.trim();
+    if (trimmed.length > 0 && !looksLikeStructuredPayload(trimmed)) {
+      return trimmed;
+    }
+  }
+  return '';
+}
+
+function resolveList<T>(primary?: T[] | null, fallback?: T[] | null): T[] {
+  if (Array.isArray(primary) && primary.length > 0) {
+    return primary;
+  }
+  if (Array.isArray(fallback) && fallback.length > 0) {
+    return fallback;
+  }
+  return [];
+}
+
+function safeParseAssistantJson(raw: string | undefined | null): Partial<AssistantResponse> | null {
+  if (!raw || typeof raw !== 'string') {
+    return null;
+  }
+
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const candidates = new Set<string>();
+  candidates.add(trimmed);
+
+  const withoutFences = trimmed.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+  if (withoutFences) {
+    candidates.add(withoutFences);
+  }
+
+  const firstBrace = trimmed.indexOf('{');
+  const lastBrace = trimmed.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    candidates.add(trimmed.slice(firstBrace, lastBrace + 1));
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === 'object') {
+        return parsed as Partial<AssistantResponse>;
+      }
+    } catch {
+      // ignore parse failures
+    }
+  }
+
+  return null;
+}
+
+function summarizeAssistantData(data: Partial<AssistantResponse>) {
+  const segments: string[] = [];
+
+  const answer = typeof data.answer === 'string' ? data.answer.trim() : '';
+  if (answer && !looksLikeStructuredPayload(answer)) {
+    segments.push(answer);
+  }
+
+  if (Array.isArray(data.improvements) && data.improvements.length > 0) {
+    const bullets = data.improvements
+      .filter(item => item && typeof item === 'object')
+      .map(item => {
+        const target = 'target' in item && typeof item.target === 'string' ? item.target.trim() : '';
+        const suggestion = 'suggestion' in item && typeof item.suggestion === 'string' ? item.suggestion : '';
+        const impact = 'impact' in item && typeof item.impact === 'string' && item.impact.trim().length > 0
+          ? ` (Impact: ${item.impact})`
+          : '';
+        return suggestion ? `• ${suggestion}${impact}${target ? ` [${target}]` : ''}` : '';
+      })
+      .filter(Boolean);
+    if (bullets.length > 0) {
+      segments.push(['Suggested improvements:', ...bullets].join('\n'));
+    }
+  }
+
+  if (Array.isArray(data.clarifications) && data.clarifications.length > 0) {
+    const bullets = data.clarifications
+      .filter(item => typeof item === 'string' && item.trim().length > 0)
+      .map(item => `• ${item}`);
+    if (bullets.length > 0) {
+      segments.push(['Clarifications needed:', ...bullets].join('\n'));
+    }
+  }
+
+  if (Array.isArray(data.followUps) && data.followUps.length > 0) {
+    const bullets = data.followUps
+      .filter(item => typeof item === 'string' && item.trim().length > 0)
+      .map(item => `• ${item}`);
+    if (bullets.length > 0) {
+      segments.push(['Suggested next steps:', ...bullets].join('\n'));
+    }
+  }
+
+  return segments.join('\n\n').trim();
+}
+
+function sanitizeRawSnippet(raw: string) {
+  if (!raw) {
+    return '';
+  }
+
+  const cleaned = raw
+    .replace(/```(?:json)?/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
+  if (!cleaned) {
+    return '';
+  }
+
+  const lines = cleaned.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (lines.length === 0) {
+    return '';
+  }
+
+  const snippet = lines.slice(0, 6).join('\n');
+  return lines.length > 6 ? `${snippet}\n…` : snippet;
+}
+
+function sanitizeSuggestions(list: unknown): AssistantSuggestion[] {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+  return list
+    .map(item => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      const target = 'target' in item && typeof item.target === 'string' ? item.target.trim() : '';
+      const suggestion = 'suggestion' in item && typeof item.suggestion === 'string'
+        ? item.suggestion.trim()
+        : '';
+      const impact = 'impact' in item && typeof item.impact === 'string' ? item.impact.trim() : undefined;
+      if (!suggestion) {
+        return null;
+      }
+      return impact ? { target, suggestion, impact } : { target, suggestion };
+    })
+    .filter((item): item is AssistantSuggestion => Boolean(item));
+}
+
+function sanitizeStrings(list: unknown): string[] {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+  return list
+    .map(item => (typeof item === 'string' ? item.trim() : ''))
+    .filter(item => item.length > 0);
+}
+
+function sanitizeReferences(list: unknown): AssistantReference[] {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+  return list
+    .map(item => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      const type = 'type' in item && typeof item.type === 'string' ? item.type.trim() : '';
+      const id = 'id' in item && typeof item.id === 'string' ? item.id.trim() : '';
+      const note = 'note' in item && typeof item.note === 'string' ? item.note.trim() : undefined;
+      if (!type || !id) {
+        return null;
+      }
+      return note ? { type, id, note } : { type, id };
+    })
+    .filter((item): item is AssistantReference => Boolean(item));
+}
+
+function sanitizeEdits(list: unknown): AssistantEdit[] {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+  return list
+    .map(item => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      const filePath = 'filePath' in item && typeof item.filePath === 'string' ? item.filePath.trim() : '';
+      const updatedContent = 'updatedContent' in item && typeof item.updatedContent === 'string'
+        ? item.updatedContent
+        : '';
+      if (!filePath || !updatedContent) {
+        return null;
+      }
+      const targetId = 'targetId' in item && typeof item.targetId === 'string' ? item.targetId.trim() : undefined;
+      const summary = 'summary' in item && typeof item.summary === 'string' ? item.summary : '';
+      // Build object with optional targetId property only when defined to align with AssistantEdit
+      const edit: AssistantEdit = {
+        filePath,
+        updatedContent,
+        summary,
+        status: 'pending'
+      };
+      if (targetId) {
+        edit.targetId = targetId;
+      }
+      return edit;
+    })
+    .filter((item): item is AssistantEdit => item !== null);
+}
+
 export const useAIStore = defineStore('ai', () => {
   const contextStore = useContextStore();
 
@@ -556,26 +781,83 @@ export const useAIStore = defineStore('ai', () => {
         throw new Error(startRes.error || 'Failed to start streaming');
       }
       activeStreamId.value = startRes.streamId;
+      let pendingContent = '';
+      let placeholderShown = false;
+
+      let offEndRef: (() => void) | null = null;
       const offEvent = window.api.ai.onAssistStreamEvent((payload: any) => {
         if (payload.streamId !== activeStreamId.value) return;
         if (payload.type === 'delta' && typeof payload.data === 'string') {
-          updateAssistantMessage(assistantMessageId, {
-            content: (conversation.value.find(m => m.id === assistantMessageId)?.content || '') + payload.data
-          });
+          pendingContent += payload.data;
+          if (!placeholderShown) {
+            placeholderShown = true;
+            updateAssistantMessage(assistantMessageId, {
+              content: 'Generating response…'
+            });
+          }
         } else if (payload.type === 'final' && payload.result) {
           const result = payload.result as AssistantResponse;
+          const parsedFromAnswer = looksLikeStructuredPayload(result.answer)
+            ? safeParseAssistantJson(result.answer)
+            : null;
+          const parsedFromBuffer = safeParseAssistantJson(pendingContent);
+          const fallbackStructured = parsedFromAnswer ?? parsedFromBuffer;
+
+          const resolvedAnswer = resolveAnswer(result.answer, fallbackStructured?.answer as (string | undefined));
+          const resolvedImprovements = resolveList<AssistantSuggestion>(
+            result.improvements,
+            fallbackStructured?.improvements as AssistantSuggestion[] | undefined
+          );
+          const resolvedClarifications = resolveList<string>(
+            result.clarifications,
+            fallbackStructured?.clarifications as string[] | undefined
+          );
+          const resolvedFollowUps = resolveList<string>(
+            result.followUps,
+            fallbackStructured?.followUps as string[] | undefined
+          );
+          const resolvedReferences = resolveList<AssistantReference>(
+            result.references,
+            fallbackStructured?.references as AssistantReference[] | undefined
+          );
+          const resolvedEdits = resolveList<AssistantEdit>(
+            result.edits,
+            fallbackStructured?.edits as AssistantEdit[] | undefined
+          );
+
+          const normalizedImprovements = sanitizeSuggestions(resolvedImprovements);
+          const normalizedClarifications = sanitizeStrings(resolvedClarifications);
+          const normalizedFollowUps = sanitizeStrings(resolvedFollowUps);
+          const normalizedReferences = sanitizeReferences(resolvedReferences);
+          const normalizedEdits = sanitizeEdits(resolvedEdits);
+
+          let finalContent = summarizeAssistantData({
+            answer: resolvedAnswer,
+            improvements: normalizedImprovements,
+            clarifications: normalizedClarifications,
+            followUps: normalizedFollowUps
+          });
+
+          if (result.ok === false) {
+            finalContent = result.error?.trim()
+              || finalContent
+              || sanitizeRawSnippet(pendingContent)
+              || 'Assistant request failed.';
+          } else if (!finalContent) {
+            finalContent = sanitizeRawSnippet(pendingContent) || 'Assistant returned no readable content.';
+          }
+
           updateAssistantMessage(assistantMessageId, {
-            content: result.answer || (conversation.value.find(m => m.id === assistantMessageId)?.content || ''),
-            suggestions: Array.isArray(result.improvements) ? result.improvements : [],
-            clarifications: Array.isArray(result.clarifications) ? result.clarifications : [],
-            followUps: Array.isArray(result.followUps) ? result.followUps : [],
-            references: Array.isArray(result.references) ? result.references : [],
-            edits: Array.isArray(result.edits)
-              ? result.edits.map(edit => ({ ...edit, status: 'pending' }))
-              : [],
+            content: finalContent,
+            suggestions: normalizedImprovements,
+            clarifications: normalizedClarifications,
+            followUps: normalizedFollowUps,
+            references: normalizedReferences,
+            edits: normalizedEdits,
             logprobs: result.logprobs || null
           });
-          lastSnapshot.value = (result as any).snapshot ?? null;
+          lastSnapshot.value = result.snapshot ?? null;
+          recordUsage(result.usage);
         } else if (payload.type === 'error') {
           const message = payload.error || 'Assistant stream failed.';
           error.value = message;
@@ -583,14 +865,24 @@ export const useAIStore = defineStore('ai', () => {
             content: message,
             clarifications: [message]
           });
+          isLoading.value = false;
+          activeStreamId.value = null;
+          offEvent();
+          if (offEndRef) {
+            offEndRef();
+            offEndRef = null;
+          }
         }
       });
-      const offEnd = window.api.ai.onAssistStreamEnd((payload: any) => {
+      offEndRef = window.api.ai.onAssistStreamEnd((payload: any) => {
         if (payload.streamId !== activeStreamId.value) return;
         isLoading.value = false;
         activeStreamId.value = null;
         offEvent();
-        offEnd();
+        if (offEndRef) {
+          offEndRef();
+          offEndRef = null;
+        }
       });
     } catch (err: any) {
       const message = err?.message || 'Assistant stream failed. Please check the console for details.';
