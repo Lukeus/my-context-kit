@@ -31,6 +31,10 @@ type AppApi = {
   getDefaultRepoPath: StubMethod;
 };
 
+type DialogApi = {
+  selectDirectory: StubMethod;
+};
+
 const createDefaultStub = () => vi.fn(async () => ({}));
 
 beforeEach(() => {
@@ -99,6 +103,10 @@ beforeEach(() => {
     getDefaultRepoPath: createDefaultStub(),
   };
 
+  const dialogApi: DialogApi = {
+    selectDirectory: createDefaultStub(),
+  };
+
   (global as any).window = {
     api: {
       repos: repoApi,
@@ -109,6 +117,7 @@ beforeEach(() => {
       clipboard: clipboardApi,
       ai: aiApi,
       app: appApi,
+      dialog: dialogApi,
     },
   };
 });

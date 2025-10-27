@@ -44,6 +44,9 @@ contextBridge.exposeInMainWorld('api', {
   clipboard: {
     writeText: (text: string) => ipcRenderer.invoke('clipboard:writeText', { text }),
   },
+  dialog: {
+    selectDirectory: () => ipcRenderer.invoke('dialog:selectDirectory'),
+  },
   git: {
     status: (dir: string) => ipcRenderer.invoke('git:status', { dir }),
     diff: (dir: string, filePath?: string) => ipcRenderer.invoke('git:diff', { dir, filePath }),
@@ -128,7 +131,7 @@ declare global {
         createEntity: (dir: string, entity: any, entityType: string) => Promise<{ ok: boolean; filePath?: string; error?: string }>;
         getSuggestions: (dir: string, command: string, params: any[]) => Promise<any>;
         getTemplates: (dir: string, entityType?: string) => Promise<{ ok: boolean; templates: any[]; error?: string }>;
-        scaffoldNewRepo: (dir: string, repoName: string, projectPurpose?: string, constitutionSummary?: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
+        scaffoldNewRepo: (dir: string, repoName: string, projectPurpose?: string, constitutionSummary?: string) => Promise<{ ok: boolean; path?: string; error?: string; warning?: string }>;
       };
       fs: {
         readFile: (filePath: string) => Promise<{ ok: boolean; content?: string; error?: string }>;
@@ -137,6 +140,9 @@ declare global {
       };
       clipboard: {
         writeText: (text: string) => Promise<{ ok: boolean; error?: string }>;
+      };
+      dialog: {
+        selectDirectory: () => Promise<{ ok: boolean; paths: string[]; error?: string }>;
       };
       git: {
         status: (dir: string) => Promise<any>;

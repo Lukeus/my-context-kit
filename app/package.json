@@ -58,6 +58,7 @@
     "playwright": "^1.56.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.16",
+    "typescript-eslint": "^8.46.2",
     "typescript": "^5.3.3",
     "vite": "^7.1.12",
     "vitest": "^2.1.4"

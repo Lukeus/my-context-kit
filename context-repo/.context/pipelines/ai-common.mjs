@@ -11,22 +11,84 @@ function applyAgent(options) {
   return options;
 }
 
-async function* callAzureOpenAIStream({ endpoint, apiKey, model, systemPrompt, userPrompt, responseFormat, temperature, maxTokens }) {
+const AZURE_API_VERSION = '2024-12-01-preview';
+const azureLogprobSupportCache = new Map();
+
+function getAzureLogprobKey(endpoint, model) {
+  return `${endpoint}::${model}`;
+}
+
+function shouldRequestAzureLogprobs(endpoint, model) {
+  const key = getAzureLogprobKey(endpoint, model);
+  if (!azureLogprobSupportCache.has(key)) {
+    return true;
+  }
+  return azureLogprobSupportCache.get(key);
+}
+
+function markAzureLogprobSupport(endpoint, model, supported) {
+  azureLogprobSupportCache.set(getAzureLogprobKey(endpoint, model), supported);
+}
+
+function extractAzureErrorMessage(rawText) {
+  if (!rawText) {
+    return '';
+  }
+  try {
+    const parsed = JSON.parse(rawText);
+    return parsed?.error?.message || parsed?.message || rawText;
+  } catch {
+    return rawText;
+  }
+}
+
+function isAzureLogprobUnsupported(message) {
+  if (!message) {
+    return false;
+  }
+  const lower = message.toLowerCase();
+  return lower.includes('logprobs') && (lower.includes('unsupported parameter') || lower.includes('not supported'));
+}
+
+async function azureChatRequest({
+  endpoint,
+  apiKey,
+  model,
+  systemPrompt,
+  userPrompt,
+  responseFormat,
+  temperature,
+  maxTokens
+}, includeLogprobs, { stream }) {
   const body = {
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ],
-    max_completion_tokens: maxTokens,
-    stream_options: { include_usage: true }
+    max_completion_tokens: maxTokens
   };
+
   if (responseFormat === 'json') {
     body.response_format = { type: 'json_object' };
   }
+
   if (typeof temperature === 'number' && temperature === 1) {
     body.temperature = temperature;
   }
-  const url = `${endpoint}/openai/deployments/${model}/chat/completions?api-version=2024-12-01-preview&stream=true`;
+
+  if (stream) {
+    body.stream = true;
+    body.stream_options = { include_usage: true };
+  }
+
+  if (includeLogprobs) {
+    body.logprobs = true;
+    body.top_logprobs = 3;
+  }
+
+  const baseUrl = `${endpoint}/openai/deployments/${model}/chat/completions?api-version=${AZURE_API_VERSION}`;
+  const url = stream ? `${baseUrl}&stream=true` : baseUrl;
+
   const response = await fetch(url, applyAgent({
     method: 'POST',
     headers: {
@@ -35,56 +97,158 @@ async function* callAzureOpenAIStream({ endpoint, apiKey, model, systemPrompt, u
     },
     body: JSON.stringify(body)
   }));
+
   if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`Azure OpenAI error (${response.status}): ${errorText}`);
+    const rawText = await response.text().catch(() => response.statusText);
+    const message = extractAzureErrorMessage(rawText);
+    if (response.status === 400 && includeLogprobs && isAzureLogprobUnsupported(message)) {
+      markAzureLogprobSupport(endpoint, model, false);
+      return { retry: true };
+    }
+    throw new Error(`Azure OpenAI error (${response.status}): ${message}`);
   }
-  const decoder = new TextDecoder();
-  let buffer = '';
-  const extractTextDelta = (obj) => {
-    try {
-      const choice = (obj.choices && obj.choices[0]) || {};
-      const delta = choice.delta || choice.message?.delta || {};
-      // text may be in various shapes
-      if (typeof delta.content === 'string') return delta.content;
-      if (Array.isArray(delta.content)) {
-        return delta.content
-          .map(part => (typeof part === 'string' ? part : (part.text || part.content || '')))
-          .join('');
-      }
-      if (typeof choice.content === 'string') return choice.content;
-      if (Array.isArray(choice.content)) {
-        return choice.content
-          .map(part => (typeof part === 'string' ? part : (part.text || part.content || '')))
-          .join('');
-      }
-      return '';
-    } catch { return ''; }
+
+  markAzureLogprobSupport(endpoint, model, includeLogprobs);
+  return { response, includeLogprobs };
+}
+
+function mapLogprobEntry(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  const topLogprobs = Array.isArray(entry.top_logprobs)
+    ? entry.top_logprobs.map(item => ({
+        token: item.token ?? '',
+        logprob: typeof item.logprob === 'number' ? item.logprob : Number.NEGATIVE_INFINITY,
+        prob: typeof item.logprob === 'number' ? Math.exp(item.logprob) : 0
+      }))
+    : [];
+
+  const logprob = typeof entry.logprob === 'number' ? entry.logprob : Number.NEGATIVE_INFINITY;
+
+  return {
+    token: entry.token ?? '',
+    logprob,
+    prob: Math.exp(logprob),
+    topLogprobs
   };
-  for await (const chunk of response.body) {
-    buffer += decoder.decode(chunk, { stream: true });
-    let sepIndex;
-    while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
-      const block = buffer.slice(0, sepIndex).trim();
-      buffer = buffer.slice(sepIndex + 2);
-      if (!block) continue;
-      const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-      for (const line of lines) {
-        if (!line.toLowerCase().startsWith('data:')) continue;
-        const data = line.slice(5).trim();
-        if (data === '[DONE]') continue;
-        try {
-          const obj = JSON.parse(data);
-          const text = extractTextDelta(obj);
-          if (text) {
-            yield text;
+}
+
+function createAzureOpenAIStream({ endpoint, apiKey, model, systemPrompt, userPrompt, responseFormat, temperature, maxTokens }) {
+  const metadata = {
+    logprobs: null,
+    usage: null
+  };
+
+  const iterator = (async function* () {
+    const params = {
+      endpoint,
+      apiKey,
+      model,
+      systemPrompt,
+      userPrompt,
+      responseFormat,
+      temperature,
+      maxTokens
+    };
+
+    let includeLogprobs = shouldRequestAzureLogprobs(endpoint, model);
+    let requestResult;
+
+    // Retry once without logprobs if the model does not support it
+    // TODO: Persist capability detection between runs via configuration if needed
+    while (true) {
+      requestResult = await azureChatRequest(params, includeLogprobs, { stream: true });
+      if (requestResult?.retry) {
+        includeLogprobs = false;
+        continue;
+      }
+      break;
+    }
+
+    const { response, includeLogprobs: logprobEnabled } = requestResult;
+    if (logprobEnabled) {
+      metadata.logprobs = [];
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    const extractTextDelta = choice => {
+      try {
+        const delta = choice.delta || choice.message?.delta || {};
+        if (typeof delta.content === 'string') return delta.content;
+        if (Array.isArray(delta.content)) {
+          return delta.content
+            .map(part => (typeof part === 'string' ? part : (part.text || part.content || '')))
+            .join('');
+        }
+        if (typeof choice.content === 'string') return choice.content;
+        if (Array.isArray(choice.content)) {
+          return choice.content
+            .map(part => (typeof part === 'string' ? part : (part.text || part.content || '')))
+            .join('');
+        }
+        return '';
+      } catch {
+        return '';
+      }
+    };
+
+    const collectLogprobs = choice => {
+      if (!Array.isArray(metadata.logprobs)) {
+        return;
+      }
+      const candidates = [];
+      if (Array.isArray(choice.logprobs?.content)) {
+        candidates.push(...choice.logprobs.content);
+      }
+      if (Array.isArray(choice.delta?.logprobs?.content)) {
+        candidates.push(...choice.delta.logprobs.content);
+      }
+
+      for (const entry of candidates) {
+        const mapped = mapLogprobEntry(entry);
+        if (mapped) {
+          metadata.logprobs.push(mapped);
+        }
+      }
+    };
+
+    for await (const chunk of response.body) {
+      buffer += decoder.decode(chunk, { stream: true });
+      let sepIndex;
+      while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+        const block = buffer.slice(0, sepIndex).trim();
+        buffer = buffer.slice(sepIndex + 2);
+        if (!block) continue;
+
+        const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+        for (const line of lines) {
+          if (!line.toLowerCase().startsWith('data:')) continue;
+          const data = line.slice(5).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const obj = JSON.parse(data);
+            const choice = (obj.choices && obj.choices[0]) || {};
+            collectLogprobs(choice);
+            if (obj.usage) {
+              metadata.usage = obj.usage;
+            }
+            const text = extractTextDelta(choice);
+            if (text) {
+              yield text;
+            }
+          } catch {
+            // ignore line parse errors
           }
-        } catch {
-          // ignore line parse errors
         }
       }
     }
-  }
+  })();
+
+  return Object.assign(iterator, { metadata });
 }
 
 export async function callProvider({
@@ -143,7 +307,7 @@ export async function callProvider({
   return { ok: false, error: `Unknown provider: ${provider}` };
 }
 
-export async function* callProviderStream({
+export function callProviderStream({
   provider,
   endpoint,
   model,
@@ -155,12 +319,10 @@ export async function* callProviderStream({
   responseFormat = 'text'
 }) {
   if (provider === 'ollama') {
-    yield* callOllamaStream({ endpoint, model, systemPrompt, userPrompt, responseFormat });
-    return;
+    return createOllamaStream({ endpoint, model, systemPrompt, userPrompt, responseFormat });
   }
   if (provider === 'azure-openai') {
-    yield* callAzureOpenAIStream({ endpoint, apiKey, model, systemPrompt, userPrompt, temperature, maxTokens, responseFormat });
-    return;
+    return createAzureOpenAIStream({ endpoint, apiKey, model, systemPrompt, userPrompt, temperature, maxTokens, responseFormat });
   }
   throw new Error(`Unknown provider: ${provider}`);
 }
@@ -214,91 +376,105 @@ async function callOllama({ endpoint, model, systemPrompt, userPrompt, responseF
   }
 }
 
-async function* callOllamaStream({ endpoint, model, systemPrompt, userPrompt, responseFormat }) {
-  const body = {
-    model,
-    prompt: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt,
-    stream: true
+function createOllamaStream({ endpoint, model, systemPrompt, userPrompt, responseFormat }) {
+  const metadata = {
+    logprobs: null,
+    usage: null
   };
-  if (responseFormat === 'json') {
-    body.format = 'json';
-  }
-  const response = await fetch(`${endpoint}/api/generate`, applyAgent({
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  }));
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`Ollama API error (${response.status}): ${errorText}`);
-  }
-  const decoder = new TextDecoder();
-  let buffer = '';
-  for await (const chunk of response.body) {
-    buffer += decoder.decode(chunk, { stream: true });
-    let idx;
-    while ((idx = buffer.indexOf('\n')) !== -1) {
-      const line = buffer.slice(0, idx).trim();
-      buffer = buffer.slice(idx + 1);
-      if (!line) continue;
+
+  const iterator = (async function* () {
+    const body = {
+      model,
+      prompt: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt,
+      stream: true
+    };
+    if (responseFormat === 'json') {
+      body.format = 'json';
+    }
+    const response = await fetch(`${endpoint}/api/generate`, applyAgent({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }));
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => response.statusText);
+      throw new Error(`Ollama API error (${response.status}): ${errorText}`);
+    }
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for await (const chunk of response.body) {
+      buffer += decoder.decode(chunk, { stream: true });
+      let idx;
+      while ((idx = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 1);
+        if (!line) continue;
+        try {
+          const obj = JSON.parse(line);
+          if (typeof obj.response === 'string' && obj.response) {
+            yield obj.response;
+          }
+          if (obj.done && obj.total_duration) {
+            metadata.usage = {
+              prompt_tokens: obj.prompt_eval_count || 0,
+              completion_tokens: obj.eval_count || 0,
+              total_tokens: (obj.prompt_eval_count || 0) + (obj.eval_count || 0)
+            };
+          }
+        } catch {
+          // ignore malformed line
+        }
+      }
+    }
+    const tail = buffer.trim();
+    if (tail) {
       try {
-        const obj = JSON.parse(line);
+        const obj = JSON.parse(tail);
         if (typeof obj.response === 'string' && obj.response) {
           yield obj.response;
         }
+        if (obj.done && obj.total_duration) {
+          metadata.usage = {
+            prompt_tokens: obj.prompt_eval_count || 0,
+            completion_tokens: obj.eval_count || 0,
+            total_tokens: (obj.prompt_eval_count || 0) + (obj.eval_count || 0)
+          };
+        }
       } catch {
-        // ignore malformed line
+        // ignore
       }
     }
-  }
-  // flush any remaining
-  const tail = buffer.trim();
-  if (tail) {
-    try {
-      const obj = JSON.parse(tail);
-      if (typeof obj.response === 'string' && obj.response) {
-        yield obj.response;
-      }
-    } catch {
-      // ignore
-    }
-  }
+  })();
+
+  return Object.assign(iterator, { metadata });
 }
 
 async function callAzureOpenAI({ endpoint, apiKey, model, systemPrompt, userPrompt, responseFormat, temperature, maxTokens }) {
   try {
-    const body = {
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      max_completion_tokens: maxTokens,
-      logprobs: true,
-      top_logprobs: 3
+    const params = {
+      endpoint,
+      apiKey,
+      model,
+      systemPrompt,
+      userPrompt,
+      responseFormat,
+      temperature,
+      maxTokens
     };
 
-    if (responseFormat === 'json') {
-      body.response_format = { type: 'json_object' };
+    let includeLogprobs = shouldRequestAzureLogprobs(endpoint, model);
+    let requestResult;
+
+    while (true) {
+      requestResult = await azureChatRequest(params, includeLogprobs, { stream: false });
+      if (requestResult?.retry) {
+        includeLogprobs = false;
+        continue;
+      }
+      break;
     }
 
-    if (typeof temperature === 'number' && temperature === 1) {
-      body.temperature = temperature;
-    }
-
-    const response = await fetch(`${endpoint}/openai/deployments/${model}/chat/completions?api-version=2024-12-01-preview`, applyAgent({
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': apiKey
-      },
-      body: JSON.stringify(body)
-    }));
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => response.statusText);
-      throw new Error(`Azure OpenAI error (${response.status}): ${errorText}`);
-    }
-
+    const { response, includeLogprobs: logprobEnabled } = requestResult;
     const data = await response.json();
     const choice = data.choices && data.choices[0];
 
@@ -370,17 +546,12 @@ async function callAzureOpenAI({ endpoint, apiKey, model, systemPrompt, userProm
     }
 
     // Process logprobs if available
-    const logprobsContent = choice.logprobs?.content || [];
-    const tokenProbs = logprobsContent.map(lp => ({
-      token: lp.token,
-      logprob: lp.logprob,
-      prob: Math.exp(lp.logprob),
-      topLogprobs: lp.top_logprobs?.map(t => ({
-        token: t.token,
-        logprob: t.logprob,
-        prob: Math.exp(t.logprob)
-      })) || []
-    }));
+    const logprobsContent = logprobEnabled && Array.isArray(choice.logprobs?.content)
+      ? choice.logprobs.content
+      : [];
+    const tokenProbs = logprobsContent
+      .map(mapLogprobEntry)
+      .filter(Boolean);
 
     return {
       ok: true,
