@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 export const app = {
-  getPath: vi.fn((name: string) => `/mock/user/data`),
+  getPath: vi.fn(() => `/mock/user/data`),
   getAppPath: vi.fn(() => '/mock/app/path'),
   isReady: vi.fn(() => true),
   whenReady: vi.fn(() => Promise.resolve()),

@@ -1,6 +1,5 @@
 import { ipcMain } from 'electron';
 import { FileSystemService } from '../../services/FileSystemService';
-import { ContextService } from '../../services/ContextService';
 import { toErrorMessage } from '../../utils/errorHandler';
 import { successWith, error } from '../types';
 

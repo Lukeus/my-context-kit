@@ -132,7 +132,7 @@ test.describe('Context Tree Navigation', () => {
       try {
         await firstExpandable.click({ timeout: 5000 });
         console.log('Successfully clicked expandable element');
-      } catch (e) {
+      } catch {
         console.log('Could not click expandable element');
       }
     }

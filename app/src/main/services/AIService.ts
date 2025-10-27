@@ -5,7 +5,6 @@ import path from 'node:path';
 import { execa } from 'execa';
 import { randomUUID } from 'node:crypto';
 import { parse as parseYAML } from 'yaml';
-import type { EventEmitter } from 'stream';
 import { logger } from '../utils/logger';
 
 const AI_CONFIG_FILE = 'ai-config.json';
@@ -93,7 +92,8 @@ export class AIService {
       async () => {
         const configPath = path.join(dir, '.context', AI_CONFIG_FILE);
         // Never save API keys in config file
-        const { apiKey: _removedApiKey, ...persistableConfig } = config;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { apiKey, ...persistableConfig } = config;
         await writeFile(configPath, JSON.stringify(persistableConfig, null, 2), 'utf-8');
       }
     );

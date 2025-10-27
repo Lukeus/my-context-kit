@@ -1,0 +1,6 @@
+# Generated C4 artifacts
+out/
+
+# Future SVG/PNG renders (for Option B)
+*.svg
+*.png
