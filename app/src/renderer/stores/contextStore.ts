@@ -61,6 +61,66 @@ export const useContextStore = defineStore('context', () => {
   const error = ref<string | null>(null);
   const isInitialized = ref(false);
 
+  let watchedRepoPath: string | null = null;
+  let disposeFileWatcher: (() => void) | null = null;
+  let fileChangeDebounce: ReturnType<typeof setTimeout> | null = null;
+
+  async function stopRepoWatch() {
+    if (disposeFileWatcher) {
+      disposeFileWatcher();
+      disposeFileWatcher = null;
+    }
+    if (watchedRepoPath) {
+      try {
+        await window.api.repos.unwatch(watchedRepoPath);
+      } catch {
+        // ignore cleanup errors silently
+      }
+      watchedRepoPath = null;
+    }
+    if (fileChangeDebounce) {
+      clearTimeout(fileChangeDebounce);
+      fileChangeDebounce = null;
+    }
+  }
+
+  async function startRepoWatch(dir: string) {
+    const normalized = dir.trim();
+    if (!normalized) {
+      await stopRepoWatch();
+      return;
+    }
+
+    if (watchedRepoPath === normalized) {
+      return;
+    }
+
+    await stopRepoWatch();
+
+    try {
+      await window.api.repos.watch(normalized);
+    } catch {
+      // Swallow watch errors so repo changes do not crash the UI.
+      return;
+    }
+
+    watchedRepoPath = normalized;
+    disposeFileWatcher = window.api.repos.onFileChanged(async (payload: any) => {
+      if (!repoPath.value || payload?.dir !== watchedRepoPath) {
+        return;
+      }
+
+      if (fileChangeDebounce) {
+        clearTimeout(fileChangeDebounce);
+      }
+
+      fileChangeDebounce = setTimeout(async () => {
+        await loadGraph();
+        fileChangeDebounce = null;
+      }, 250);
+    });
+  }
+
   // Load saved repo path on initialization
   async function initializeStore() {
     if (isInitialized.value) return;
@@ -86,25 +146,7 @@ export const useContextStore = defineStore('context', () => {
         }
       }
 
-      // Start repo watcher
-      if (repoPath.value) {
-        try {
-          await window.api.repos.watch(repoPath.value);
-        } catch { /* ignore */ }
-      }
-
-      // Auto-refresh on external file changes (debounced)
-      let debounceTimer: any = null;
-      const off = window.api.repos.onFileChanged(async (payload: any) => {
-        if (!repoPath.value || payload?.dir !== repoPath.value) return;
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(async () => {
-          await loadGraph();
-        }, 250);
-      });
-
-      // Save disposer on settings so we can unwatch if needed (simplified)
-      // Note: In a real app, store this in a closure; omitted for brevity.
+      await startRepoWatch(repoPath.value);
     } catch (err) {
       await applyDefaultRepoPath();
     }
@@ -120,11 +162,14 @@ export const useContextStore = defineStore('context', () => {
         repoPath.value = normalized;
         await window.api.settings.set('repoPath', normalized);
         await refreshRepoRegistry();
+        await startRepoWatch(normalized);
       } else {
         repoPath.value = '';
+        await stopRepoWatch();
       }
     } catch (error) {
       repoPath.value = '';
+      await stopRepoWatch();
     }
   }
 
@@ -185,6 +230,8 @@ export const useContextStore = defineStore('context', () => {
       await refreshRepoRegistry();
     } catch (err) {
       console.error('Failed to save repo path setting:', err);
+    } finally {
+      await startRepoWatch(normalizedPath);
     }
   }
 
@@ -322,6 +369,7 @@ function setActiveEntity(entityId: string | null) {
       repoPath.value = repo.path;
       activeRepoId.value = id;
       await refreshRepoRegistry();
+      await startRepoWatch(repo.path);
       await loadGraph();
     } catch (err) {
       console.error('Failed to activate repository:', err);
@@ -350,6 +398,7 @@ function setActiveEntity(entityId: string | null) {
         if (activeRepo) {
           repoPath.value = activeRepo.path;
           await window.api.settings.set('repoPath', activeRepo.path);
+          await startRepoWatch(activeRepo.path);
           await loadGraph();
         }
       }
@@ -371,9 +420,11 @@ function setActiveEntity(entityId: string | null) {
         if (activeRepo) {
           repoPath.value = activeRepo.path;
           await window.api.settings.set('repoPath', activeRepo.path);
+          await startRepoWatch(activeRepo.path);
         } else {
           repoPath.value = '';
           await window.api.settings.set('repoPath', '');
+          await stopRepoWatch();
         }
         if (repoPath.value) {
           await loadGraph();

@@ -1,0 +1,43 @@
+# Validation Checklist: {{entity.id}} ({{entityType}})
+
+**Generated**: {{timestamp}}
+**Source Prompt**: {{outputFile}}
+
+## Specification Quality
+- [ ] Narrative focuses on intent and outcomes (no implementation details)
+- [ ] Success criteria are measurable and technology-agnostic
+- [ ] Non-functional requirements are captured or noted as gaps
+- [ ] Scope boundaries and exclusions are documented
+
+## Clarification Control (Max 3)
+{{#if (hasItems entity.clarifications)}}
+{{#each entity.clarifications}}
+- [ ] Resolved: {{this}}
+{{/each}}
+{{else}}
+- [ ] Identify and document the top three clarifications required for this entity
+{{/if}}
+
+## Assumptions & Risks
+{{#if (hasItems entity.assumptions)}}
+{{#each entity.assumptions}}
+- [ ] Validated assumption: {{this}}
+{{/each}}
+{{else}}
+- [ ] Record explicit assumptions and review with stakeholders
+{{/if}}
+- [ ] Flag unresolved risks or dependencies
+
+## Constitution Alignment
+{{#if (hasItems entity.validationRules)}}
+{{#each entity.validationRules}}
+- [ ] {{title}} — {{severity}} ({{#each appliesTo}}{{this}}{{#unless @last}}, {{/unless}}{{/each}})
+{{/each}}
+{{else}}
+- [ ] Cross-check against constitution articles relevant to this entity type
+{{/if}}
+
+## Hand-off Readiness
+- [ ] Prompt references companion checklist in repository
+- [ ] Entity links are accurate and cross-referenced
+- [ ] Outstanding TODOs or TBD items are triaged into backlog

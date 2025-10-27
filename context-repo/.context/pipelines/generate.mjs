@@ -10,6 +10,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = join(__dirname, '../..');
 
+Handlebars.registerHelper('padTaskId', index => `T${String((index ?? 0) + 1).padStart(3, '0')}`);
+Handlebars.registerHelper('increment', value => (Number.isFinite(value) ? value + 1 : value));
+Handlebars.registerHelper('hasItems', value => {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  if (value && typeof value === 'object') {
+    return Object.keys(value).length > 0;
+  }
+  return Boolean(value);
+});
+
 // Get entity IDs from command line arguments
 const entityIds = process.argv.slice(2);
 
@@ -31,7 +43,7 @@ const entityDirs = {
   package: 'packages'
 };
 
-const supportedPromptTypes = new Set(['feature', 'userstory', 'spec', 'governance']);
+const supportedPromptTypes = new Set(['feature', 'userstory', 'spec', 'governance', 'task']);
 
 // Helper function to get all YAML files
 function getAllYamlFiles(dir) {
@@ -79,7 +91,7 @@ try {
   const templateDir = join(REPO_ROOT, '.context/templates/prompts');
   const templates = {};
   
-  const templateFiles = ['feature.hbs', 'userstory.hbs', 'spec.hbs', 'governance.hbs'];
+  const templateFiles = ['feature.hbs', 'userstory.hbs', 'spec.hbs', 'governance.hbs', 'task.hbs', 'checklist.hbs'];
   
   for (const templateFile of templateFiles) {
     try {
@@ -143,15 +155,27 @@ try {
       
       // Generate prompt from template
       const prompt = templates[templateName](entityData);
-      
-      // Write to file
+
       const outputFile = join(outputDir, `${entityId}.md`);
       writeFileSync(outputFile, prompt, 'utf8');
-      
+
+      let checklistFile = null;
+      if (templates.checklist) {
+        const checklistContent = templates.checklist({
+          entity: entityData,
+          entityType: entity._type,
+          timestamp: entityData.timestamp,
+          outputFile
+        });
+        checklistFile = join(outputDir, `${entityId}.checklist.md`);
+        writeFileSync(checklistFile, checklistContent, 'utf8');
+      }
+
       generated.push({
         id: entityId,
         type: entity._type,
         outputFile,
+        checklistFile,
         content: prompt
       });
     } catch (error) {

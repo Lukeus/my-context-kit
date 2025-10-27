@@ -135,6 +135,36 @@ onMounted(() => {
           <!-- Progress Completion Card -->
           <ProgressCompletionCard />
 
+          <!-- New Repo Quick Action -->
+          <div class="bg-surface rounded-m3-xl border border-primary-200 shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden flex flex-col">
+            <div class="bg-primary-600 px-5 py-4 flex items-center gap-3">
+              <div class="p-2 bg-white/20 rounded-m3-lg">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="text-base font-semibold text-white">Create Context Repo</h3>
+                <p class="text-xs text-primary-100">Scaffold a ready-to-run repository</p>
+              </div>
+            </div>
+            <div class="p-5 flex-1 flex flex-col gap-4">
+              <p class="text-sm text-secondary-700 leading-relaxed">
+                Generate the full .context structure, pipelines, and starter governance in a new repository without leaving the Workspace Hub.
+              </p>
+              <button
+                type="button"
+                class="mt-auto px-4 py-2.5 text-sm font-semibold rounded-m3-lg bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white shadow-elevation-2 hover:shadow-elevation-3 transition-all flex items-center justify-center gap-2"
+                @click="showNewRepoModal = true"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                New Context Repository
+              </button>
+            </div>
+          </div>
+
           <!-- Pinned Items Card -->
           <div class="bg-surface rounded-m3-xl border border-surface-variant shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden">
             <div class="bg-primary-600 px-5 py-4 flex items-center gap-3">

@@ -440,7 +440,8 @@ async function assistWithContext(provider, endpoint, model, apiKey, question, op
       references: Array.isArray(parsed.references) ? parsed.references : [],
       edits: validatedEdits,
       snapshot,
-      usage: response.usage
+      usage: response.usage,
+      logprobs: Array.isArray(response.logprobs) && response.logprobs.length ? response.logprobs : null
     };
     return result;
   } catch (error) {
@@ -457,7 +458,8 @@ async function assistWithContext(provider, endpoint, model, apiKey, question, op
       references: [],
       edits: [],
       snapshot,
-      usage: response.usage
+      usage: response.usage,
+      logprobs: Array.isArray(response.logprobs) && response.logprobs.length ? response.logprobs : null
     };
   }
 }
@@ -478,7 +480,7 @@ async function assistWithContextStream(provider, endpoint, model, apiKey, questi
 
   let contentBuffer = '';
   try {
-    for await (const chunk of callProviderStream({
+    const stream = callProviderStream({
       provider,
       endpoint,
       model,
@@ -488,10 +490,18 @@ async function assistWithContextStream(provider, endpoint, model, apiKey, questi
       responseFormat: 'json',
       temperature: options.temperature ?? 0.7,
       maxTokens: options.maxTokens ?? 4000
-    })) {
+    });
+
+    for await (const chunk of stream) {
       contentBuffer += chunk;
       console.log(JSON.stringify({ type: 'delta', data: chunk }));
     }
+
+    const streamMeta = stream.metadata || {};
+    const streamLogprobs = Array.isArray(streamMeta.logprobs) && streamMeta.logprobs.length
+      ? streamMeta.logprobs
+      : null;
+    const streamUsage = streamMeta.usage || null;
 
     // Try to parse final content
     let finalResult;
@@ -527,7 +537,9 @@ async function assistWithContextStream(provider, endpoint, model, apiKey, questi
         followUps: Array.isArray(parsed.followUps) ? parsed.followUps : [],
         references: Array.isArray(parsed.references) ? parsed.references : [],
         edits: validatedEdits,
-        snapshot
+        snapshot,
+        usage: streamUsage,
+        logprobs: streamLogprobs
       };
     } catch (error) {
       finalResult = {
@@ -540,7 +552,9 @@ async function assistWithContextStream(provider, endpoint, model, apiKey, questi
         followUps: [],
         references: [],
         edits: [],
-        snapshot
+        snapshot,
+        usage: streamUsage,
+        logprobs: streamLogprobs
       };
     }
 
