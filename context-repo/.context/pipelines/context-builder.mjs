@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseYAML } from 'yaml';
+import { loadYamlFile, getAllYamlFiles } from './lib/file-utils.mjs';
+import { withErrorHandling, ErrorCodes } from './lib/error-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,12 +25,11 @@ function loadAllEntities() {
   for (const [entityType, dirName] of Object.entries(entityDirs)) {
     const entityDir = join(REPO_ROOT, 'contexts', dirName);
     try {
-      const files = readdirSync(entityDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+      const files = getAllYamlFiles(entityDir);
       
       for (const file of files) {
         try {
-          const content = readFileSync(join(entityDir, file), 'utf8');
-          const data = parseYAML(content);
+          const data = loadYamlFile(file);
           entities.push({ ...data, _type: entityType });
         } catch (e) {
           // Skip invalid files
