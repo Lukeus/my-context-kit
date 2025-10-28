@@ -148,6 +148,25 @@ cd context-repo
 pnpm validate
 ```
 
+## Spec Kit Workflow
+
+### Additional Prerequisites
+- Access to the `github/spec-kit` release artifacts (GitHub credentials or token if releases are private)
+- Outbound HTTPS connectivity from the desktop where Context-Sync runs
+- `context-repo/.context` committed to Git so cached releases and telemetry stay traceable
+
+### Fetch & Cache Lifecycle
+1. Use **Fetch Spec Kit** inside the Speckit Workflow (or run `pnpm exec node .context/pipelines/speckit-fetch.mjs --repoPath %CD%` from `context-repo/`).
+2. Successful fetches update `.context/state/speckit-fetch.json` with provenance and hydrate `.context/speckit-cache/<tag>/` with markdown previews and templates.
+3. The Speckit store treats the cache as stale when `fetchedAt` is older than seven days. Stale caches surface warnings in the UI and block generation until a refresh (or an explicit override from the command palette).
+
+> **Policy**: Keep Spec Kit caches younger than seven days to guarantee template freshness. The UI prompts for refresh and will refuse to run generation workflows until the cache is renewed.
+
+### Automated Pipeline Verification
+- After entities are generated from Spec Kit markdown, Context-Sync automatically runs `validate`, `build-graph`, `impact`, and `generate` in order.
+- Each stage’s status, errors, and generated file paths appear in the Pipeline Status panel, with quick links back to both the YAML entity and originating Spec Kit preview.
+- The workflow reuses cached fetch data; rerunning the pipelines after fixes simply retries the chain without requiring another fetch unless the cache is stale.
+
 ## Project Structure
 
 ```

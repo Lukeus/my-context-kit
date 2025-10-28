@@ -27,6 +27,7 @@ export type RepoRegistry = {
  */
 export class RepoService {
   private repoWatchers = new Map<string, FSWatcher>();
+  private registryCache: RepoRegistry | null = null;
 
   /**
    * Get the path to the repository registry file
@@ -129,6 +130,18 @@ export class RepoService {
     };
   }
 
+  private cloneRegistry(registry: RepoRegistry): RepoRegistry {
+    return {
+      activeRepoId: registry.activeRepoId,
+      repos: registry.repos.map((repo) => ({ ...repo })),
+    };
+  }
+
+  private snapshotRegistry(registry: RepoRegistry): RepoRegistry {
+    this.registryCache = this.cloneRegistry(registry);
+    return this.cloneRegistry(registry);
+  }
+
   /**
    * Quarantine a corrupt registry file
    */
@@ -162,31 +175,38 @@ export class RepoService {
   /**
    * Load the repository registry from disk
    */
-  async loadRepoRegistry(): Promise<RepoRegistry> {
+  async loadRepoRegistry(options?: { bypassCache?: boolean }): Promise<RepoRegistry> {
+    if (!options?.bypassCache && this.registryCache) {
+      return this.cloneRegistry(this.registryCache);
+    }
+
     const registryPath = this.getRegistryPath();
     try {
       const content = await readFile(registryPath, 'utf-8');
       const parsed = JSON.parse(content);
       const sanitized = this.sanitizeRepoRegistry(parsed);
       if (sanitized) {
-        return sanitized;
+        return this.snapshotRegistry(sanitized);
       }
       await this.quarantineCorruptRegistry(registryPath);
     } catch (error: any) {
-      if (error?.code && error.code !== 'ENOENT') {
+      if (error?.name === 'SyntaxError') {
+        await this.quarantineCorruptRegistry(registryPath);
+      } else if (error?.code && error.code !== 'ENOENT') {
         console.warn(
           'Failed to load repository registry; falling back to defaults.',
           error
         );
       }
     }
-    return { activeRepoId: null, repos: [] };
+    return this.snapshotRegistry({ activeRepoId: null, repos: [] });
   }
 
   /**
    * Save the repository registry to disk
    */
   async saveRepoRegistry(registry: RepoRegistry): Promise<void> {
+    this.registryCache = this.cloneRegistry(registry);
     await writeFile(
       this.getRegistryPath(),
       JSON.stringify(registry, null, 2),
@@ -236,7 +256,7 @@ export class RepoService {
     }
 
     await this.saveRepoRegistry(registry);
-    return registry;
+    return this.cloneRegistry(registry);
   }
 
   /**
@@ -257,7 +277,7 @@ export class RepoService {
       }
     }
     await this.saveRepoRegistry(registry);
-    return registry;
+    return this.cloneRegistry(registry);
   }
 
   /**
@@ -298,7 +318,7 @@ export class RepoService {
     }
 
     await this.saveRepoRegistry(registry);
-    return registry;
+    return this.cloneRegistry(registry);
   }
 
   /**
@@ -315,7 +335,7 @@ export class RepoService {
     repo.lastUsed = new Date().toISOString();
     await this.saveRepoRegistry(registry);
 
-    return registry;
+    return this.cloneRegistry(registry);
   }
 
   /**
@@ -330,9 +350,9 @@ export class RepoService {
       return activeRepo.path;
     }
 
-    const firstExisting = registry.repos.find((entry) =>
-      existsSync(entry.path)
-    );
+    const firstExisting = registry.repos
+      .filter((entry) => entry.id !== registry.activeRepoId)
+      .find((entry) => existsSync(entry.path));
     if (firstExisting) {
       registry.activeRepoId = firstExisting.id;
       firstExisting.lastUsed = new Date().toISOString();

@@ -1,4 +1,22 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { register } from 'tsconfig-paths';
 import { defineConfig, devices } from '@playwright/test';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const tsconfigPath = path.resolve(__dirname, 'tsconfig.base.json');
+const tsconfig = JSON.parse(readFileSync(tsconfigPath, 'utf-8'));
+
+const unregister = register({
+  baseUrl: path.resolve(__dirname, tsconfig.compilerOptions.baseUrl),
+  paths: tsconfig.compilerOptions.paths,
+});
+
+if (typeof unregister === 'function') {
+  process.on('exit', unregister);
+}
 
 /**
  * Playwright configuration for Electron E2E tests

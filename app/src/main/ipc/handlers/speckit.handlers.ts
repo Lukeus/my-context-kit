@@ -1,7 +1,8 @@
 import { ipcMain } from 'electron';
+import type { SpecKitEntityType } from '@shared/speckit';
 import { toErrorMessage } from '../../utils/errorHandler';
 import { SpeckitService } from '../../services/SpeckitService';
-import { error } from '../types';
+import { error, success } from '../types';
 
 const speckitService = new SpeckitService();
 
@@ -28,6 +29,40 @@ export function registerSpeckitHandlers(): void {
   ipcMain.handle('speckit:tasks', async (_event, { repoPath, planPath }: { repoPath: string; planPath: string }) => {
     try {
       return await speckitService.tasks({ repoPath, planPath });
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
+    }
+  });
+
+  ipcMain.handle('speckit:fetch', async (_event, { repoPath, releaseTag, forceRefresh }: { repoPath: string; releaseTag?: string; forceRefresh?: boolean }) => {
+    try {
+      return await speckitService.fetch({ repoPath, releaseTag, forceRefresh });
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
+    }
+  });
+
+  ipcMain.handle('speckit:listPreviews', async (_event, { repoPath }: { repoPath: string }) => {
+    try {
+      const previews = await speckitService.listPreviews({ repoPath });
+      return success(previews);
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
+    }
+  });
+
+  ipcMain.handle('speckit:runPipelines', async (
+    _event,
+    payload: {
+      repoPath: string;
+      createdPaths?: string[];
+      entityMetadata?: Array<{ id: string; type: SpecKitEntityType; path?: string; sourcePath?: string }>;
+      sourcePreviewPaths?: string[];
+    },
+  ) => {
+    try {
+      const report = await speckitService.runPipelines(payload);
+      return success(report);
     } catch (err: unknown) {
       return error(toErrorMessage(err));
     }

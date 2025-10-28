@@ -3,7 +3,11 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import Ajv from 'ajv';
+import Ajv from 'ajv/dist/2020.js';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const draft7MetaSchema = require('ajv/dist/refs/json-schema-draft-07.json');
 import addFormats from 'ajv-formats';
 import { loadYamlFile, getAllYamlFiles } from './lib/file-utils.mjs';
 import { withErrorHandling, PipelineError, ErrorCodes } from './lib/error-utils.mjs';
@@ -13,6 +17,7 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = join(__dirname, '../..');
 
 const ajv = new Ajv({ allErrors: true, verbose: true });
+ajv.addMetaSchema(draft7MetaSchema);
 addFormats(ajv);
 
 // Load all schemas

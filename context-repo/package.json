@@ -9,7 +9,8 @@
     "validate": "node .context/pipelines/validate.mjs",
     "build-graph": "node .context/pipelines/build-graph.mjs",
     "impact": "node .context/pipelines/impact.mjs",
-    "generate": "node .context/pipelines/generate.mjs"
+    "generate": "node .context/pipelines/generate.mjs",
+    "speckit:fetch": "node .context/pipelines/speckit-fetch.mjs --repoPath ."
   },
   "dependencies": {
     "ajv": "^8.17.1",
@@ -19,7 +20,8 @@
     "https-proxy-agent": "^7.0.6",
     "node-fetch": "^3.3.2",
     "simple-git": "^3.27.0",
-    "yaml": "^2.8.1"
+    "yaml": "^2.8.1",
+    "execa": "^9.6.0"
   },
   "packageManager": "pnpm@10.19.0+sha512.c9fc7236e92adf5c8af42fd5bf1612df99c2ceb62f27047032f4720b33f8eacdde311865e91c411f2774f618d82f320808ecb51718bfa82c060c4ba7c76a32b8"
 }

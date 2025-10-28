@@ -12,8 +12,15 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/renderer/*"],
-      "~main/*": ["src/main/*"]
+      "~main/*": ["src/main/*"],
+      "@shared/*": ["src/shared/*"]
     }
   },
-  "include": ["src/**/*", "tests/**/*", "vitest.config.ts"]
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    "e2e/**/*",
+    "vitest.config.ts",
+    "playwright.config.ts"
+  ]
 }
