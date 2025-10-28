@@ -1,29 +1,43 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import ContextTree from './components/ContextTree.vue';
-import YamlEditor from './components/YamlEditor.vue';
-import GraphView from './components/GraphView.vue';
-import GitPanel from './components/GitPanel.vue';
-import WelcomeDocumentation from './components/WelcomeDocumentation.vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, defineAsyncComponent } from 'vue';
+// Core components (always needed)
+import LeftPanelContainer from './components/LeftPanelContainer.vue';
 import DeveloperHub from './components/DeveloperHub.vue';
-import EntityPreview from './components/EntityPreview.vue';
-import EntityDiff from './components/EntityDiff.vue';
-import EntityDependencyGraph from './components/EntityDependencyGraph.vue';
-import PromptPanel from './components/PromptPanel.vue';
-import ImpactReportPanel from './components/ImpactReportPanel.vue';
-import ContextBuilderModal from './components/ContextBuilderModal.vue';
-import NewRepoModal from './components/NewRepoModal.vue';
-import AISettingsModal from './components/AISettingsModal.vue';
-import AIAssistantPanel from './components/AIAssistantPanel.vue';
 import Snackbar from './components/Snackbar.vue';
-import CommandPalette from './components/CommandPalette.vue';
-import SpeckitWizard from './components/SpeckitWizard.vue';
+// Stores and composables
 import { useContextStore } from './stores/contextStore';
 import { useBuilderStore } from './stores/builderStore';
 import { useAIStore } from './stores/aiStore';
 import { useGitStore } from './stores/gitStore';
 import { useSnackbar } from './composables/useSnackbar';
-import C4DiagramRenderer from './components/C4DiagramRenderer.vue';
+import { useRouting } from './composables/useRouting';
+
+// Lazy-loaded modals (Phase 1.1 - only loaded when opened)
+const GraphView = defineAsyncComponent(() => import('./components/GraphView.vue'));
+const GitPanel = defineAsyncComponent(() => import('./components/GitPanel.vue'));
+const NewRepoModal = defineAsyncComponent(() => import('./components/NewRepoModal.vue'));
+const AISettingsModal = defineAsyncComponent(() => import('./components/AISettingsModal.vue'));
+const SpeckitWizard = defineAsyncComponent(() => import('./components/SpeckitWizard.vue'));
+const CommandPalette = defineAsyncComponent(() => import('./components/CommandPalette.vue'));
+const ContextBuilderModal = defineAsyncComponent(() => import('./components/ContextBuilderModal.vue'));
+
+// Lazy-loaded tab components (Phase 1.2 - only loaded when tab is active)
+const YamlEditor = defineAsyncComponent(() => import('./components/YamlEditor.vue'));
+const EntityPreview = defineAsyncComponent(() => import('./components/EntityPreview.vue'));
+const EntityDiff = defineAsyncComponent(() => import('./components/EntityDiff.vue'));
+const EntityDependencyGraph = defineAsyncComponent(() => import('./components/EntityDependencyGraph.vue'));
+const PromptPanel = defineAsyncComponent(() => import('./components/PromptPanel.vue'));
+const ImpactReportPanel = defineAsyncComponent(() => import('./components/ImpactReportPanel.vue'));
+
+// Lazy-loaded documentation (Phase 1.4 - rarely used)
+const WelcomeDocumentation = defineAsyncComponent(() => import('./components/WelcomeDocumentation.vue'));
+
+// Lazy-loaded C4 diagram components (Phase 1.3 - biggest win, 2.5MB from Mermaid)
+const C4DiagramRenderer = defineAsyncComponent(() => import('./components/C4DiagramRenderer.vue'));
+const C4DiagramBuilder = defineAsyncComponent(() => import('./components/C4DiagramBuilder.vue'));
+
+// AI Assistant - keep eager loaded as it's frequently used
+import AIAssistantPanel from './components/AIAssistantPanel.vue';
 
 const contextStore = useContextStore();
 const builderStore = useBuilderStore();
@@ -38,8 +52,16 @@ const {
   showSnackbar: triggerSnackbar
 } = useSnackbar();
 
+// Router integration (enterprise routing)
+const { 
+  navigateTo: routerNavigateTo, 
+  currentRouteName, 
+  currentParams,
+  isRouteActive,
+  breadcrumbs: routerBreadcrumbs 
+} = useRouting();
+
 const showGraphModal = ref(false);
-const showGitModal = ref(false);
 const showAISettings = ref(false);
 const showRepoManager = ref(false);
 const showNewRepoModal = ref(false);
@@ -51,7 +73,6 @@ const isSavingRepo = ref(false);
 const repoActionMessage = ref('');
 const removingRepoId = ref<string | null>(null);
 const repoSelection = ref('');
-      openImpactView();
 
 // Command palette visibility
 const showCommandPalette = ref(false);
@@ -64,13 +85,14 @@ const lastValidationStatus = ref<'success' | 'error' | null>(null);
 const lastGraphRefresh = ref<string | null>(null);
 
 type NavId = 'hub' | 'entities' | 'graph' | 'git' | 'validate' | 'docs' | 'ai' | 'c4' | 'entity';
-type NavRailId = Exclude<NavId, 'entity' | 'c4'>;
+type NavRailId = Exclude<NavId, 'entity'>;
 
 const activeNavId = ref<NavId>('hub');
 
 const navRailItems: Array<{ id: NavRailId; label: string; requiresRepo?: boolean; shortcut?: string }> = [
   { id: 'hub', label: 'Hub', shortcut: 'Home' },
   { id: 'entities', label: 'Tree', shortcut: 'Toggle' },
+  { id: 'c4', label: 'C4', shortcut: 'Architecture' },
   { id: 'graph', label: 'Graph', requiresRepo: true, shortcut: 'View' },
   { id: 'git', label: 'Git', requiresRepo: true, shortcut: 'Status' },
   { id: 'validate', label: 'Validate', requiresRepo: true, shortcut: 'Run' },
@@ -79,7 +101,7 @@ const navRailItems: Array<{ id: NavRailId; label: string; requiresRepo?: boolean
 ];
 
 // Panel state
-const leftPanelOpen = ref(true);
+const leftPanelOpen = ref(false); // Start with left panel closed (hub view)
 const rightPanelOpen = ref(true);
 const leftPanelWidth = ref(256); // 64 * 4 = 256px (w-64)
 const rightPanelWidth = ref(380);
@@ -160,6 +182,21 @@ const activeEntityDescription = computed(() => {
 const centerTab = ref<'yaml' | 'preview' | 'diff' | 'graph' | 'impact' | 'prompt'>('yaml');
 function setCenterTab(tab: 'yaml' | 'preview' | 'diff' | 'graph' | 'impact' | 'prompt') { centerTab.value = tab; }
 
+// Router watchers - placed after computed properties to ensure proper initialization
+// Sync entity route params with active entity
+watch(currentParams, (params) => {
+  if (currentRouteName.value === 'entity' && params.id) {
+    contextStore.setActiveEntity(params.id as string);
+  }
+});
+
+// Sync active entity with route
+watch(() => activeEntity.value, (entity) => {
+  if (entity && currentRouteName.value !== 'entity') {
+    routerNavigateTo('entity', { id: entity.id });
+  }
+});
+
 // Panel resize handlers
 function startResizeLeft() {
   isResizingLeft.value = true;
@@ -174,13 +211,38 @@ function startResizeRight() {
 }
 
 async function handleNavClick(id: NavRailId) {
+  // Sync with Vue Router for enterprise routing
+  const routeMap: Record<string, string> = {
+    'hub': 'hub',
+    'c4': 'c4',
+    'docs': 'docs',
+    'entities': 'entities'
+  };
+  
+  if (routeMap[id]) {
+    await routerNavigateTo(routeMap[id]);
+  }
+  
   switch (id) {
     case 'hub':
       openWorkspace();
       activeNavId.value = 'hub';
+      leftPanelOpen.value = false; // Hide left panel on hub
       break;
     case 'entities':
-      leftPanelOpen.value = !leftPanelOpen.value;
+      activeNavId.value = 'entities';
+      leftPanelOpen.value = true; // Show left panel for entities
+      // If no entity is selected, select the first one
+      if (!contextStore.activeEntity && contextStore.entityCount > 0) {
+        const allEntities = Object.values(contextStore.entitiesByType).flat();
+        if (allEntities.length > 0) {
+          contextStore.setActiveEntity(allEntities[0].id);
+        }
+      }
+      break;
+    case 'c4':
+      openC4Builder();
+      leftPanelOpen.value = true; // Show left panel for C4
       break;
     case 'graph':
       await openGraphModal();
@@ -194,6 +256,7 @@ async function handleNavClick(id: NavRailId) {
     case 'docs':
       openDocs();
       activeNavId.value = 'docs';
+      leftPanelOpen.value = false; // Hide left panel on docs
       break;
     case 'ai':
       openAssistantPanel();
@@ -208,11 +271,13 @@ function isNavActive(id: NavRailId) {
     case 'hub':
       return activeNavId.value === 'hub';
     case 'entities':
-      return leftPanelOpen.value;
+      return activeNavId.value === 'entities';
+    case 'c4':
+      return activeNavId.value === 'c4';
     case 'graph':
       return showGraphModal.value;
     case 'git':
-      return showGitModal.value;
+      return activeNavId.value === 'git';
     case 'docs':
       return activeNavId.value === 'docs';
     case 'ai':
@@ -278,20 +343,14 @@ watch(showRepoManager, async (isOpen) => {
 
 watch(activeEntity, (entity) => {
   if (entity) {
-    if (entity._type === 'c4diagram') {
-      activeNavId.value = 'c4';
-      centerTab.value = 'preview'; // Auto-select preview tab for diagrams
-    } else {
-      activeNavId.value = 'entities';
-    }
+    activeNavId.value = 'entities';
+    leftPanelOpen.value = true; // Open left panel when entity selected
   } else {
-    activeNavId.value = showDocsCenter.value ? 'docs' : 'hub';
-  }
-});
-
-watch(showDocsCenter, (isDocs) => {
-  if (!activeEntity.value) {
-    activeNavId.value = isDocs ? 'docs' : 'hub';
+    // Preserve current view if it's C4, docs, or hub
+    if (!['c4', 'docs', 'hub'].includes(activeNavId.value)) {
+      activeNavId.value = 'hub';
+      leftPanelOpen.value = false;
+    }
   }
 });
 
@@ -344,8 +403,6 @@ function handleKeyboard(e: KeyboardEvent) {
     }
     if (showGraphModal.value) {
       showGraphModal.value = false;
-    } else if (showGitModal.value) {
-      showGitModal.value = false;
     } else if (showRepoManager.value) {
       showRepoManager.value = false;
     } else if (showAISettings.value) {
@@ -355,6 +412,11 @@ function handleKeyboard(e: KeyboardEvent) {
 }
 
 onMounted(async () => {
+  // Initialize router service with routes
+  const { routes } = await import('./config/routes');
+  const router = await import('./composables/useRouting').then(m => m.getRouterService());
+  router.registerAll(routes);
+  
   // Initialize context store on app mount
   await contextStore.initializeStore();
   await contextStore.refreshRepoRegistry();
@@ -431,20 +493,26 @@ async function openGitPanel() {
   }
   await gitStore.loadStatus();
   await gitStore.loadBranches();
-  showGitModal.value = true;
+  contextStore.setActiveEntity(null);
   activeNavId.value = 'git';
 }
 
 function openDocs() {
-  showDocsCenter.value = true;
   contextStore.setActiveEntity(null);
   activeNavId.value = 'docs';
+  leftPanelOpen.value = false; // Close left panel on docs
 }
 
 function openWorkspace() {
-  showDocsCenter.value = false;
   contextStore.setActiveEntity(null);
   activeNavId.value = 'hub';
+  leftPanelOpen.value = false; // Close left panel when going to hub
+}
+
+function openC4Builder() {
+  contextStore.setActiveEntity(null);
+  activeNavId.value = 'c4';
+  leftPanelOpen.value = true; // Open left panel for C4 diagrams
 }
 
 
@@ -458,8 +526,8 @@ function toggleRightPanel() {
     activeNavId.value = 'ai';
   } else if (activeEntity.value) {
     activeNavId.value = 'entities';
-  } else {
-    activeNavId.value = showDocsCenter.value ? 'docs' : 'hub';
+  } else if (!['c4', 'docs', 'hub'].includes(activeNavId.value)) {
+    activeNavId.value = 'hub';
   }
 }
 
@@ -479,6 +547,15 @@ async function handleAskAboutEntity(entityId: string) {
 }
 
 async function handleCommandExecute(commandId: string) {
+  // Handle navigation commands from router
+  if (commandId.startsWith('nav:')) {
+    const routeId = commandId.substring(4); // Remove 'nav:' prefix
+    await handleRouteNavigation(routeId);
+    showCommandPalette.value = false;
+    return;
+  }
+  
+  // Handle action commands
   switch (commandId) {
     case 'speckit:workflow':
       showSpeckitWizard.value = true;
@@ -488,12 +565,6 @@ async function handleCommandExecute(commandId: string) {
       break;
     case 'impact:analyze':
       openImpactView();
-      break;
-    case 'graph:open':
-      await openGraphModal();
-      break;
-    case 'git:open':
-      await openGitPanel();
       break;
     case 'create:feature':
       openBuilderModal('feature');
@@ -511,6 +582,52 @@ async function handleCommandExecute(commandId: string) {
       break;
   }
   showCommandPalette.value = false;
+}
+
+// Handle route-based navigation from commands or nav rail
+async function handleRouteNavigation(routeId: string) {
+  const result = await routerNavigateTo(routeId as any);
+  
+  if (!result.success) {
+    triggerSnackbar({ 
+      message: result.error || `Cannot navigate to ${routeId}`, 
+      type: 'warning' 
+    });
+    return;
+  }
+  
+  // Sync UI state with route
+  switch (routeId) {
+    case 'hub':
+      openWorkspace();
+      break;
+    case 'entities':
+      leftPanelOpen.value = true;
+      activeNavId.value = 'entities';
+      break;
+    case 'c4':
+      openC4Builder();
+      break;
+    case 'graph':
+      await openGraphModal();
+      break;
+    case 'git':
+      await openGitPanel();
+      break;
+    case 'docs':
+      openDocs();
+      break;
+    case 'ai':
+      openAssistantPanel();
+      break;
+    case 'validate':
+      await runValidation();
+      activeNavId.value = 'hub'; // Return to hub after validation
+      break;
+    default:
+      // Generic fallback
+      activeNavId.value = routeId as NavId;
+  }
 }
 
 function openImpactView() {
@@ -554,8 +671,8 @@ function toggleLeftPanel() {
   leftPanelOpen.value = !leftPanelOpen.value;
   if (leftPanelOpen.value) {
     activeNavId.value = 'entities';
-  } else if (!activeEntity.value) {
-    activeNavId.value = showDocsCenter.value ? 'docs' : 'hub';
+  } else if (!activeEntity.value && !['c4', 'docs', 'hub'].includes(activeNavId.value)) {
+    activeNavId.value = 'hub';
   }
 }
 
@@ -792,17 +909,17 @@ async function handleRemoveRepo(id: string) {
         </button>
       </aside>
 
-      <!-- Left Panel (Context Tree) -->
+      <!-- Left Panel (Dynamic based on active view) -->
       <aside
         v-if="leftPanelOpen"
         :style="{ width: leftPanelWidth + 'px' }"
-        class="bg-surface-1 border-r border-surface-variant shadow-elevation-1 relative flex-shrink-0"
+        class="relative flex-shrink-0"
       >
-        <ContextTree @ask-about-entity="handleAskAboutEntity" />
+        <LeftPanelContainer :active-view="activeNavId" @ask-about-entity="handleAskAboutEntity" />
         <!-- Resize handle -->
         <div
           @mousedown="startResizeLeft"
-          class="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary-300 transition-colors group"
+          class="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary-300 transition-colors group z-10"
         >
           <div class="absolute inset-y-0 right-0 w-1 bg-transparent group-hover:bg-primary-400"></div>
         </div>
@@ -887,20 +1004,115 @@ async function handleRemoveRepo(id: string) {
             </button>
           </div>
           <div class="flex-1 min-h-0">
-            <YamlEditor v-if="centerTab==='yaml' && activeEntity._type !== 'c4diagram'" />
-            <C4DiagramRenderer v-else-if="centerTab==='preview' && activeEntity._type === 'c4diagram'" />
-            <EntityPreview v-else-if="centerTab==='preview'" />
-            <EntityDiff v-else-if="centerTab==='diff'" />
-            <EntityDependencyGraph v-else-if="centerTab==='graph'" />
-            <ImpactReportPanel v-else-if="centerTab==='impact'" />
-            <PromptPanel v-else-if="centerTab==='prompt'" />
+            <Suspense>
+              <template #default>
+                <YamlEditor v-if="centerTab==='yaml' && activeEntity._type !== 'c4diagram'" />
+                <C4DiagramRenderer v-else-if="centerTab==='preview' && activeEntity._type === 'c4diagram'" />
+                <EntityPreview v-else-if="centerTab==='preview'" />
+                <EntityDiff v-else-if="centerTab==='diff'" />
+                <EntityDependencyGraph v-else-if="centerTab==='graph'" />
+                <ImpactReportPanel v-else-if="centerTab==='impact'" />
+                <PromptPanel v-else-if="centerTab==='prompt'" />
+              </template>
+              <template #fallback>
+                <div class="flex items-center justify-center h-full">
+                  <div class="text-center">
+                    <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="text-sm text-secondary-600">Loading...</p>
+                  </div>
+                </div>
+              </template>
+            </Suspense>
           </div>
         </div>
 
-        <!-- Workspace Hub/Docs when no entity selected -->
-        <WelcomeDocumentation v-else-if="showDocsCenter" />
+        <!-- C4 Architecture Builder View -->
+        <Suspense v-else-if="activeNavId === 'c4'">
+          <template #default>
+            <C4DiagramBuilder />
+          </template>
+          <template #fallback>
+            <div class="flex items-center justify-center h-full">
+              <div class="text-center">
+                <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-sm text-secondary-600">Loading C4 builder...</p>
+              </div>
+            </div>
+          </template>
+        </Suspense>
+        <!-- Git Workflow View -->
+        <div v-else-if="activeNavId === 'git'" class="flex flex-col h-full bg-surface">
+          <!-- Git Page Header -->
+          <div class="flex items-center justify-between px-6 py-4 bg-surface-1 border-b border-surface-variant shadow-elevation-1">
+            <div class="flex items-center gap-3">
+              <div class="p-2 rounded-m3-full bg-primary-50">
+                <svg class="w-6 h-6 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+              </div>
+              <div>
+                <h2 class="text-2xl font-semibold text-primary-900">Git Workflow</h2>
+                <p class="text-sm text-secondary-600">Manage changes, stage, commit, and sync</p>
+              </div>
+            </div>
+            <button
+              @click="activeNavId = 'hub'"
+              class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-secondary-700 hover:text-primary-700 hover:bg-surface-2 rounded-m3-lg transition-all"
+              title="Back to Hub"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back
+            </button>
+          </div>
+          <!-- Git Content -->
+          <div class="flex-1 overflow-hidden">
+            <Suspense>
+              <template #default>
+                <GitPanel />
+              </template>
+              <template #fallback>
+                <div class="flex items-center justify-center h-full">
+                  <div class="text-center">
+                    <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="text-sm text-secondary-600">Loading Git workflow...</p>
+                  </div>
+                </div>
+              </template>
+            </Suspense>
+          </div>
+        </div>
+
+        <!-- Documentation View -->
+        <Suspense v-else-if="activeNavId === 'docs'">
+          <template #default>
+            <WelcomeDocumentation />
+          </template>
+          <template #fallback>
+            <div class="flex items-center justify-center h-full">
+              <div class="text-center">
+                <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-sm text-secondary-600">Loading documentation...</p>
+              </div>
+            </div>
+          </template>
+        </Suspense>
+        <!-- Developer Hub View (default) -->
         <DeveloperHub
-          v-else
+          v-else-if="activeNavId === 'hub'"
           :last-validation-status="lastValidationStatus"
           :last-validation-at="lastValidationAt"
           :last-graph-refresh="lastGraphRefresh"
@@ -933,37 +1145,6 @@ async function handleRemoveRepo(id: string) {
         </div>
       </aside>
     </main>
-
-    <!-- Git Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div
-          v-if="showGitModal"
-          class="fixed inset-0 z-50 flex items-center justify-center"
-          style="background-color: rgba(0, 0, 0, 0.5);"
-          @click.self="showGitModal = false"
-        >
-          <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[600px] h-[80vh] flex flex-col overflow-hidden">
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between px-6 py-4 bg-surface-2 border-b border-surface-variant">
-              <h2 class="text-xl font-semibold text-primary-700">Git Workflow</h2>
-              <button
-                @click="showGitModal = false"
-                class="text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 p-2 rounded-m3-full transition-all"
-              >
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <!-- Git Content -->
-            <div class="flex-1 overflow-hidden">
-              <GitPanel />
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
 
     <!-- Graph Modal -->
     <Teleport to="body">

@@ -10,16 +10,6 @@ interface Entity {
   [key: string]: any;
 }
 
-interface C4Diagram {
-  file: string;
-  title: string;
-  content: string;
-  system?: string;
-  level?: string;
-  feature?: string;
-  projection?: any;
-}
-
 interface Graph {
   nodes: Array<{
     id: string;
@@ -194,7 +184,6 @@ export const useContextStore = defineStore('context', () => {
 
   const entitiesByType = computed(() => {
     const grouped: Record<string, Entity[]> = {
-      c4diagram: [],
       governance: [],
       feature: [],
       userstory: [],
@@ -239,9 +228,9 @@ export const useContextStore = defineStore('context', () => {
       await window.api.settings.set('repoPath', normalizedPath);
       await ensureRepoInRegistry(normalizedPath, { setActive: true });
       await refreshRepoRegistry();
-    } catch (err) {
-      console.error('Failed to save repo path setting:', err);
-    } finally {
+    } catch {
+      // Ignore errors
+    } finally{
       await startRepoWatch(normalizedPath);
     }
   }
@@ -275,30 +264,6 @@ export const useContextStore = defineStore('context', () => {
             _type: node.kind
           };
         });
-      }
-
-      // Load C4 diagrams as entities
-      try {
-        const c4Result = await window.api.c4.loadDiagrams(repoPath.value);
-        if (c4Result.success && c4Result.diagrams) {
-          c4Result.diagrams.forEach((diagram: C4Diagram, index: number) => {
-            const diagramId = `c4-diagram-${index}`;
-            newEntities[diagramId] = {
-              id: diagramId,
-              _type: 'c4diagram',
-              title: diagram.title,
-              file: diagram.file,
-              content: diagram.content,
-              system: diagram.system,
-              level: diagram.level,
-              feature: diagram.feature,
-              projection: diagram.projection
-            };
-          });
-        }
-      } catch (c4Error) {
-        console.warn('Failed to load C4 diagrams:', c4Error);
-        // Continue even if C4 loading fails
       }
 
       entities.value = newEntities;
@@ -407,8 +372,8 @@ function setActiveEntity(entityId: string | null) {
       await refreshRepoRegistry();
       await startRepoWatch(repo.path);
       await loadGraph();
-    } catch (err) {
-      console.error('Failed to activate repository:', err);
+    } catch {
+      // Ignore errors
     }
   }
 
