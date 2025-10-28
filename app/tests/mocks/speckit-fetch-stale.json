@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "cachePath": "/workspace/context-repo/.context/speckit-cache/v0.0.42",
+  "commit": "deadbeefcaf0",
+  "releaseTag": "v0.0.42",
+  "durationMs": 6123,
+  "fetchedAt": "2025-09-15T09:10:00.000Z",
+  "source": {
+    "repository": "github/spec-kit",
+    "releaseTag": "v0.0.42",
+    "commit": "deadbeefcaf0"
+  },
+  "timing": {
+    "startedAt": "2025-09-15T09:09:50.000Z",
+    "finishedAt": "2025-09-15T09:10:00.000Z",
+    "durationMs": 10000
+  },
+  "artifacts": {
+    "docs": ["docs/legacy.md"],
+    "templates": ["templates/legacy-template.md"],
+    "memory": []
+  },
+  "status": {
+    "ok": true,
+    "error": null,
+    "stale": true
+  },
+  "warnings": [
+    "Fetched snapshot older than freshness window"
+  ]
+}

@@ -52,7 +52,7 @@ releases remain auditable, and security reviews MUST cover any new integrations 
 - Node.js 20 LTS and pnpm (via Corepack) are the only approved runtime and package tools; lockfiles MUST stay committed.
 - Electron Forge with Vite bundles all processes; preload scripts MUST remain Node-disabled except for explicit bridges.
 - Pipelines execute with `node <repo>/.context/pipelines/*.mjs`; use deterministic configuration and document required env vars.
-- Tailwind CSS, Vue 3 Composition API, and Pinia are mandatory in the renderer; deviations require constitutional amendments.
+- Tailwind CSS, Material 3 design, Vue 3 Composition API, and Pinia are mandatory in the renderer; deviations require constitutional amendments.
 - C4 diagrams under `context-repo/c4/` MUST be updated in lock-step with architecture-affecting changes and reviewed in PRs.
 
 ## Workflow & Quality Gates

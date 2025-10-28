@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src/renderer', rootDir)),
       '~main': fileURLToPath(new URL('./src/main', rootDir)),
+      '@shared': fileURLToPath(new URL('./src/shared', rootDir)),
       electron: fileURLToPath(new URL('./tests/mocks/electron.ts', rootDir)),
     },
   },

@@ -1,4 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type {
+  SpecKitEntityType,
+  SpecKitFetchPipelineResult,
+  SpecKitPipelineReport,
+  SpecKitPreviewListResponse,
+} from '@shared/speckit';
 
 // Expose IPC API to renderer process
 contextBridge.exposeInMainWorld('api', {
@@ -93,7 +99,27 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('speckit:plan', { repoPath, specPath, techStack }),
     tasks: (repoPath: string, planPath: string) =>
       ipcRenderer.invoke('speckit:tasks', { repoPath, planPath }),
-    toEntity: (repoPath: string, specPath: string, options?: { createFeature?: boolean; createStories?: boolean }) =>
+    fetch: (repoPath: string, releaseTag?: string, forceRefresh?: boolean): Promise<SpecKitFetchPipelineResult> =>
+      ipcRenderer.invoke('speckit:fetch', { repoPath, releaseTag, forceRefresh }),
+    listPreviews: (repoPath: string): Promise<SpecKitPreviewListResponse> =>
+      ipcRenderer.invoke('speckit:listPreviews', { repoPath }),
+    runPipelines: (
+      repoPath: string,
+      options?: {
+        createdPaths?: string[];
+        entityMetadata?: Array<{ id: string; type: SpecKitEntityType; path?: string; sourcePath?: string }>;
+        sourcePreviewPaths?: string[];
+      },
+    ): Promise<{ ok: boolean; data?: SpecKitPipelineReport; error?: string }> =>
+      ipcRenderer.invoke('speckit:runPipelines', {
+        repoPath,
+        ...(options ?? {}),
+      }),
+    toEntity: (
+      repoPath: string,
+      specPath: string,
+      options?: { createFeature?: boolean; createStories?: boolean; sourcePreviewPaths?: string[] }
+    ) =>
       ipcRenderer.invoke('speckit:toEntity', { repoPath, specPath, options }),
     tasksToEntity: (repoPath: string, tasksPath: string) =>
       ipcRenderer.invoke('speckit:tasksToEntity', { repoPath, tasksPath }),
@@ -227,7 +253,21 @@ declare global {
           error?: string;
           stack?: string;
         }>;
-        toEntity: (repoPath: string, specPath: string, options?: { createFeature?: boolean; createStories?: boolean }) => 
+        fetch: (repoPath: string, releaseTag?: string, forceRefresh?: boolean) => Promise<SpecKitFetchPipelineResult>;
+        listPreviews: (repoPath: string) => Promise<SpecKitPreviewListResponse>;
+        runPipelines: (
+          repoPath: string,
+          options?: {
+            createdPaths?: string[];
+            entityMetadata?: Array<{ id: string; type: SpecKitEntityType; path?: string; sourcePath?: string }>;
+            sourcePreviewPaths?: string[];
+          }
+        ) => Promise<{ ok: boolean; data?: SpecKitPipelineReport; error?: string }>;
+        toEntity: (
+          repoPath: string,
+          specPath: string,
+          options?: { createFeature?: boolean; createStories?: boolean; sourcePreviewPaths?: string[] }
+        ) => 
           Promise<{ ok: boolean; entities?: any; created?: string[]; error?: string; stack?: string }>;
         tasksToEntity: (repoPath: string, tasksPath: string) => 
           Promise<{ ok: boolean; tasks?: any[]; created?: string[]; error?: string; stack?: string }>;

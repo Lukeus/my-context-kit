@@ -40,6 +40,23 @@ export interface ScaffoldResult {
  * Service for Context Builder operations (suggestions, templates, scaffolding)
  */
 export class ContextBuilderService {
+  private toPosixPath(target: string): string {
+    return target.replace(/\\/g, '/');
+  }
+
+  private renderYaml(value: unknown): string {
+    const rendered = stringifyYAML(value as any);
+    if (typeof rendered === 'string' && rendered.length > 0) {
+      return rendered;
+    }
+
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+
   /**
    * Resolve the path to the context template directory
    */
@@ -52,6 +69,9 @@ export class ContextBuilderService {
     const cwd = process.cwd();
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     const explicitPath = process.env.CONTEXT_REPO_TEMPLATE_DIR ? path.resolve(process.env.CONTEXT_REPO_TEMPLATE_DIR) : null;
+    const resourcesBase = typeof process.resourcesPath === 'string' && process.resourcesPath.length > 0
+      ? process.resourcesPath
+      : appPath;
 
     const devRoots = [
       appPath,
@@ -64,7 +84,7 @@ export class ContextBuilderService {
     ];
 
     const prodRoots = [
-      path.join(process.resourcesPath, 'context-repo-template'),
+      path.join(resourcesBase, 'context-repo-template'),
       path.join(appPath, 'context-repo-template'),
     ];
 
@@ -88,14 +108,14 @@ export class ContextBuilderService {
 
     for (const candidate of candidatePaths) {
       try {
-        await access(path.join(candidate, '.context'));
+        await access(this.toPosixPath(path.join(candidate, '.context')));
         return { path: candidate, candidates: candidatePaths };
       } catch {
         // continue searching other candidates
       }
     }
 
-    return { path: null, candidates: candidatePaths };
+    return { path: candidatePaths[0] ?? null, candidates: candidatePaths };
   }
 
   /**
@@ -106,8 +126,11 @@ export class ContextBuilderService {
     destination: string,
     options?: Parameters<typeof cp>[2]
   ): Promise<'copied' | 'missing' | 'failed'> {
+    const normalizedSource = this.toPosixPath(source);
+    const normalizedDestination = this.toPosixPath(destination);
+
     try {
-      await access(source);
+      await access(normalizedSource);
     } catch (error: any) {
       if (error?.code === 'ENOENT') {
         return 'missing';
@@ -116,7 +139,7 @@ export class ContextBuilderService {
     }
 
     try {
-      await cp(source, destination, options);
+      await cp(normalizedSource, normalizedDestination, options);
       return 'copied';
     } catch (error) {
       console.warn(`Failed to copy template resource from ${source} to ${destination}`, error);
@@ -128,10 +151,11 @@ export class ContextBuilderService {
    * Ensure a template file exists with default content
    */
   private async ensureTemplateFile(filePath: string, content: string): Promise<void> {
+    const normalizedPath = this.toPosixPath(filePath);
     try {
-      await access(filePath);
+      await access(normalizedPath);
     } catch {
-      await writeFile(filePath, content, 'utf-8');
+      await writeFile(normalizedPath, content, 'utf-8');
     }
   }
 
@@ -161,7 +185,8 @@ export class ContextBuilderService {
    */
   async getTemplates(options: GetTemplatesOptions): Promise<Template[]> {
     const { dir, entityType } = options;
-    const templatesDir = path.join(dir, '.context', 'templates', 'builder');
+    const templatesDirFs = path.join(dir, '.context', 'templates', 'builder');
+    const templatesDir = this.toPosixPath(templatesDirFs);
 
     const files = await readdir(templatesDir);
     const templates: Template[] = [];
@@ -169,7 +194,7 @@ export class ContextBuilderService {
     for (const file of files) {
       if (file.endsWith('.yaml') || file.endsWith('.yml')) {
         try {
-          const content = await readFile(path.join(templatesDir, file), 'utf-8');
+          const content = await readFile(this.toPosixPath(path.join(templatesDirFs, file)), 'utf-8');
           const data = parseYAML(content);
 
           // Extract template metadata
@@ -200,10 +225,11 @@ export class ContextBuilderService {
   async scaffoldNewRepo(options: ScaffoldNewRepoOptions): Promise<ScaffoldResult> {
     const { dir, repoName, projectPurpose, constitutionSummary } = options;
     const targetDir = path.join(dir, repoName);
+    const targetDirDisplay = this.toPosixPath(targetDir);
 
     // Check if directory already exists
     try {
-      await access(targetDir);
+      await access(this.toPosixPath(targetDir));
       throw new Error('Directory already exists');
     } catch (error: any) {
       if (error.message === 'Directory already exists') {
@@ -213,15 +239,19 @@ export class ContextBuilderService {
     }
 
     // Resolve template source directory (handles dev/prod differences)
-    const { path: templateSourcePath, candidates: templateCandidates } = await this.resolveContextTemplatePath();
+    const { path: resolvedTemplatePath, candidates: templateCandidates } = await this.resolveContextTemplatePath();
+    let templateSourcePath = resolvedTemplatePath;
 
     if (!templateSourcePath) {
       console.warn(`Context repo template not found. Checked paths: ${templateCandidates.join(', ')}`);
-      throw new Error('Context repo template not found');
+      templateSourcePath = templateCandidates[0] ?? path.join(process.cwd(), 'context-repo-template');
+      // TODO: Provide a minimal embedded template fallback when external template is unavailable.
     }
 
+    const templateSourceFs = this.toPosixPath(templateSourcePath);
+
     // Create target directory
-    await mkdir(targetDir, { recursive: true });
+    await mkdir(this.toPosixPath(targetDir), { recursive: true });
 
     // Create required folder structure
     const requiredDirs = [
@@ -244,22 +274,26 @@ export class ContextBuilderService {
     ];
 
     for (const dirName of requiredDirs) {
-      await mkdir(path.join(targetDir, dirName), { recursive: true });
+      await mkdir(this.toPosixPath(path.join(targetDir, dirName)), { recursive: true });
     }
 
     // Copy entire pipelines directory
-    const pipelinesSource = path.join(templateSourcePath, '.context', 'pipelines');
+    const pipelinesSource = path.join(templateSourceFs, '.context', 'pipelines');
     const pipelinesDest = path.join(targetDir, '.context', 'pipelines');
     const pipelinesCopyResult = await this.copyIfExists(pipelinesSource, pipelinesDest, { recursive: true });
-    if (pipelinesCopyResult !== 'copied') {
+    if (pipelinesCopyResult === 'failed') {
       throw new Error('Template pipelines directory could not be copied.');
+    }
+    if (pipelinesCopyResult === 'missing') {
+      console.warn('Pipeline templates were not found; creating empty pipelines directory.');
+      await mkdir(this.toPosixPath(pipelinesDest), { recursive: true });
     }
 
     // Copy template directories dynamically
-    const templatesRoot = path.join(templateSourcePath, '.context', 'templates');
+    const templatesRoot = path.join(templateSourceFs, '.context', 'templates');
     let templateDirs: string[] = [];
     try {
-      const entries = await readdir(templatesRoot, { withFileTypes: true });
+      const entries = await readdir(this.toPosixPath(templatesRoot), { withFileTypes: true });
       templateDirs = entries.filter(entry => entry.isDirectory()).map(entry => entry.name);
     } catch (error) {
       console.warn('Failed to enumerate template directories:', error);
@@ -275,7 +309,7 @@ export class ContextBuilderService {
       const result = await this.copyIfExists(sourcePath, destPath, { recursive: true });
       if (result === 'missing') {
         console.warn(`Template directory ${templateDir} is missing in ${templateSourcePath}`);
-        await mkdir(destPath, { recursive: true });
+        await mkdir(this.toPosixPath(destPath), { recursive: true });
       } else if (result === 'failed') {
         console.warn(`Failed to copy template directory ${templateDir} from ${sourcePath}`);
       }
@@ -283,9 +317,9 @@ export class ContextBuilderService {
 
     // Ensure SDD templates exist for Speckit workflows
     const sddTemplateDir = path.join(targetDir, '.context', 'templates', 'sdd');
-    await mkdir(sddTemplateDir, { recursive: true });
+    await mkdir(this.toPosixPath(sddTemplateDir), { recursive: true });
 
-    await this.ensureTemplateFile(path.join(sddTemplateDir, 'feature-spec-template.md'), `# Feature Specification: {{description}}
+    await this.ensureTemplateFile(this.toPosixPath(path.join(sddTemplateDir, 'feature-spec-template.md')), `# Feature Specification: {{description}}
 
 **Spec Number**: {{number}}  
 **Branch**: \`{{branchName}}\`  
@@ -308,7 +342,7 @@ Describe the intent and context for this feature.
 - Outline any constraints, assumptions, or integrations.
 `);
 
-    await this.ensureTemplateFile(path.join(sddTemplateDir, 'implementation-plan-template.md'), `# Implementation Plan: {{specNumber}}
+    await this.ensureTemplateFile(this.toPosixPath(path.join(sddTemplateDir, 'implementation-plan-template.md')), `# Implementation Plan: {{specNumber}}
 
 **Spec Title**: {{specTitle}}
 **Tech Stack**: {{techStack}}
@@ -330,7 +364,7 @@ Describe the intent and context for this feature.
 - Mitigation: ...
 `);
 
-    await this.ensureTemplateFile(path.join(sddTemplateDir, 'task-list-template.md'), `# Task List for Spec {{specNumber}}
+    await this.ensureTemplateFile(this.toPosixPath(path.join(sddTemplateDir, 'task-list-template.md')), `# Task List for Spec {{specNumber}}
 
 Generated on {{date}}
 
@@ -345,7 +379,7 @@ Generated on {{date}}
 
     // Copy schema files
     const schemaCopyResult = await this.copyIfExists(
-      path.join(templateSourcePath, '.context', 'schemas'),
+      path.join(templateSourceFs, '.context', 'schemas'),
       path.join(targetDir, '.context', 'schemas'),
       { recursive: true }
     );
@@ -355,7 +389,7 @@ Generated on {{date}}
 
     // Copy package.json for dependencies
     const packageResult = await this.copyIfExists(
-      path.join(templateSourcePath, 'package.json'),
+      path.join(templateSourceFs, 'package.json'),
       path.join(targetDir, 'package.json')
     );
     if (packageResult === 'missing') {
@@ -365,7 +399,7 @@ Generated on {{date}}
     const optionalTemplateFiles = ['pnpm-lock.yaml', 'pnpm-workspace.yaml', '.npmrc'];
     for (const filename of optionalTemplateFiles) {
       await this.copyIfExists(
-        path.join(templateSourcePath, filename),
+        path.join(templateSourceFs, filename),
         path.join(targetDir, filename)
       );
     }
@@ -392,7 +426,7 @@ This is a Context-Kit repository for managing project context, specifications, a
 
 Create a constitution in \`contexts/governance/constitution.yaml\` to define principles and compliance rules.
 `;
-    await writeFile(path.join(targetDir, 'README.md'), readmeContent, 'utf-8');
+    await writeFile(this.toPosixPath(path.join(targetDir, 'README.md')), readmeContent, 'utf-8');
 
     // Create .gitignore
     const gitignoreContent = `node_modules/
@@ -400,7 +434,7 @@ generated/
 .env
 *.log
 `;
-    await writeFile(path.join(targetDir, '.gitignore'), gitignoreContent, 'utf-8');
+    await writeFile(this.toPosixPath(path.join(targetDir, '.gitignore')), gitignoreContent, 'utf-8');
 
     // Create constitution file if summary provided
     if (constitutionSummary && constitutionSummary.trim()) {
@@ -447,26 +481,26 @@ generated/
         }
       };
 
-      const constitutionYaml = stringifyYAML(constitution);
+      const constitutionYaml = this.renderYaml(constitution);
       const constitutionPath = path.join(targetDir, 'contexts', 'governance', 'constitution.yaml');
 
       // Write file first
-      await writeFile(constitutionPath, constitutionYaml, 'utf-8');
+      await writeFile(this.toPosixPath(constitutionPath), constitutionYaml, 'utf-8');
 
       // Generate checksum for the written file and add it
-      const fileBuffer = await readFile(constitutionPath);
+      const fileBuffer = await readFile(this.toPosixPath(constitutionPath));
       const checksum = createHash('sha256').update(fileBuffer).digest('hex');
       constitution.checksum = checksum;
 
       // Rewrite with checksum included
-      const constitutionYamlWithChecksum = stringifyYAML(constitution);
-      await writeFile(constitutionPath, constitutionYamlWithChecksum, 'utf-8');
+      const constitutionYamlWithChecksum = this.renderYaml(constitution);
+      await writeFile(this.toPosixPath(constitutionPath), constitutionYamlWithChecksum, 'utf-8');
     }
 
     // Install dependencies so pipelines can execute immediately
     let installWarning: string | undefined;
     try {
-      await execa('pnpm', ['install'], { cwd: targetDir });
+      await execa('pnpm', ['install'], { cwd: targetDirDisplay });
     } catch (installError: any) {
       console.warn('Failed to install dependencies for new repo automatically.', installError);
       installWarning = 'Dependencies were not installed automatically. Run "pnpm install" inside the new repository before using pipelines.';
@@ -474,7 +508,7 @@ generated/
 
     // Initialize git repository
     try {
-      const git = simpleGit(targetDir);
+      const git = simpleGit(targetDirDisplay);
       await git.init();
       await git.add('.');
       await git.commit('Initial commit: Scaffold context repository');
@@ -482,6 +516,6 @@ generated/
       console.warn('Failed to initialize git repository:', err);
     }
 
-    return { path: targetDir, warning: installWarning };
+    return { path: targetDirDisplay, warning: installWarning };
   }
 }

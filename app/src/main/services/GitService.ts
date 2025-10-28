@@ -28,12 +28,53 @@ export interface BranchInfo {
  */
 export class GitService {
   private git: SimpleGit;
+  private readonly repoAbsolutePath: string;
+  private readonly repoRootName: string;
 
   constructor(private readonly repoPath: string) {
     if (!repoPath || !repoPath.trim()) {
       throw new ValidationError('Repository path is required');
     }
-    this.git = simpleGit(path.resolve(repoPath));
+    const resolvedPath = path.resolve(repoPath);
+    this.repoAbsolutePath = resolvedPath;
+    this.repoRootName = path.basename(resolvedPath);
+    this.git = simpleGit(resolvedPath);
+  }
+
+  private toGitPath(filePath: string): string {
+    const trimmed = filePath.trim();
+    if (!trimmed) {
+      return '';
+    }
+
+    if (path.isAbsolute(trimmed)) {
+      const relative = path.relative(this.repoAbsolutePath, trimmed);
+      return relative.split(path.sep).join('/');
+    }
+
+    let normalized = trimmed.replace(/\\/g, '/');
+
+    if (normalized.startsWith('./')) {
+      normalized = normalized.slice(2);
+    }
+
+    if (this.repoRootName) {
+      const repoPrefix = `${this.repoRootName}/`;
+      if (normalized.startsWith(repoPrefix)) {
+        normalized = normalized.slice(repoPrefix.length);
+      }
+    }
+
+    return normalized;
+  }
+
+  private normalizeGitList(list?: string[]): string[] {
+    if (!list) {
+      return [];
+    }
+    return list
+      .map(item => this.toGitPath(item))
+      .filter((item): item is string => item.length > 0);
   }
 
   /**
@@ -44,17 +85,20 @@ export class GitService {
       const status = await this.git.status();
 
       return {
-        modified: status.modified || [],
-        created: status.created || [],
-        deleted: status.deleted || [],
-        renamed: status.renamed || [],
-        conflicted: status.conflicted || [],
-        staged: status.staged || [],
+        modified: this.normalizeGitList(status.modified),
+        created: this.normalizeGitList(status.created),
+        deleted: this.normalizeGitList(status.deleted),
+        renamed: (status.renamed || []).map(entry => ({
+          from: this.toGitPath(entry.from),
+          to: this.toGitPath(entry.to)
+        })),
+        conflicted: this.normalizeGitList(status.conflicted),
+        staged: this.normalizeGitList(status.staged),
         current: status.current || '',
         tracking: status.tracking || null,
         ahead: status.ahead || 0,
         behind: status.behind || 0,
-        not_added: status.not_added || []
+        not_added: this.normalizeGitList(status.not_added)
       };
     } catch (error: unknown) {
       throw new GitError(
@@ -70,19 +114,29 @@ export class GitService {
   async getDiff(filePath?: string): Promise<string> {
     try {
       if (filePath) {
+        const targetPath = this.toGitPath(filePath);
+
+        if (!targetPath) {
+          throw new ValidationError('File path is required');
+        }
+
         // Check file status
         const status = await this.git.status();
-        const isNewFile = status.created.includes(filePath) ||
-          status.not_added.includes(filePath);
-        const isStaged = status.staged.includes(filePath);
+        const created = this.normalizeGitList(status.created);
+        const notAdded = this.normalizeGitList(status.not_added);
+        const staged = this.normalizeGitList(status.staged);
+
+        const isNewFile = created.includes(targetPath) ||
+          notAdded.includes(targetPath);
+        const isStaged = staged.includes(targetPath);
 
         if (isNewFile && !isStaged) {
           // For new untracked files, show the entire file content as "added"
           try {
-            const content = await readFile(path.join(this.repoPath, filePath), 'utf-8');
+            const content = await readFile(path.resolve(this.repoAbsolutePath, targetPath), 'utf-8');
             const lines = content.split('\n');
             const diff = lines.map(line => `+${line}`).join('\n');
-            return `New file: ${filePath}\n\n${diff}`;
+            return `New file: ${targetPath}\n\n${diff}`;
           } catch {
             return 'New file (unable to read content)';
           }
@@ -90,12 +144,12 @@ export class GitService {
 
         // For staged files, use --cached flag
         if (isStaged) {
-          const diff = await this.git.diff(['--cached', filePath]);
+          const diff = await this.git.diff(['--cached', '--', targetPath]);
           return diff || 'No changes in staged file';
         }
 
         // For modified tracked files, use normal diff
-        const diff = await this.git.diff([filePath]);
+        const diff = await this.git.diff(['--', targetPath]);
         return diff || 'No changes';
       } else {
         // Diff all changes
@@ -122,7 +176,15 @@ export class GitService {
     try {
       // Add files (or all if not specified)
       if (files && files.length > 0) {
-        await this.git.add(files);
+        const normalizedFiles = files
+          .map(file => this.toGitPath(file))
+          .filter((file): file is string => file.length > 0);
+
+        if (normalizedFiles.length === 0) {
+          throw new ValidationError('No valid files to commit');
+        }
+
+        await this.git.add(normalizedFiles);
       } else {
         await this.git.add('.');
       }
@@ -213,13 +275,20 @@ export class GitService {
     try {
       // Check if file is staged
       const status = await this.git.status();
-      if (status.staged.includes(filePath)) {
+      const staged = new Set(this.normalizeGitList(status.staged));
+      const targetPath = this.toGitPath(filePath);
+
+      if (!targetPath) {
+        throw new ValidationError('File path is required');
+      }
+
+      if (staged.has(targetPath)) {
         // Unstage the file first
-        await this.git.reset(['HEAD', filePath]);
+        await this.git.reset(['HEAD', '--', targetPath]);
       }
 
       // Revert the file to HEAD version
-      await this.git.checkout(['HEAD', '--', filePath]);
+      await this.git.checkout(['HEAD', '--', targetPath]);
     } catch (error: unknown) {
       throw new GitError(
         error instanceof Error ? error.message : 'Failed to revert file',
