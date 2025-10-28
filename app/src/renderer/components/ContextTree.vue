@@ -73,8 +73,7 @@ const entityTypeLabels: Record<string, string> = {
   spec: 'Specifications',
   task: 'Tasks',
   service: 'Services',
-  package: 'Packages',
-  c4diagram: 'C4 Architecture'
+  package: 'Packages'
 };
 
 const typesWithCreation = new Set(['feature', 'userstory', 'spec', 'task', 'service', 'package']);
@@ -106,9 +105,6 @@ function getStatusColor(status: string | undefined, type: string): string {
   if (!status) {
     if (type === 'governance') {
       return 'bg-indigo-500';
-    }
-    if (type === 'c4diagram') {
-      return 'bg-purple-500';
     }
     return 'bg-gray-400';
   }

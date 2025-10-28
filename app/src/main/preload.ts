@@ -104,6 +104,7 @@ contextBridge.exposeInMainWorld('api', {
   },
   c4: {
     loadDiagrams: (dir: string) => ipcRenderer.invoke('c4:load-diagrams', { dir }),
+    analyze: (filePath: string) => ipcRenderer.invoke('c4:analyze', { filePath }),
   },
 });
 
@@ -237,6 +238,7 @@ declare global {
       };
       c4: {
         loadDiagrams: (dir: string) => Promise<{ success: boolean; diagrams?: any[]; error?: string }>;
+        analyze: (filePath: string) => Promise<{ success: boolean; analysis?: any; validation?: any; error?: string }>;
       };
       app: {
         getDefaultRepoPath: () => Promise<{ ok: boolean; path?: string; error?: string }>;

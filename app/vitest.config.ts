@@ -11,26 +11,19 @@ export default defineConfig({
       electron: fileURLToPath(new URL('./tests/mocks/electron.ts', rootDir)),
     },
   },
-  ssr: {
-    noExternal: ['electron'],
+  define: {
+    'import.meta.vitest': 'undefined',
   },
   test: {
     globals: true,
     environment: 'node',
+    pool: 'forks',
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.spec.ts', 'src/**/*.test.ts', '!e2e/**/*.spec.ts'],
     exclude: ['e2e/**', 'node_modules/**'],
     server: {
       deps: {
         inline: ['electron'],
-      },
-    },
-    deps: {
-      optimizer: {
-        ssr: {
-          enabled: true,
-          include: ['electron'],
-        },
       },
     },
     coverage: {

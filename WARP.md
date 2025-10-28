@@ -334,6 +334,15 @@ node "$env:REPO\.context\pipelines\generate.mjs" FEAT-002
 3. **Never deploy without explicit confirmation** from user
 4. **Never commit changes** unless explicitly requested
 
+### Recent Improvements (2025-10-27)
+- **Lint Error Cleanup**: Resolved all 24 lint errors down to 0 errors
+  - Removed obsolete `index.old.ts` file
+  - Fixed unused variable errors across e2e tests, services, and stores
+  - Converted `require()` to ES6 imports for consistency
+  - Cleaned up unused imports (ContextService, EventEmitter, StatusResult, etc.)
+- **Code Quality**: 133 warnings remain (all `any` type warnings, lower priority)
+- **PR Workflow**: All changes committed to `fix/lint-errors` branch and PR #21 created
+
 ### IPC Architecture
 - Main process exposes handlers via `ipcMain.handle`
 - Preload script bridges via `contextBridge.exposeInMainWorld`
@@ -470,6 +479,6 @@ Every response should include an estimated token/cost impact when applicable.
 
 ---
 
-**Last Updated**: 2025-10-23  
+**Last Updated**: 2025-10-27  
 **Maintainer**: @lukeu  
 **Project Status**: MVP Development
