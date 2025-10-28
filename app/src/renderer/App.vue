@@ -751,7 +751,6 @@ async function handleRemoveRepo(id: string) {
       <div class="bg-primary text-white">
         <div class="px-6 py-3 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3 min-w-0">
-
             <div class="p-2.5 rounded-m3-xl bg-white/10 border border-white/20 shadow-elevation-2">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7a2 2 0 012-2h5l2 2h5a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
