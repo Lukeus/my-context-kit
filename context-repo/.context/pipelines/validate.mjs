@@ -335,6 +335,44 @@ if (
   }
 }
 
+// Build human-readable error summaries for CI consumers expecting `.errors`
+const summarizedErrors = [];
+
+if (errors.length > 0) {
+  for (const item of errors) {
+    if (item.error) {
+      summarizedErrors.push(`[Schema] ${item.file}: ${item.error}`);
+      continue;
+    }
+
+    const messages = Array.isArray(item.errors)
+      ? item.errors.map(entry => entry?.message || JSON.stringify(entry)).join('; ')
+      : 'Unknown schema validation issue';
+    summarizedErrors.push(`[Schema] ${item.file} (${item.entity || 'unknown'}): ${messages}`);
+  }
+}
+
+if (crossRefErrors.length > 0) {
+  for (const item of crossRefErrors) {
+    summarizedErrors.push(`[Reference] ${item.entity} -> ${item.reference} (${item.field}): ${item.error}`);
+  }
+}
+
+if (constitutionErrors.length > 0) {
+  for (const item of constitutionErrors) {
+    const message = item.error || (Array.isArray(item.errors)
+      ? item.errors.map(entry => entry?.message || JSON.stringify(entry)).join('; ')
+      : 'Unknown constitution validation issue');
+    summarizedErrors.push(`[Constitution] ${item.file}: ${message}`);
+  }
+}
+
+if (complianceErrors.length > 0) {
+  for (const item of complianceErrors) {
+    summarizedErrors.push(`[Compliance] Rule ${item.ruleId} on ${item.entity} (${item.entityType}) ${item.path ? `@ ${item.path}` : ''}: ${item.message}`.trim());
+  }
+}
+
 // Output results
 if (
   errors.length === 0 &&
@@ -369,6 +407,7 @@ if (
     crossReferenceErrors: crossRefErrors,
     constitutionErrors,
     complianceErrors,
+    errors: summarizedErrors,
     totalErrors:
       errors.length +
       crossRefErrors.length +
