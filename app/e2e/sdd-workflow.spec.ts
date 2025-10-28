@@ -1,22 +1,33 @@
 import { test, expect, _electron as electron } from '@playwright/test';
-import type { ElectronApplication, Page } from '@playwright/test';
-import path from 'path';
-import fs from 'fs/promises';
-import { existsSync } from 'fs';
-import { fileURLToPath } from 'url';
+import type { ConsoleMessage, ElectronApplication, Page } from '@playwright/test';
+import path from 'node:path';
+import fs from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let electronApp: ElectronApplication;
+let electronApp: ElectronApplication | undefined;
 let window: Page;
 const testRepoPath = path.join(__dirname, '..', '..', 'test-fixtures', 'sdd-test-repo');
+
+const attachPageDebugging = (page: Page): void => {
+  page.on('console', (msg: ConsoleMessage) => {
+    console.log(`[Page Console ${msg.type()}]:`, msg.text());
+  });
+  page.on('pageerror', (error: Error) => {
+    console.error('[Page Error]:', error.message);
+  });
+};
 
 test.describe('SDD Workflow E2E', () => {
   test.beforeAll(async () => {
     // Launch Electron app
     try {
-      const { path: electronPath } = await import('electron');
+      const requireModule = createRequire(import.meta.url);
+      const electronPath = requireModule('electron') as string;
       electronApp = await electron.launch({
         executablePath: electronPath,
         args: [path.join(__dirname, '..', 'out', 'main', 'index.js')],
@@ -25,8 +36,6 @@ test.describe('SDD Workflow E2E', () => {
           NODE_ENV: 'test',
         },
         timeout: 30000, // Increase timeout to 30 seconds
-        dumpio: true, // Dump all Electron process stdout/stderr to the test runner's console
-        headless: false,
       });
 
       // Capture process stdout/stderr IMMEDIATELY to catch crashes
@@ -39,29 +48,25 @@ test.describe('SDD Workflow E2E', () => {
       });
 
       // Capture console output for debugging
-      electronApp.on('console', (msg) => {
+      electronApp.on('console', (msg: ConsoleMessage) => {
         console.log(`[Electron Console ${msg.type()}]:`, msg.text());
       });
 
-      // Capture page errors
-      electronApp.on('page', async (page) => {
-        page.on('console', (msg) => {
-          console.log(`[Page Console ${msg.type()}]:`, msg.text());
-        });
-        page.on('pageerror', (error) => {
-          console.error('[Page Error]:', error.message);
-        });
+      // Capture page errors for future windows
+      electronApp.on('window', (newPage: Page) => {
+        attachPageDebugging(newPage);
       });
 
       // Get the first window
       window = await electronApp.firstWindow({ timeout: 30000 });
+      attachPageDebugging(window);
 
       // Wait for app to be ready
       await window.waitForLoadState('domcontentloaded', { timeout: 30000 });
       await window.waitForTimeout(3000); // Allow stores to initialize
     } catch (error) {
       console.error('Failed to launch Electron app:', error);
-      electronApp = undefined; // Explicitly set to undefined
+      electronApp = undefined;
       throw error; // Re-throw to ensure test fails if app doesn't launch
     }
   });
@@ -325,6 +330,149 @@ test.describe('SDD Workflow E2E', () => {
     // Close wizard
     const closeButton = window.locator('button:has-text("Close")').last();
     await closeButton.click();
+  });
+});
+
+test.describe('Speckit Fetch Status Panel', () => {
+  const successFetchPayload = {
+    ok: true,
+    cachePath: '/mock/context-repo/.context/speckit-cache/v0.0.79',
+    commit: 'abc123def4567890',
+    releaseTag: 'v0.0.79',
+    durationMs: 4800,
+    fetchedAt: '2025-10-28T17:30:00.000Z',
+    source: {
+      repository: 'github/spec-kit',
+      releaseTag: 'v0.0.79',
+      commit: 'abc123def4567890',
+    },
+    timing: {
+      startedAt: '2025-10-28T17:29:55.000Z',
+      finishedAt: '2025-10-28T17:30:00.000Z',
+      durationMs: 5000,
+    },
+    artifacts: {
+      docs: ['docs/spec-driven-development.md'],
+      templates: ['templates/feature-spec-template.md'],
+      memory: [],
+    },
+    status: {
+      ok: true,
+      error: null,
+      stale: false,
+    },
+    warnings: [],
+  };
+
+  const staleFetchPayload = {
+    ok: true,
+    cachePath: '/mock/context-repo/.context/speckit-cache/v0.0.42',
+    commit: 'deadbeefcaf01234',
+    releaseTag: 'v0.0.42',
+    durationMs: 6200,
+    fetchedAt: '2025-09-15T09:10:00.000Z',
+    source: {
+      repository: 'github/spec-kit',
+      releaseTag: 'v0.0.42',
+      commit: 'deadbeefcaf01234',
+    },
+    timing: {
+      startedAt: '2025-09-15T09:09:50.000Z',
+      finishedAt: '2025-09-15T09:10:00.000Z',
+      durationMs: 10000,
+    },
+    artifacts: {
+      docs: ['docs/legacy.md'],
+      templates: ['templates/legacy-template.md'],
+      memory: [],
+    },
+    status: {
+      ok: true,
+      error: null,
+      stale: true,
+    },
+    warnings: ['Fetched snapshot older than freshness window'],
+  };
+
+  async function openWizardAndReachFetchStep() {
+    const newButton = window.locator('button:has-text("New"), button[aria-label*="New"]').first();
+    await newButton.click({ timeout: 5000 });
+
+    const speckitOption = window.locator('button:has-text("Speckit"), button:has-text("Create Spec"), text=/Speckit|Specification/i').first();
+    await speckitOption.click({ timeout: 5000 });
+
+    await expect(window.locator('text=Speckit Workflow')).toBeVisible({ timeout: 5000 });
+
+    const descriptionInput = window.locator('textarea[placeholder*="feature"], textarea[placeholder*="Describe"]').first();
+    await descriptionInput.fill(`Spec Kit status verification ${Date.now()}`);
+
+    const createSpecButton = window.locator('button:has-text("Create Spec")').first();
+    await createSpecButton.click();
+
+    await expect(window.locator('text=/Spec Number:/i')).toBeVisible({ timeout: 10000 });
+
+    const generatePlanButton = window.locator('button:has-text("Generate Plan")').first();
+    await generatePlanButton.click();
+
+    await expect(window.locator('text=/Plan:|plan\\.md/i')).toBeVisible({ timeout: 20000 });
+  }
+
+  async function stubSpeckitFetch(payload: unknown) {
+    await window.evaluate((mockPayload) => {
+      const globalAny = window as unknown as Record<string, any>;
+      if (!globalAny.__originalSpeckitFetch) {
+        globalAny.__originalSpeckitFetch = globalAny.api.speckit.fetch;
+      }
+      globalAny.api.speckit.fetch = async () => mockPayload;
+    }, payload);
+  }
+
+  async function restoreSpeckitFetchStub() {
+    await window.evaluate(() => {
+      const globalAny = window as unknown as Record<string, any>;
+      if (globalAny.__originalSpeckitFetch) {
+        globalAny.api.speckit.fetch = globalAny.__originalSpeckitFetch;
+        delete globalAny.__originalSpeckitFetch;
+      }
+    });
+  }
+
+  test('renders success summary for fresh cache', async () => {
+    await openWizardAndReachFetchStep();
+
+    try {
+      await stubSpeckitFetch(successFetchPayload);
+
+      const fetchButton = window.locator('button:has-text("Fetch Spec Kit")').first();
+      await fetchButton.click();
+
+      await expect(window.locator('text=Release: v0.0.79')).toBeVisible({ timeout: 5000 });
+      await expect(window.locator('text=/Cache is fresh/i')).toBeVisible({ timeout: 5000 });
+      await expect(window.locator('text=Docs: 1')).toBeVisible({ timeout: 5000 });
+    } finally {
+      await restoreSpeckitFetchStub();
+      const closeButton = window.locator('button:has-text("Close")').last();
+      await closeButton.click({ timeout: 5000 });
+    }
+  });
+
+  test('shows stale warning when cache is out of date', async () => {
+    await openWizardAndReachFetchStep();
+
+    try {
+      await stubSpeckitFetch(staleFetchPayload);
+
+      const fetchButton = window.locator('button:has-text("Fetch Spec Kit")').first();
+      await fetchButton.click();
+
+      await expect(window.locator('text=Release: v0.0.42')).toBeVisible({ timeout: 5000 });
+      await expect(window.locator('text=/Cache is older than the freshness window/i')).toBeVisible({ timeout: 5000 });
+      await expect(window.locator('text=Warnings')).toBeVisible({ timeout: 5000 });
+    } finally {
+      await restoreSpeckitFetchStub();
+      const closeButton = window.locator('button:has-text("Close")').last();
+      await closeButton.click({ timeout: 5000 });
+    }
   });
 });
 

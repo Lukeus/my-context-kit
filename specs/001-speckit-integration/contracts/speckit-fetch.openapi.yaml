@@ -1,0 +1,139 @@
+openapi: 3.1.0
+info:
+  title: Spec Kit Fetch Service
+  version: 0.1.0
+  description: |
+    IPC contract exposed by the Electron main process to hydrate the Spec Kit cache
+    inside `context-repo`. The handler shells into `.context/pipelines/speckit-fetch.mjs`
+    and returns deterministic JSON summaries consumed by the renderer.
+servers:
+  - url: electron-ipc://speckit
+paths:
+  /fetch:
+    post:
+      summary: Clone or update the cached Spec Kit snapshot
+      operationId: fetchSpecKit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - repoPath
+              properties:
+                repoPath:
+                  type: string
+                  description: Absolute path to the context repository root.
+                releaseTag:
+                  type: string
+                  description: Optional tag or commit SHA to pin.
+                forceRefresh:
+                  type: boolean
+                  description: Delete existing cache before fetch when true (default false).
+      responses:
+        '200':
+          description: Fetch completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - cachePath
+                  - commit
+                  - durationMs
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+                  cachePath:
+                    type: string
+                  commit:
+                    type: string
+                  releaseTag:
+                    type: string
+                  durationMs:
+                    type: integer
+                    minimum: 0
+                  fetchedAt:
+                    type: string
+                    format: date-time
+                  artifacts:
+                    type: object
+                    properties:
+                      docs:
+                        type: array
+                        items:
+                          type: string
+                      templates:
+                        type: array
+                        items:
+                          type: string
+                      memory:
+                        type: array
+                        items:
+                          type: string
+        '202':
+          description: Fetch already in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - inProgress
+                properties:
+                  ok:
+                    type: boolean
+                    const: false
+                  inProgress:
+                    type: boolean
+                    const: true
+                  startedAt:
+                    type: string
+                    format: date-time
+        '4XX':
+          description: Validation or configuration error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - error
+                properties:
+                  ok:
+                    type: boolean
+                    const: false
+                  error:
+                    type: string
+                  details:
+                    type: array
+                    items:
+                      type: string
+        '5XX':
+          description: Unexpected pipeline failure
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - error
+                properties:
+                  ok:
+                    type: boolean
+                    const: false
+                  error:
+                    type: string
+                  stack:
+                    type: string
+components:
+  securitySchemes:
+    ipcToken:
+      type: http
+      scheme: bearer
+      bearerFormat: contextRepo
+security:
+  - ipcToken: []

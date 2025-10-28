@@ -1,0 +1,2 @@
+# Ignore transient lock files while keeping JSON telemetry tracked
+*.lock

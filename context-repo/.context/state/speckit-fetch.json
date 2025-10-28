@@ -1,0 +1,21 @@
+{
+  "source": {
+    "repository": "github/spec-kit",
+    "releaseTag": null,
+    "commit": null
+  },
+  "timing": {
+    "startedAt": null,
+    "finishedAt": null,
+    "durationMs": 0
+  },
+  "artifacts": {
+    "docs": [],
+    "templates": [],
+    "memory": []
+  },
+  "status": {
+    "ok": false,
+    "error": "Spec Kit cache has not been fetched yet"
+  }
+}

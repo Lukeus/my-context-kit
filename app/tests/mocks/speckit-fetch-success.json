@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "cachePath": "/workspace/context-repo/.context/speckit-cache/v0.0.79",
+  "commit": "abc123def456",
+  "releaseTag": "v0.0.79",
+  "durationMs": 4821,
+  "fetchedAt": "2025-10-28T17:30:00.000Z",
+  "source": {
+    "repository": "github/spec-kit",
+    "releaseTag": "v0.0.79",
+    "commit": "abc123def456"
+  },
+  "timing": {
+    "startedAt": "2025-10-28T17:29:55.000Z",
+    "finishedAt": "2025-10-28T17:30:00.000Z",
+    "durationMs": 5000
+  },
+  "artifacts": {
+    "docs": ["docs/spec-driven-development.md"],
+    "templates": ["templates/feature-spec-template.md"],
+    "memory": ["memory/constitution.md"]
+  },
+  "status": {
+    "ok": true,
+    "error": null,
+    "stale": false
+  },
+  "warnings": []
+}
