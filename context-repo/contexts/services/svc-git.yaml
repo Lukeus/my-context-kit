@@ -1,6 +1,7 @@
 id: svc-git
-name: Git Version Control Service
-status: operational
+name: "Git Version Control Service"
+type: "infrastructure"
+status: "operational"
 dependencies: []
 consumers:
-  - pkg-context-sync
+  - "pkg-context-sync"
