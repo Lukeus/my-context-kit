@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { C4AnalyzerService } from '../../services/C4AnalyzerService';
 
 interface C4Diagram {
   file: string;
@@ -121,6 +122,30 @@ function loadProjection(diagramPath: string, index: number, repoPath: string): a
 }
 
 export function registerC4Handlers(): void {
+  const analyzerService = new C4AnalyzerService();
+
+  /**
+   * Analyze a C4 diagram and return structured data
+   */
+  ipcMain.handle('c4:analyze', async (_event, { filePath }: { filePath: string }) => {
+    try {
+      const analysis = await analyzerService.analyze(filePath);
+      const validation = await analyzerService.validateForScaffolding(analysis);
+      
+      return {
+        success: true,
+        analysis,
+        validation
+      };
+    } catch (error: any) {
+      console.error('Error analyzing C4 diagram:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+
   /**
    * Load all C4 diagrams from the context repository
    */
