@@ -24,26 +24,7 @@ _Provide a concise explanation of the system capability this spec enables._
 - **Packages**: pkg-context-sync
 
 ## Detailed Narrative
-## Overview
-The validation pipeline validates YAML entity files against JSON schemas using AJV.
-
-## Implementation
-1. Load all JSON schemas from .context/schemas/
-2. Parse YAML files from contexts/ directories
-3. Validate each entity against its schema using AJV
-4. Check cross-references between entities
-5. Return validation results as JSON
-
-## Error Reporting
-- Validation errors must include file path, entity id, error type, and detailed message.
-- Cross-reference errors must specify missing/invalid references.
-- Output should support integration with desktop UI (see US-001 acceptance criteria).
-- Errors must be actionable and designed to support recovery flows in the UI.
-
-## Exit Codes
-- 0: All validations passed
-- 1: Validation errors found
-
+_Populate the specification narrative, covering behavior, data, and interfaces._
 
 ## Constraints & Compliance
 - _Enumerate non-functional constraints (performance, security, regulatory)._ 
@@ -57,5 +38,5 @@ The validation pipeline validates YAML entity files against JSON schemas using A
 
 ---
 
-**Generated**: 2025-10-27T15:25:58.970Z  
+**Generated**: 2025-10-27T23:53:18.859Z  
 **Context Source**: C:\Users\ladams\source\repos\my-context-kit\context-repo\contexts\specs\SPEC-001-validation-pipeline.yaml

@@ -1,20 +1,56 @@
 id: T-003
 title: "Build core UI components"
 status: "todo"
-related:
-  feature: FEAT-001
-  service: svc-git
 owner: "@lukeu"
-steps:
-  - "Create ContextTree component"
-  - "Create YamlEditor component"
-  - "Create ImpactPanel component"
-  - "Create GraphView component"
-  - "Set up Pinia stores"
 doneCriteria:
   - "All components render correctly"
   - "Components communicate via Pinia"
   - "UI is responsive"
+requiredUIComponents:
+  - name: "GraphView"
+    description: "Displays all context entities as nodes and relationships as edges."
+    linkedAcceptanceCriteria:
+      - "Graph displays all entities as nodes"
+      - "Relationships are shown as edges"
+      - "Different entity types have different colors"
+      - "GraphView displays nodes and edges per US-002 requirements"
+      - "Graph supports filtering by entity type"
+      - "Graph supports exporting to common formats"
+  - name: "EntityDetailsModal"
+    description: "Shows detailed information for a selected node."
+    linkedAcceptanceCriteria:
+      - "Clicking a node shows entity details"
+      - "Graph includes a tooltip with entity details on hover"
+      - "Graph supports drill-down to entity details"
+  - name: "LegendComponent"
+    description: "Displays legend for entity types in the graph."
+    linkedAcceptanceCriteria:
+      - "Graph includes a legend for entity types"
+  - name: "GraphControls"
+    description: "Provides zoom, pan, filter, and export controls for the graph."
+    linkedAcceptanceCriteria:
+      - "User can zoom and pan the graph"
+      - "Graph supports filtering by entity type"
+      - "Graph supports exporting to common formats"
+  - name: "HeaderComponent"
+    description: "Application header and navigation. Ensures accessibility."
+    linkedAcceptanceCriteria:
+      - "Graph is accessible according to project standards"
+  - name: "LoadingIndicator"
+    description: "Displays loading state during data fetch operations."
+    linkedAcceptanceCriteria:
+      - "Graph has a loading state during data fetch"
+      - "UI errors and loading states are handled and displayed as per US-002"
+  - name: "ErrorBanner"
+    description: "Displays graph and UI errors with actionable feedback and recovery options."
+    linkedAcceptanceCriteria:
+      - "Graph errors are displayed with actionable feedback"
+      - "Graph has an error recovery mechanism"
+      - "UI errors and loading states are handled and displayed as per US-002"
+  - name: "PerformanceMonitor"
+    description: "Monitors and displays graph performance for large repositories."
+    linkedAcceptanceCriteria:
+      - "Graph performance is monitored for large repositories"
 acceptanceCriteria:
   - "Each component passes unit and integration tests"
   - "GraphView displays nodes and edges per US-002 requirements"
