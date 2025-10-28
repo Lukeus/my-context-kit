@@ -317,13 +317,6 @@ export class RouterService {
   }
 
   /**
-   * Check if a route exists
-   */
-  hasRoute(routeId: string): boolean {
-    return this.routes.has(routeId);
-  }
-
-  /**
    * Get breadcrumb trail for current route
    */
   getBreadcrumbs(): Array<{ route: Route; params?: RouteParams }> {
