@@ -61,7 +61,6 @@ const {
   breadcrumbs: routerBreadcrumbs 
 } = useRouting();
 
-const showGraphModal = ref(false);
 const showAISettings = ref(false);
 const showRepoManager = ref(false);
 const showNewRepoModal = ref(false);
@@ -78,7 +77,7 @@ const repoSelection = ref('');
 const showCommandPalette = ref(false);
 
 
-const showDocsCenter = ref(false);
+
 
 const lastValidationAt = ref<string | null>(null);
 const lastValidationStatus = ref<'success' | 'error' | null>(null);
@@ -96,8 +95,7 @@ const navRailItems: Array<{ id: NavRailId; label: string; requiresRepo?: boolean
   { id: 'graph', label: 'Graph', requiresRepo: true, shortcut: 'View' },
   { id: 'git', label: 'Git', requiresRepo: true, shortcut: 'Status' },
   { id: 'validate', label: 'Validate', requiresRepo: true, shortcut: 'Run' },
-  { id: 'docs', label: 'Docs', shortcut: 'Docs' },
-  { id: 'ai', label: 'Assistant', shortcut: 'Ctrl+Shift+A' },
+  { id: 'docs', label: 'Docs', shortcut: 'Docs' }
 ];
 
 // Panel state
@@ -245,7 +243,7 @@ async function handleNavClick(id: NavRailId) {
       leftPanelOpen.value = true; // Show left panel for C4
       break;
     case 'graph':
-      await openGraphModal();
+      await openGraphView();
       break;
     case 'git':
       await openGitPanel();
@@ -275,7 +273,7 @@ function isNavActive(id: NavRailId) {
     case 'c4':
       return activeNavId.value === 'c4';
     case 'graph':
-      return showGraphModal.value;
+      return activeNavId.value === 'graph';
     case 'git':
       return activeNavId.value === 'git';
     case 'docs':
@@ -347,7 +345,7 @@ watch(activeEntity, (entity) => {
     leftPanelOpen.value = true; // Open left panel when entity selected
   } else {
     // Preserve current view if it's C4, docs, or hub
-    if (!['c4', 'docs', 'hub'].includes(activeNavId.value)) {
+    if (!['c4', 'docs', 'hub', 'graph'].includes(activeNavId.value)) {
       activeNavId.value = 'hub';
       leftPanelOpen.value = false;
     }
@@ -401,12 +399,16 @@ function handleKeyboard(e: KeyboardEvent) {
       showCommandPalette.value = false;
       return;
     }
-    if (showGraphModal.value) {
-      showGraphModal.value = false;
-    } else if (showRepoManager.value) {
+    if (showRepoManager.value) {
       showRepoManager.value = false;
-    } else if (showAISettings.value) {
+      return;
+    }
+    if (showAISettings.value) {
       showAISettings.value = false;
+      return;
+    }
+    if (activeNavId.value === 'graph') {
+      activeNavId.value = 'hub';
     }
   }
 }
@@ -476,13 +478,14 @@ const reloadGraph = async (options?: { silent?: boolean }) => {
   }
 };
 
-async function openGraphModal() {
+async function openGraphView() {
   if (!isRepoConfigured.value) {
     triggerSnackbar({ message: 'Connect a context repository to view the graph.', type: 'warning' });
     return;
   }
   await reloadGraph({ silent: true });
-  showGraphModal.value = true;
+  contextStore.setActiveEntity(null);
+  leftPanelOpen.value = false;
   activeNavId.value = 'graph';
 }
 
@@ -609,7 +612,7 @@ async function handleRouteNavigation(routeId: string) {
       openC4Builder();
       break;
     case 'graph':
-      await openGraphModal();
+      await openGraphView();
       break;
     case 'git':
       await openGitPanel();
@@ -671,7 +674,7 @@ function toggleLeftPanel() {
   leftPanelOpen.value = !leftPanelOpen.value;
   if (leftPanelOpen.value) {
     activeNavId.value = 'entities';
-  } else if (!activeEntity.value && !['c4', 'docs', 'hub'].includes(activeNavId.value)) {
+  } else if (!activeEntity.value && !['c4', 'docs', 'hub', 'graph'].includes(activeNavId.value)) {
     activeNavId.value = 'hub';
   }
 }
@@ -748,9 +751,7 @@ async function handleRemoveRepo(id: string) {
       <div class="bg-primary text-white">
         <div class="px-6 py-3 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3 min-w-0">
-            <button @click="toggleLeftPanel" class="p-2 rounded-m3-full hover:bg-white/15 border border-white/10" title="Toggle Context Tree">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-            </button>
+
             <div class="p-2.5 rounded-m3-xl bg-white/10 border border-white/20 shadow-elevation-2">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7a2 2 0 012-2h5l2 2h5a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
@@ -828,7 +829,7 @@ async function handleRemoveRepo(id: string) {
           Home
         </button>
         <button
-          @click="openGraphModal"
+          @click="openGraphView"
           :disabled="!isRepoConfigured"
           class="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-m3-md border border-surface-variant bg-surface-2 hover:bg-surface-3 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           title="Open dependency graph"
@@ -915,7 +916,7 @@ async function handleRemoveRepo(id: string) {
         :style="{ width: leftPanelWidth + 'px' }"
         class="relative flex-shrink-0"
       >
-        <LeftPanelContainer :active-view="activeNavId" @ask-about-entity="handleAskAboutEntity" />
+        <LeftPanelContainer :active-view="activeNavId === 'entity' ? 'entities' : activeNavId" @ask-about-entity="handleAskAboutEntity" />
         <!-- Resize handle -->
         <div
           @mousedown="startResizeLeft"
@@ -1046,6 +1047,25 @@ async function handleRemoveRepo(id: string) {
             </div>
           </template>
         </Suspense>
+        <!-- Graph View -->
+        <div v-else-if="activeNavId === 'graph'" class="flex flex-col h-full bg-surface">
+          <Suspense>
+            <template #default>
+              <GraphView @ask-about-entity="handleAskAboutEntity" />
+            </template>
+            <template #fallback>
+              <div class="flex items-center justify-center h-full">
+                <div class="text-center">
+                  <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p class="text-sm text-secondary-600">Loading dependency graph...</p>
+                </div>
+              </div>
+            </template>
+          </Suspense>
+        </div>
         <!-- Git Workflow View -->
         <div v-else-if="activeNavId === 'git'" class="flex flex-col h-full bg-surface">
           <!-- Git Page Header -->
@@ -1145,37 +1165,6 @@ async function handleRemoveRepo(id: string) {
         </div>
       </aside>
     </main>
-
-    <!-- Graph Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div
-          v-if="showGraphModal"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style="background-color: rgba(0, 0, 0, 0.5);"
-          @click.self="showGraphModal = false"
-        >
-          <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[95vw] h-[90vh] flex flex-col overflow-hidden">
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between px-6 py-4 bg-surface-2 border-b border-surface-variant">
-              <h2 class="text-xl font-semibold text-primary-700">Dependency Graph Visualization</h2>
-              <button
-                @click="showGraphModal = false"
-                class="text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 p-2 rounded-m3-full transition-all"
-              >
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <!-- Graph Content -->
-            <div class="flex-1 overflow-hidden">
-              <GraphView @ask-about-entity="handleAskAboutEntity" />
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
 
     <!-- New Repo Modal -->
     <Teleport to="body">

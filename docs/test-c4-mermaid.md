@@ -1,6 +1,6 @@
-%%c4: system=ContextKit level=C2 feature=FEAT-001
 
 ```mermaid
+
 C4Context
   title System Context for Context Kit Application
   
