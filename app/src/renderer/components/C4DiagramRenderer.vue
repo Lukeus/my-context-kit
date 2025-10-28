@@ -59,7 +59,6 @@ async function renderDiagram() {
     const container = document.getElementById(containerId);
     
     if (!container) {
-      console.error('Mermaid container not found');
       return;
     }
     
@@ -73,8 +72,7 @@ async function renderDiagram() {
     
     const { svg } = await mermaid.render(`mermaid-svg-${renderKey.value}`, cleanContent);
     container.innerHTML = svg;
-  } catch (err) {
-    console.error('Error rendering Mermaid diagram:', err);
+  } catch {
     error.value = 'Failed to render diagram';
   }
 }

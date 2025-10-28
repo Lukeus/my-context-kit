@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { routes } from '../config/routes';
+import type { Route } from '../services/RouterService';
 
 const emit = defineEmits<{ 'close': []; 'execute': [string] }>();
 
@@ -8,23 +10,40 @@ interface CommandItem {
   title: string;
   subtitle?: string;
   keywords?: string[];
+  category?: 'navigation' | 'action';
 }
 
 const query = ref('');
 const selectedIndex = ref(0);
 
-// Minimal command set for quick navigation and actions
+// Build navigation commands from routes
+function buildNavigationCommands(): CommandItem[] {
+  return routes
+    .filter(route => route.meta?.title && route.meta?.icon)
+    .map(route => ({
+      id: `nav:${route.id}`,
+      title: `Go to ${route.meta!.title}`,
+      subtitle: route.meta!.requiresRepo ? 'Requires repository' : 'Navigate to view',
+      keywords: [route.id, route.meta!.title!.toLowerCase(), route.meta!.icon!, 'navigate', 'go', 'open'],
+      category: 'navigation' as const
+    }));
+}
+
+// Action commands for workflows and creation
+const actionCommands: CommandItem[] = [
+  { id: 'speckit:workflow', title: 'Speckit Workflow', subtitle: 'Start SDD specification-to-tasks workflow', keywords: ['speckit','sdd','spec','workflow','specify','plan','tasks'], category: 'action' },
+  { id: 'assistant:open', title: 'Open AI Assistant', subtitle: 'Toggle the right assistant panel', keywords: ['ai','assistant','chat'], category: 'action' },
+  { id: 'impact:analyze', title: 'Open Impact Analysis', subtitle: 'Analyze impact for active entity', keywords: ['impact','analysis'], category: 'action' },
+  { id: 'create:feature', title: 'Create Feature', subtitle: 'Start feature wizard', keywords: ['new','feature','create'], category: 'action' },
+  { id: 'create:userstory', title: 'Create User Story', subtitle: 'Start user story wizard', keywords: ['new','user story','story','create'], category: 'action' },
+  { id: 'create:spec', title: 'Create Spec', subtitle: 'Start spec wizard', keywords: ['new','spec','create'], category: 'action' },
+  { id: 'create:task', title: 'Create Task', subtitle: 'Start task wizard', keywords: ['new','task','create'], category: 'action' },
+];
+
+// Combine navigation and action commands
 const commands = ref<CommandItem[]>([
-  { id: 'speckit:workflow', title: 'Speckit Workflow', subtitle: 'Start SDD specification-to-tasks workflow', keywords: ['speckit','sdd','spec','workflow','specify','plan','tasks'] },
-  { id: 'assistant:open', title: 'Open AI Assistant', subtitle: 'Toggle the right assistant panel', keywords: ['ai','assistant','chat'] },
-  { id: 'impact:analyze', title: 'Open Impact Analysis', subtitle: 'Analyze impact for active entity', keywords: ['impact','analysis'] },
-  { id: 'graph:open', title: 'Open Graph View', subtitle: 'Visualize dependency graph', keywords: ['graph','visualize'] },
-  { id: 'c4:open', title: 'Open C4 Diagrams', subtitle: 'View architecture diagrams', keywords: ['c4','architecture','diagram','mermaid'] },
-  { id: 'git:open', title: 'Open Git Workflow', subtitle: 'View changes, stage and commit', keywords: ['git','commit','pr'] },
-  { id: 'create:feature', title: 'Create Feature', subtitle: 'Start feature wizard', keywords: ['new','feature','create'] },
-  { id: 'create:userstory', title: 'Create User Story', subtitle: 'Start user story wizard', keywords: ['new','user story','story','create'] },
-  { id: 'create:spec', title: 'Create Spec', subtitle: 'Start spec wizard', keywords: ['new','spec','create'] },
-  { id: 'create:task', title: 'Create Task', subtitle: 'Start task wizard', keywords: ['new','task','create'] },
+  ...buildNavigationCommands(),
+  ...actionCommands
 ]);
 
 const filtered = computed(() => {
@@ -35,6 +54,13 @@ const filtered = computed(() => {
     (c.subtitle && c.subtitle.toLowerCase().includes(q)) ||
     (c.keywords && c.keywords.some(k => k.toLowerCase().includes(q)))
   );
+});
+
+// Group commands by category for better UX
+const groupedCommands = computed(() => {
+  const navigation = filtered.value.filter(c => c.category === 'navigation');
+  const actions = filtered.value.filter(c => c.category === 'action');
+  return { navigation, actions };
 });
 
 function close() {
@@ -93,16 +119,40 @@ onBeforeUnmount(() => {
         />
       </div>
       <ul class="max-h-80 overflow-y-auto">
-        <li
-          v-for="(item, idx) in filtered"
-          :key="item.id"
-          @click="execute(item)"
-          class="px-4 py-3 cursor-pointer border-b border-surface-variant"
-          :class="idx === selectedIndex ? 'bg-primary-50' : 'bg-surface'"
-        >
-          <div class="text-sm font-medium" :class="idx === selectedIndex ? 'text-primary-900' : 'text-secondary-900'">{{ item.title }}</div>
-          <div v-if="item.subtitle" class="text-[11px] mt-0.5" :class="idx === selectedIndex ? 'text-primary-700' : 'text-secondary-600'">{{ item.subtitle }}</div>
-        </li>
+        <!-- Navigation Commands -->
+        <template v-if="groupedCommands.navigation.length > 0">
+          <li class="px-4 py-2 bg-surface-2 border-b border-surface-variant">
+            <div class="text-[10px] font-semibold text-secondary-500 uppercase tracking-wide">Navigation</div>
+          </li>
+          <li
+            v-for="(item, idx) in groupedCommands.navigation"
+            :key="item.id"
+            @click="execute(item)"
+            class="px-4 py-3 cursor-pointer border-b border-surface-variant"
+            :class="idx === selectedIndex ? 'bg-primary-50' : 'bg-surface'"
+          >
+            <div class="text-sm font-medium" :class="idx === selectedIndex ? 'text-primary-900' : 'text-secondary-900'">{{ item.title }}</div>
+            <div v-if="item.subtitle" class="text-[11px] mt-0.5" :class="idx === selectedIndex ? 'text-primary-700' : 'text-secondary-600'">{{ item.subtitle }}</div>
+          </li>
+        </template>
+        
+        <!-- Action Commands -->
+        <template v-if="groupedCommands.actions.length > 0">
+          <li class="px-4 py-2 bg-surface-2 border-b border-surface-variant">
+            <div class="text-[10px] font-semibold text-secondary-500 uppercase tracking-wide">Actions</div>
+          </li>
+          <li
+            v-for="(item, idx) in groupedCommands.actions"
+            :key="item.id"
+            @click="execute(item)"
+            class="px-4 py-3 cursor-pointer border-b border-surface-variant"
+            :class="(idx + groupedCommands.navigation.length) === selectedIndex ? 'bg-primary-50' : 'bg-surface'"
+          >
+            <div class="text-sm font-medium" :class="(idx + groupedCommands.navigation.length) === selectedIndex ? 'text-primary-900' : 'text-secondary-900'">{{ item.title }}</div>
+            <div v-if="item.subtitle" class="text-[11px] mt-0.5" :class="(idx + groupedCommands.navigation.length) === selectedIndex ? 'text-primary-700' : 'text-secondary-600'">{{ item.subtitle }}</div>
+          </li>
+        </template>
+        
         <li v-if="filtered.length === 0" class="px-4 py-6 text-center text-xs text-secondary-600">No matching commands</li>
       </ul>
       <div class="px-4 py-2 bg-surface-2 text-[10px] text-secondary-500 flex items-center justify-between">
