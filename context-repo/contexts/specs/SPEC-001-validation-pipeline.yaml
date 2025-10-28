@@ -4,28 +4,62 @@ status: "in-progress"
 type: "technical"
 related:
   features:
-    - "FEAT-001"
+    - FEAT-001
   services:
-    - "svc-git"
+    - svc-git
   packages:
-    - "pkg-context-sync"
-content: |
-  ## Overview
-  The validation pipeline validates YAML entity files against JSON schemas using AJV.
-
-  ## Implementation
-  1. Load all JSON schemas from .context/schemas/
-  2. Parse YAML files from contexts/ directories
-  3. Validate each entity against its schema using AJV
-  4. Check cross-references between entities
-  5. Return validation results as JSON
-
-  ## Error Reporting
-  - Validation errors must include file path, entity id, error type, and detailed message.
-  - Cross-reference errors must specify missing/invalid references.
-  - Output should support integration with desktop UI (see US-001 acceptance criteria).
-  - Errors must be actionable and designed to support recovery flows in the UI.
-
-  ## Exit Codes
-  - 0: All validations passed
-  - 1: Validation errors found
+    - pkg-context-sync
+interfaces:
+  - name: "Desktop UI <-> Validation Pipeline"
+    protocol: "IPC (main/renderer via Electron); REST alternative considered"
+    dataContract:
+      request:
+        - contextDir: string # Path to context repository
+      response:
+        - validationReport:
+            valid: boolean
+            errors:
+              - file: string
+                type: string # schema|xref
+                details: string
+            summary:
+              totalEntities: integer
+              totalErrors: integer
+    notes:
+      - "Validation runs on directory selection"
+      - "UI receives validation results and displays in structured error view"
+  - name: "Validation Pipeline <-> Git Service (svc-git)"
+    protocol: "Native git CLI invocation; Service API planned"
+    dataContract:
+      input:
+        - repoPath: string
+      output:
+        - commitStatus: string # clean|dirty|ahead|behind
+        - fileHistory:
+            files:
+              - path: string
+                status: string # modified|added|deleted
+                lastCommit: string
+    notes:
+      - "Validation pre-commit checks trigger automatically"
+      - "Git service supplies file state for validation context"
+  - name: "Desktop UI <-> Git Service (svc-git)"
+    protocol: "Electron main process proxy; Service API"
+    dataContract:
+      operations:
+        - stageFiles(paths: string[])
+        - commit(message: string)
+        - push(remote: string)
+      results:
+        - result: boolean
+        - error: string (optional)
+    notes:
+      - "User can trigger git operations from the UI after validation passes"
+apiBoundaryNotes:
+  - "Each integration point should enforce contract validation"
+  - "Async error propagation to UI for Git/validation failures"
+  - "Interface evolution documented in context repository"
+implementationNotes:
+  - "Teams must align on responsibility for triggering validation vs. git operations"
+  - "Cross-references tracked and errors propagated for transparency"
+  - "Validation pipeline is decoupled to enable CI/CD and pre-commit hooks"

@@ -77,11 +77,11 @@ function initializeGraph() {
   const elements = [
     ...graphData.nodes.map(node => ({
       data: {
+        ...node.data,
         id: node.id,
         label: node.id,
         type: node.kind,
-        title: node.data.title || node.data.name || node.id,
-        ...node.data
+        title: node.data.title || node.data.name || node.id
       }
     })),
     ...graphData.edges.map((edge, index) => ({
@@ -389,18 +389,28 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-white">
+  <div class="h-full flex flex-col bg-surface">
     <!-- Header -->
-    <div class="px-4 py-3 border-b border-surface-variant bg-surface-2 flex items-center justify-between">
-      <div>
-        <h2 class="text-lg font-semibold text-secondary-900">Dependency Graph</h2>
-        <p class="text-xs text-secondary-600">{{ stats.nodes }} nodes, {{ stats.edges }} edges</p>
+    <div class="px-6 py-4 border-b border-surface-variant bg-surface-2 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-primary-600 text-white rounded-m3-lg shadow-elevation-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-lg font-semibold text-secondary-900">Dependency Graph</h2>
+          <p class="text-xs text-secondary-600">{{ stats.nodes }} nodes • {{ stats.edges }} edges</p>
+        </div>
       </div>
       <button
         @click="fitToScreen"
-        class="text-sm px-3 py-1 bg-surface-3 hover:bg-surface-4 rounded-m3-md transition-colors border border-surface-variant"
+        class="inline-flex items-center gap-2 text-sm font-medium px-3 py-2 bg-surface-3 hover:bg-surface-4 rounded-m3-lg transition-colors border border-surface-variant text-secondary-800"
         title="Fit graph to screen"
       >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+        </svg>
         Fit to Screen
       </button>
     </div>
@@ -421,14 +431,14 @@ onBeforeUnmount(() => {
     </Transition>
     
     <!-- Toolbar -->
-    <div class="px-4 py-2 border-b border-surface-variant flex items-center gap-3 flex-wrap">
+    <div class="px-6 py-3 border-b border-surface-variant bg-surface-1 flex items-center gap-3 flex-wrap">
       <!-- Path Selection Chips -->
       <div v-if="selectedNodes.length > 0" class="flex items-center gap-2">
         <span class="text-xs font-medium text-secondary-700">Path:</span>
         <span
           v-for="(nodeId, index) in selectedNodes"
           :key="nodeId"
-          class="px-3 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded-m3-full border border-primary-300"
+          class="px-3 py-1 text-xs font-medium bg-primary-50 text-primary-700 rounded-m3-full border border-primary-100 shadow-elevation-1"
         >
           {{ index === 0 ? 'Start:' : 'End:' }} {{ nodeId }}
         </span>
@@ -441,14 +451,14 @@ onBeforeUnmount(() => {
           @input="searchNodes"
           type="text"
           placeholder="Search nodes..."
-          class="w-full px-3 py-1.5 text-sm border border-surface-variant rounded-m3-md bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+          class="w-full px-3 py-2 text-sm border border-surface-variant rounded-m3-lg bg-surface-1 focus:outline-none focus:ring-2 focus:ring-primary-400 text-secondary-900 placeholder:text-secondary-500"
         />
       </div>
 
       <!-- Layout selector -->
       <select
         v-model="layoutType"
-        class="px-3 py-1.5 text-sm border border-surface-variant rounded-m3-md bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+        class="px-3 py-2 text-sm border border-surface-variant rounded-m3-lg bg-surface-1 focus:outline-none focus:ring-2 focus:ring-primary-400 text-secondary-900"
         title="Change graph layout"
       >
         <option value="cose">Force-Directed</option>
@@ -461,7 +471,7 @@ onBeforeUnmount(() => {
       <div class="flex gap-1">
         <button
           @click="zoomIn"
-          class="p-1.5 hover:bg-surface-3 rounded-m3-md transition-colors text-secondary-700"
+          class="p-2 hover:bg-surface-3 rounded-m3-lg transition-colors text-secondary-700 border border-transparent hover:border-surface-variant"
           title="Zoom In"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -470,7 +480,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           @click="zoomOut"
-          class="p-1.5 hover:bg-surface-3 rounded-m3-md transition-colors text-secondary-700"
+          class="p-2 hover:bg-surface-3 rounded-m3-lg transition-colors text-secondary-700 border border-transparent hover:border-surface-variant"
           title="Zoom Out"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -479,7 +489,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           @click="resetZoom"
-          class="p-1.5 hover:bg-surface-3 rounded-m3-md transition-colors text-secondary-700"
+          class="p-2 hover:bg-surface-3 rounded-m3-lg transition-colors text-secondary-700 border border-transparent hover:border-surface-variant"
           title="Reset Zoom"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -488,8 +498,8 @@ onBeforeUnmount(() => {
         </button>
         <button
           @click="toggleLabels"
-          class="p-1.5 hover:bg-surface-3 rounded-m3-md transition-colors"
-          :class="showLabels ? 'bg-primary-100 text-primary-700' : 'text-secondary-700'"
+          class="p-2 rounded-m3-lg transition-colors border"
+          :class="showLabels ? 'bg-primary-100 text-primary-700 border-primary-200' : 'text-secondary-700 border-transparent hover:border-surface-variant hover:bg-surface-3'"
           title="Toggle Labels"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -499,7 +509,7 @@ onBeforeUnmount(() => {
         <button
           v-if="selectedNodes.length > 0 || highlightedPath.length > 0"
           @click="clearSelection"
-          class="px-2 py-1.5 text-xs bg-tertiary-100 text-tertiary-700 hover:bg-tertiary-200 rounded-m3-md transition-colors border border-tertiary-300"
+          class="px-3 py-1.5 text-xs bg-tertiary-100 text-tertiary-700 hover:bg-tertiary-200 rounded-m3-lg transition-colors border border-tertiary-200"
         >
           Clear ({{ selectedNodes.length }})
         </button>
@@ -507,7 +517,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Legend -->
-    <div class="px-4 py-2 border-b border-surface-variant bg-surface-2 flex items-center gap-4 text-xs flex-wrap">
+    <div class="px-6 py-3 border-b border-surface-variant bg-surface-2 flex items-center gap-4 text-xs flex-wrap text-secondary-700">
       <div class="flex items-center gap-1">
         <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: nodeColors.feature }"></span>
         <span>Feature</span>
@@ -543,12 +553,12 @@ onBeforeUnmount(() => {
       
       <!-- Detail Panel -->
       <Transition name="slide">
-        <div v-if="showDetailPanel && selectedEntity" class="w-1/3 border-l border-gray-200 bg-white overflow-y-auto">
-          <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-10">
-            <h3 class="font-semibold text-gray-900">Entity Details</h3>
+        <div v-if="showDetailPanel && selectedEntity" class="w-1/3 border-l border-surface-variant bg-surface overflow-y-auto shadow-elevation-2">
+          <div class="sticky top-0 bg-surface-1 border-b border-surface-variant px-5 py-4 flex items-center justify-between z-10">
+            <h3 class="text-sm font-semibold text-secondary-900">Entity Details</h3>
             <button
               @click="closeDetailPanel"
-              class="text-gray-400 hover:text-gray-600 transition-colors"
+              class="text-secondary-500 hover:text-secondary-800 transition-colors rounded-m3-full p-1 hover:bg-surface-3"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -556,18 +566,18 @@ onBeforeUnmount(() => {
             </button>
           </div>
 
-          <div class="p-4 space-y-4">
+          <div class="p-5 space-y-5">
             <!-- Entity Header -->
             <div class="flex items-start gap-3">
               <div
                 class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
                 :style="{ backgroundColor: nodeColors[selectedEntity._type as keyof typeof nodeColors] || '#6B7280' }"
               >
-                <span class="text-white font-bold text-lg">{{ selectedEntity.id.substring(0, 2) }}</span>
+                <span class="text-white font-semibold text-base">{{ selectedEntity.id.substring(0, 2) }}</span>
               </div>
               <div class="flex-1 min-w-0">
-                <h4 class="text-lg font-bold text-gray-900 break-words">{{ selectedEntity.id }}</h4>
-                <p class="text-sm text-gray-600 mt-1">{{ selectedEntity.title || selectedEntity.name || 'Untitled' }}</p>
+                <h4 class="text-base font-semibold text-secondary-900 break-words">{{ selectedEntity.id }}</h4>
+                <p class="text-sm text-secondary-600 mt-1">{{ selectedEntity.title || selectedEntity.name || 'Untitled' }}</p>
                 <div class="flex items-center gap-2 mt-2">
                   <span
                     class="px-2 py-1 text-xs font-medium rounded capitalize"
@@ -596,106 +606,106 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Connections -->
-            <div class="bg-gray-50 rounded-lg p-3">
-              <h5 class="text-xs font-semibold text-gray-700 mb-2">Connections</h5>
+            <div class="bg-surface-2 border border-surface-variant rounded-m3-lg p-3">
+              <h5 class="text-xs font-semibold text-secondary-700 mb-2 uppercase tracking-wide">Connections</h5>
               <div class="flex gap-4">
                 <div class="text-center">
-                  <div class="text-2xl font-bold text-blue-600">{{ selectedEntityConnections.incoming }}</div>
-                  <div class="text-xs text-gray-600">Incoming</div>
+                  <div class="text-xl font-semibold text-primary-700">{{ selectedEntityConnections.incoming }}</div>
+                  <div class="text-xs text-secondary-600">Incoming</div>
                 </div>
                 <div class="text-center">
-                  <div class="text-2xl font-bold text-green-600">{{ selectedEntityConnections.outgoing }}</div>
-                  <div class="text-xs text-gray-600">Outgoing</div>
+                  <div class="text-xl font-semibold text-primary-700">{{ selectedEntityConnections.outgoing }}</div>
+                  <div class="text-xs text-secondary-600">Outgoing</div>
                 </div>
               </div>
             </div>
 
             <!-- Properties -->
             <div>
-              <h5 class="text-xs font-semibold text-gray-700 mb-2">Properties</h5>
+              <h5 class="text-xs font-semibold text-secondary-700 mb-2 uppercase tracking-wide">Properties</h5>
               <div class="space-y-2 text-sm">
-                <div v-if="selectedEntity.domain" class="flex justify-between">
-                  <span class="text-gray-600">Domain:</span>
-                  <span class="text-gray-900 font-medium">{{ selectedEntity.domain }}</span>
+                <div v-if="selectedEntity.domain" class="flex justify-between text-secondary-700">
+                  <span>Domain</span>
+                  <span class="text-secondary-900 font-medium">{{ selectedEntity.domain }}</span>
                 </div>
-                <div v-if="selectedEntity.owner || selectedEntity.owners" class="flex justify-between">
-                  <span class="text-gray-600">Owner:</span>
-                  <span class="text-gray-900 font-medium">{{ selectedEntity.owner || selectedEntity.owners?.join(', ') }}</span>
+                <div v-if="selectedEntity.owner || selectedEntity.owners" class="flex justify-between text-secondary-700">
+                  <span>Owner</span>
+                  <span class="text-secondary-900 font-medium">{{ selectedEntity.owner || selectedEntity.owners?.join(', ') }}</span>
                 </div>
-                <div v-if="selectedEntity.version" class="flex justify-between">
-                  <span class="text-gray-600">Version:</span>
-                  <span class="text-gray-900 font-medium font-mono">{{ selectedEntity.version }}</span>
+                <div v-if="selectedEntity.version" class="flex justify-between text-secondary-700">
+                  <span>Version</span>
+                  <span class="text-secondary-900 font-medium font-mono">{{ selectedEntity.version }}</span>
                 </div>
               </div>
             </div>
 
             <!-- Description/Objective -->
             <div v-if="selectedEntity.objective || selectedEntity.iWant || selectedEntity.content">
-              <h5 class="text-xs font-semibold text-gray-700 mb-2">Description</h5>
-              <p class="text-sm text-gray-700 whitespace-pre-wrap">
+              <h5 class="text-xs font-semibold text-secondary-700 mb-2 uppercase tracking-wide">Description</h5>
+              <p class="text-sm text-secondary-700 whitespace-pre-wrap">
                 {{ selectedEntity.objective || selectedEntity.iWant || selectedEntity.content }}
               </p>
             </div>
 
             <!-- Related Entities -->
             <div v-if="selectedEntity.userStories || selectedEntity.specs || selectedEntity.tasks || selectedEntity.requires || selectedEntity.produces">
-              <h5 class="text-xs font-semibold text-gray-700 mb-2">Related Entities</h5>
+              <h5 class="text-xs font-semibold text-secondary-700 mb-2 uppercase tracking-wide">Related Entities</h5>
               <div class="space-y-2">
-                <div v-if="selectedEntity.userStories" class="text-sm">
-                  <span class="text-gray-600">Stories:</span>
+                <div v-if="selectedEntity.userStories" class="text-sm text-secondary-700">
+                  <span>Stories:</span>
                   <div class="flex flex-wrap gap-1 mt-1">
                     <span
                       v-for="id in selectedEntity.userStories"
                       :key="id"
-                      class="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs font-mono"
+                      class="px-2 py-0.5 bg-primary-50 text-primary-700 rounded-m3-md text-xs font-mono"
                     >
                       {{ id }}
                     </span>
                   </div>
                 </div>
-                <div v-if="selectedEntity.specs" class="text-sm">
-                  <span class="text-gray-600">Specs:</span>
+                <div v-if="selectedEntity.specs" class="text-sm text-secondary-700">
+                  <span>Specs:</span>
                   <div class="flex flex-wrap gap-1 mt-1">
                     <span
                       v-for="id in selectedEntity.specs"
                       :key="id"
-                      class="px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs font-mono"
+                      class="px-2 py-0.5 bg-secondary-100 text-secondary-700 rounded-m3-md text-xs font-mono"
                     >
                       {{ id }}
                     </span>
                   </div>
                 </div>
-                <div v-if="selectedEntity.tasks" class="text-sm">
-                  <span class="text-gray-600">Tasks:</span>
+                <div v-if="selectedEntity.tasks" class="text-sm text-secondary-700">
+                  <span>Tasks:</span>
                   <div class="flex flex-wrap gap-1 mt-1">
                     <span
                       v-for="id in selectedEntity.tasks"
                       :key="id"
-                      class="px-2 py-0.5 bg-orange-100 text-orange-800 rounded text-xs font-mono"
+                      class="px-2 py-0.5 bg-tertiary-100 text-tertiary-800 rounded-m3-md text-xs font-mono"
                     >
                       {{ id }}
                     </span>
                   </div>
                 </div>
-                <div v-if="selectedEntity.requires" class="text-sm">
-                  <span class="text-gray-600">Requires:</span>
+                <div v-if="selectedEntity.requires" class="text-sm text-secondary-700">
+                  <span>Requires:</span>
                   <div class="flex flex-wrap gap-1 mt-1">
                     <span
                       v-for="id in selectedEntity.requires"
                       :key="id"
-                      class="px-2 py-0.5 bg-red-100 text-red-800 rounded text-xs font-mono"
+                      class="px-2 py-0.5 bg-error-100 text-error-700 rounded-m3-md text-xs font-mono"
                     >
                       {{ id }}
                     </span>
                   </div>
                 </div>
-                <div v-if="selectedEntity.produces" class="text-sm">
-                  <span class="text-gray-600">Produces:</span>
+                <div v-if="selectedEntity.produces" class="text-sm text-secondary-700">
+                  <span>Produces:</span>
                   <div class="flex flex-wrap gap-1 mt-1">
                     <span
                       v-for="id in selectedEntity.produces"
                       :key="id"
-                      class="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs font-mono"
+                      class="px-2 py-0.5 bg-primary-50 text-primary-700 rounded-m3-md text-xs font-mono"
                     >
                       {{ id }}
                     </span>
@@ -705,10 +715,10 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Actions -->
-            <div class="pt-4 border-t border-gray-200 space-y-2">
+            <div class="pt-4 border-t border-surface-variant space-y-2">
               <button
                 @click="openInEditor"
-                class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                class="w-full px-4 py-2 bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 transition-colors flex items-center justify-center gap-2 shadow-elevation-1"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -722,9 +732,9 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Path Info -->
-    <div v-if="highlightedPath.length > 0" class="px-4 py-2 bg-blue-50 border-t border-blue-200">
-      <div class="text-sm font-medium text-blue-900 mb-1">Path Found:</div>
-      <div class="text-xs text-blue-700">
+    <div v-if="highlightedPath.length > 0" class="px-6 py-3 bg-primary-50 border-t border-primary-200">
+      <div class="text-sm font-medium text-primary-900 mb-1">Path Found:</div>
+      <div class="text-xs text-primary-700">
         {{ highlightedPath.join(' → ') }}
       </div>
     </div>
