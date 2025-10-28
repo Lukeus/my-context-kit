@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-sync.dev/schemas/speckit-fetch.schema.json",
+  "title": "Spec Kit Fetch Summary",
+  "type": "object",
+  "required": ["source", "timing", "artifacts", "status"],
+  "properties": {
+    "source": {
+      "type": "object",
+      "required": ["repository", "releaseTag", "commit"],
+      "properties": {
+        "repository": { "type": "string" },
+        "releaseTag": { "type": ["string", "null"] },
+        "commit": { "type": ["string", "null"] }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "required": ["startedAt", "finishedAt", "durationMs"],
+      "properties": {
+        "startedAt": { "type": ["string", "null"], "format": "date-time" },
+        "finishedAt": { "type": ["string", "null"], "format": "date-time" },
+        "durationMs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["docs", "templates", "memory"],
+      "properties": {
+        "docs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "templates": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "memory": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "status": {
+      "type": "object",
+      "required": ["ok", "error"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "error": { "type": ["string", "null"] },
+        "inProgress": { "type": "boolean" },
+        "stale": { "type": "boolean" }
+      }
+    },
+    "cachePath": { "type": "string" },
+    "releaseTag": { "type": "string" },
+    "commit": { "type": "string" },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "fetchedAt": { "type": "string", "format": "date-time" },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

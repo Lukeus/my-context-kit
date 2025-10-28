@@ -35,6 +35,18 @@ type DialogApi = {
   selectDirectory: StubMethod;
 };
 
+type SpeckitApi = {
+  specify: StubMethod;
+  plan: StubMethod;
+  tasks: StubMethod;
+  fetch: StubMethod;
+  listPreviews: StubMethod;
+  toEntity: StubMethod;
+  tasksToEntity: StubMethod;
+  aiGenerateSpec: StubMethod;
+  aiRefineSpec: StubMethod;
+};
+
 const createDefaultStub = () => vi.fn(async () => ({}));
 
 beforeEach(() => {
@@ -107,6 +119,18 @@ beforeEach(() => {
     selectDirectory: createDefaultStub(),
   };
 
+  const speckitApi: SpeckitApi = {
+    specify: createDefaultStub(),
+    plan: createDefaultStub(),
+    tasks: createDefaultStub(),
+    fetch: createDefaultStub(),
+    listPreviews: createDefaultStub(),
+    toEntity: createDefaultStub(),
+    tasksToEntity: createDefaultStub(),
+    aiGenerateSpec: createDefaultStub(),
+    aiRefineSpec: createDefaultStub(),
+  };
+
   (global as any).window = {
     api: {
       repos: repoApi,
@@ -118,6 +142,7 @@ beforeEach(() => {
       ai: aiApi,
       app: appApi,
       dialog: dialogApi,
+      speckit: speckitApi,
     },
   };
 });

@@ -110,7 +110,7 @@ export class C4AnalyzerService {
     if (!headerMatch) return {};
     
     const headerStr = headerMatch[1];
-    const metadata: Record<string, any> = {};
+    const metadata: Partial<Record<string, string | string[]>> = {};
     
     // Extract key=value pairs
     const attrRegex = /(\w+)=([^,\s]+|(?:\[[^\]]*\]))/g;
@@ -136,38 +136,79 @@ export class C4AnalyzerService {
    */
   private extractNodes(content: string): C4Node[] {
     const nodes: C4Node[] = [];
-    
-    // Regex patterns for different C4 node types
-    const patterns = [
-      { regex: /Person\((\w+),\s*"([^"]+)"(?:,\s*"([^"]+)")?\)/g, kind: 'person' as const },
-      { regex: /System(?:_Ext)?\((\w+),\s*"([^"]+)"(?:,\s*"([^"]+)")?\)/g, kind: 'system' as const },
-      { regex: /Container\((\w+),\s*"([^"]+)"(?:,\s*"([^"]+)")?(?:,\s*"([^"]+)")?\)/g, kind: 'container' as const },
-      { regex: /Component\((\w+),\s*"([^"]+)"(?:,\s*"([^"]+)")?(?:,\s*"([^"]+)")?\)/g, kind: 'component' as const },
-      { regex: /ContainerDb\((\w+),\s*"([^"]+)"(?:,\s*"([^"]+)")?(?:,\s*"([^"]+)")?\)/g, kind: 'datastore' as const },
-      { regex: /ContainerQueue\((\w+),\s*"([^"]+)"(?:,\s*"([^"]+)")?(?:,\s*"([^"]+)")?\)/g, kind: 'queue' as const },
-    ];
-    
-    for (const { regex, kind } of patterns) {
-      let match;
-      regex.lastIndex = 0; // Reset regex
-      
-      while ((match = regex.exec(content)) !== null) {
-        const id = match[1];
-        const name = match[2];
-        const tech = match[3];
-        const description = match[4] || match[3]; // Fallback if no tech specified
-        
-        nodes.push({
-          id,
-          name,
-          kind,
-          tech: kind === 'person' ? undefined : tech,
-          description: kind === 'person' ? tech : description
-        });
+    const lines = content.split('\n');
+    const nodePattern = /^([A-Za-z0-9_]+)\s*(?:\[|\(|\{)(.+)(?:\]|\)|\})$/;
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('%%') || line.startsWith('subgraph')) {
+        continue;
       }
+
+      const match = line.match(nodePattern);
+      if (!match) {
+        continue;
+      }
+
+      let descriptor = match[2].trim();
+      if (!descriptor.includes('::')) {
+        continue;
+      }
+
+      if (descriptor.startsWith('"') && descriptor.endsWith('"')) {
+        descriptor = descriptor.slice(1, -1);
+      }
+
+      // Remove surrounding shape markers e.g. ( ... ) or { ... }
+      if ((descriptor.startsWith('(') && descriptor.endsWith(')')) ||
+          (descriptor.startsWith('{') && descriptor.endsWith('}'))) {
+        descriptor = descriptor.slice(1, -1).trim();
+      }
+
+      const segments = descriptor
+        .split('::')
+        .map((segment) => segment.trim())
+        .filter(Boolean);
+
+      if (segments.length === 0) {
+        continue;
+      }
+
+      const id = match[1];
+      const name = segments[0];
+      const typeToken = segments[1] ?? '';
+      const detail = segments[2] ?? '';
+      const extra = segments[3] ?? '';
+
+      const kind = this.resolveNodeKind(typeToken);
+      const tech = kind === 'person' || kind === 'external' ? undefined : detail || undefined;
+      const description = kind === 'person' || kind === 'external'
+        ? detail || undefined
+        : extra || detail || undefined;
+
+      nodes.push({
+        id,
+        name,
+        kind,
+        tech,
+        description,
+      });
     }
-    
+
     return nodes;
+  }
+
+  private resolveNodeKind(typeToken: string): C4Node['kind'] {
+    const normalized = typeToken.toLowerCase();
+    if (normalized.includes('person')) return 'person';
+    if (normalized.includes('external')) return 'external';
+    if (normalized.includes('datastore') || normalized.includes('database')) return 'datastore';
+    if (normalized.includes('queue')) return 'queue';
+    if (normalized.includes('component')) return 'component';
+    if (normalized.includes('system')) return 'system';
+    if (normalized.includes('container')) return 'container';
+    if (normalized.includes('service')) return 'component';
+    return 'container';
   }
 
   /**
@@ -176,45 +217,42 @@ export class C4AnalyzerService {
    */
   private extractRelationships(content: string): C4Relationship[] {
     const relationships: C4Relationship[] = [];
-    
-    const relRegex = /Rel(?:_[A-Z])?\((\w+),\s*(\w+),\s*"([^"]+)"(?:,\s*"([^"]+)")?\)/g;
+    const relRegex = /^\s*([A-Za-z0-9_]+)\s*[-.]{1,}>\s*(?:\|([^|]+)\|)?\s*([A-Za-z0-9_]+)/gm;
     let match;
-    
+
     while ((match = relRegex.exec(content)) !== null) {
       const source = match[1];
-      const target = match[2];
-      const description = match[3];
-      const tech = match[4];
-      
+      const descriptor = match[2]?.trim() ?? '';
+      const target = match[3];
+
       const relationship: C4Relationship = {
         source,
         target,
-        description
+        description: descriptor || `${source} -> ${target}`,
       };
-      
-      // Extract REST path if present
-      if (tech && tech.startsWith('/')) {
-        relationship.restPath = tech;
+
+      if (descriptor.startsWith('/')) {
+        relationship.restPath = descriptor;
       }
-      
-      // Extract events from description
-      if (description.toLowerCase().includes('publish') || description.toLowerCase().includes('emit')) {
-        const eventMatch = description.match(/(\w+\.\w+)/);
+
+      const lowered = descriptor.toLowerCase();
+      if (lowered.includes('publish') || lowered.includes('emit')) {
+        const eventMatch = descriptor.match(/([A-Za-z0-9_]+\.[A-Za-z0-9_]+)/);
         if (eventMatch) {
           relationship.emit = [eventMatch[1]];
         }
       }
-      
-      if (description.toLowerCase().includes('consume') || description.toLowerCase().includes('subscribe')) {
-        const eventMatch = description.match(/(\w+\.\w+)/);
+
+      if (lowered.includes('consume') || lowered.includes('subscribe')) {
+        const eventMatch = descriptor.match(/([A-Za-z0-9_]+\.[A-Za-z0-9_]+)/);
         if (eventMatch) {
           relationship.consume = [eventMatch[1]];
         }
       }
-      
+
       relationships.push(relationship);
     }
-    
+
     return relationships;
   }
 

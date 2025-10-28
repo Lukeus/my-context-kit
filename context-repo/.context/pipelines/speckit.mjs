@@ -13,6 +13,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import simpleGit from 'simple-git';
+import { execa } from 'execa';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -195,6 +196,57 @@ async function tasks(planPath) {
       stack: error.stack,
     };
   }
+}
+
+async function runFetch(argv) {
+  const normalizedArgs = Array.isArray(argv) ? [...argv] : [];
+  const hasRepoPathArg = normalizedArgs.some((arg, index) => {
+    if (arg === '--repoPath') {
+      return true;
+    }
+    if (arg.startsWith('--repoPath=')) {
+      return true;
+    }
+    if (arg === '-r') {
+      const next = normalizedArgs[index + 1];
+      return typeof next === 'string' && !next.startsWith('-');
+    }
+    return false;
+  });
+
+  const cmdArgs = ['.context/pipelines/speckit-fetch.mjs'];
+
+  if (!hasRepoPathArg) {
+    cmdArgs.push('--repoPath', REPO_ROOT);
+  }
+
+  cmdArgs.push(...normalizedArgs);
+
+  const result = await execa('node', cmdArgs, {
+    cwd: REPO_ROOT,
+    reject: false,
+  });
+
+  let payload;
+
+  try {
+    const stdout = result.stdout?.trim();
+    payload = stdout ? JSON.parse(stdout.split('\n').pop() ?? '{}') : {};
+  } catch {
+    payload = {
+      ok: false,
+      error: result.stderr?.trim() || 'Spec Kit fetch returned invalid output',
+    };
+  }
+
+  if (result.exitCode !== 0 && result.exitCode !== 202) {
+    payload.ok = false;
+    if (!payload.error) {
+      payload.error = `Spec Kit fetch failed (exit code ${result.exitCode})`;
+    }
+  }
+
+  return { payload, exitCode: result.exitCode ?? 1 };
 }
 
 // ===== Helper Functions =====
@@ -624,6 +676,7 @@ async function main() {
   }
   
   let result;
+  let exitCodeOverride;
   
   switch (command) {
     case 'specify':
@@ -635,13 +688,20 @@ async function main() {
     case 'tasks':
       result = await tasks(args[0]);
       break;
+    case 'fetch':
+      ({ payload: result, exitCode: exitCodeOverride } = await runFetch(args));
+      break;
     default:
       console.error(`Unknown command: ${command}`);
       process.exit(1);
   }
   
   console.log(JSON.stringify(result, null, 2));
-  process.exit(result.ok ? 0 : 1);
+  if (typeof exitCodeOverride === 'number') {
+    process.exit(exitCodeOverride);
+  }
+
+  process.exit(result?.ok ? 0 : 1);
 }
 
 // Run if called directly (check if this is the main module)

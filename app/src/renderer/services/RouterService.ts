@@ -4,6 +4,9 @@ import { ref, type Ref, type Component } from 'vue';
  * Route metadata for access control and display
  */
 export interface RouteMeta {
+  [key: string]: unknown;
+  [key: number]: unknown;
+  [key: symbol]: unknown;
   title?: string;
   icon?: string;
   requiresRepo?: boolean;

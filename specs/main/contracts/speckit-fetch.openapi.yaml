@@ -1,0 +1,145 @@
+openapi: 3.1.0
+info:
+  title: Spec Kit Fetch Service
+  version: 0.1.0
+  description: >-
+    IPC-to-pipeline contract for hydrating the local context repository with
+    assets pulled from github/spec-kit. Implemented as an Electron IPC handler
+    that shells into `.context/pipelines/speckit-fetch.mjs`.
+servers:
+  - url: electron-ipc://speckit
+paths:
+  /fetch:
+    post:
+      summary: Clone or update the cached Spec Kit repository snapshot
+      operationId: fetchSpecKit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - repoPath
+              properties:
+                repoPath:
+                  type: string
+                  description: Absolute path to the context repository root.
+                releaseTag:
+                  type: string
+                  description: Optional tag or SHA to pin (defaults to latest release).
+                forceRefresh:
+                  type: boolean
+                  description: >-
+                    When true, delete existing cache before fetching. Defaults to false.
+      responses:
+        '200':
+          description: Fetch completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - cachePath
+                  - commit
+                  - durationMs
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+                  cachePath:
+                    type: string
+                    description: Absolute path to the populated cache folder.
+                  commit:
+                    type: string
+                    description: Git commit SHA of the fetched content.
+                  releaseTag:
+                    type: string
+                    description: Tag or branch resolved during fetch.
+                  durationMs:
+                    type: integer
+                    minimum: 0
+                    description: Total execution time in milliseconds.
+                  fetchedAt:
+                    type: string
+                    format: date-time
+                  artifacts:
+                    type: object
+                    description: Keyed lists of cached files exposed to the UI.
+                    properties:
+                      docs:
+                        type: array
+                        items:
+                          type: string
+                      templates:
+                        type: array
+                        items:
+                          type: string
+                      memory:
+                        type: array
+                        items:
+                          type: string
+        '202':
+          description: Fetch already in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - inProgress
+                properties:
+                  ok:
+                    type: boolean
+                    const: false
+                  inProgress:
+                    type: boolean
+                    const: true
+                  startedAt:
+                    type: string
+                    format: date-time
+        '4XX':
+          description: Validation or configuration error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - error
+                properties:
+                  ok:
+                    type: boolean
+                    const: false
+                  error:
+                    type: string
+                  details:
+                    type: array
+                    items:
+                      type: string
+        '5XX':
+          description: Unexpected pipeline failure
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - error
+                properties:
+                  ok:
+                    type: boolean
+                    const: false
+                  error:
+                    type: string
+                  stack:
+                    type: string
+components:
+  securitySchemes:
+    ipcToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "contextRepo"
+  security:
+    - ipcToken: []

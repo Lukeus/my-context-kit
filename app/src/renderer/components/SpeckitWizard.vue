@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useSpeckitStore } from '@/stores/speckitStore';
 import { useContextStore } from '@/stores/contextStore';
+import SpeckitFetchStatus from './speckit/SpeckitFetchStatus.vue';
+import { useSpeckitLibraryStore } from '@/stores/speckitLibraryStore';
+import SpeckitPreviewPane from './speckit/SpeckitPreviewPane.vue';
+import SpeckitPipelineStatus from './speckit/SpeckitPipelineStatus.vue';
+import type { SpecKitEntityPreview, SpecKitEntityType } from '@shared/speckit';
 
 const props = defineProps<{
   show: boolean;
@@ -13,11 +18,19 @@ const emit = defineEmits<{
 
 const speckitStore = useSpeckitStore();
 const contextStore = useContextStore();
+const libraryStore = useSpeckitLibraryStore();
+
+const entityTypeLabels: Record<SpecKitEntityType, string> = {
+  feature: 'Features',
+  userstory: 'User Stories',
+  spec: 'Specs',
+  governance: 'Governance',
+  template: 'Templates',
+};
 
 const description = ref('');
 const techStack = ref(['TypeScript', 'Vue 3', 'Tailwind CSS']);
 const generateEntities = ref(true);
-const isGeneratingEntities = ref(false);
 const entitiesGenerated = ref(false);
 const entityGenerationError = ref<string | null>(null);
 const useAI = ref(false);
@@ -30,8 +43,150 @@ const currentStep = computed(() => speckitStore.workflow.currentStep);
 const spec = computed(() => speckitStore.workflow.specification);
 const plan = computed(() => speckitStore.workflow.plan);
 const taskList = computed(() => speckitStore.workflow.taskList);
+const fetchSummary = computed(() => speckitStore.workflow.fetchSummary);
+const cacheStale = computed(() => speckitStore.isCacheStale);
+
+const generatingEntities = computed(() => speckitStore.isGeneratingEntities);
+const runningPipelines = computed(() => speckitStore.isRunningPipelines);
+const pipelineReport = computed(() => speckitStore.pipelineReport);
+const pipelineError = computed(() => speckitStore.pipelineError);
 
 const gatesSummary = computed(() => speckitStore.getGatesSummary());
+
+const previewGroups = computed(() => libraryStore.filteredGroups);
+const availablePreviewTypes = computed(() => libraryStore.availableTypes);
+const previewSearch = computed({
+  get: () => libraryStore.searchTerm,
+  set: (value: string) => libraryStore.setSearch(value),
+});
+const previewWarnings = computed(() => libraryStore.warnings);
+const previewError = computed(() => libraryStore.error);
+const previewIsLoading = computed(() => libraryStore.isLoading);
+const previewSelection = computed(() => libraryStore.selectedPreviews);
+const previewSelectedCount = computed(() => libraryStore.selectedCount);
+const flattenedPreviews = computed(() => libraryStore.flattenedPreviews);
+const selectedPreviewPaths = computed(() => previewSelection.value.map((preview) => preview.source.path));
+
+const previewIndex = computed(() => {
+  const map = new Map<string, SpecKitEntityPreview>();
+  const groups = libraryStore.collection?.groups ?? [];
+  groups.forEach((group) => {
+    group.items.forEach((item) => {
+      map.set(item.id, item);
+    });
+  });
+  return map;
+});
+
+const previewTotals = computed(() => {
+  const totals = new Map<SpecKitEntityType, number>();
+  const groups = libraryStore.collection?.groups ?? [];
+  groups.forEach((group) => {
+    totals.set(group.entityType, group.items.length);
+  });
+  return totals;
+});
+
+const focusedPreviewId = ref<string | null>(null);
+const focusedPreview = computed(() => {
+  const id = focusedPreviewId.value;
+  if (id && previewIndex.value.has(id)) {
+    return previewIndex.value.get(id) ?? null;
+  }
+
+  if (previewSelection.value.length > 0) {
+    return previewSelection.value[0];
+  }
+
+  return flattenedPreviews.value[0] ?? null;
+});
+
+const loadedCacheKey = ref<string | null>(null);
+
+watch(
+  () => fetchSummary.value,
+  async (summary) => {
+    if (!summary || !contextStore.repoPath) {
+      return;
+    }
+
+    if (summary.status?.ok !== true) {
+      return;
+    }
+
+    const releaseTag = summary.source.releaseTag ?? 'latest';
+    const commit = summary.source.commit ?? 'unknown';
+    const fetchedAt = summary.timing.finishedAt ?? 'unknown';
+    const cacheKey = `${releaseTag}:${commit}:${fetchedAt}`;
+
+    if (loadedCacheKey.value === cacheKey && libraryStore.collection) {
+      return;
+    }
+
+    const result = await libraryStore.loadPreviews(contextStore.repoPath);
+    if (result.ok) {
+      loadedCacheKey.value = cacheKey;
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => flattenedPreviews.value,
+  (previews) => {
+    if (previews.length === 0) {
+      focusedPreviewId.value = null;
+      return;
+    }
+
+    if (!focusedPreviewId.value || !previews.some((preview) => preview.id === focusedPreviewId.value)) {
+      focusedPreviewId.value = previews[0].id;
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => previewSelection.value,
+  (previews) => {
+    if (previews.length === 0) {
+      return;
+    }
+
+    if (!focusedPreviewId.value || !previews.some((preview) => preview.id === focusedPreviewId.value)) {
+      focusedPreviewId.value = previews[0].id;
+    }
+  },
+  { deep: true }
+);
+
+function togglePreviewFilter(entityType: SpecKitEntityType) {
+  libraryStore.toggleType(entityType);
+}
+
+function resetPreviewFilters() {
+  libraryStore.resetFilters();
+}
+
+function clearPreviewSearch() {
+  libraryStore.clearSearch();
+}
+
+function togglePreviewSelection(id: string) {
+  libraryStore.toggleSelection(id);
+}
+
+function selectPreview(id: string) {
+  focusedPreviewId.value = id;
+}
+
+const previewHasFilters = computed(() => libraryStore.hasActiveFilters);
+const previewCollection = computed(() => libraryStore.collection);
+const activePreviewTypes = computed(() => libraryStore.activeTypes);
+
+function isPreviewSelected(id: string): boolean {
+  return libraryStore.isSelected(id);
+}
 
 async function handleGenerateAISpec() {
   if (!description.value.trim()) {
@@ -72,6 +227,30 @@ async function handleCreateSpec() {
 
   if (result.ok) {
     // Success - spec created
+  }
+}
+
+async function handleFetchSpecKit(forceRefresh = false) {
+  if (!contextStore.repoPath) return;
+
+  if (forceRefresh) {
+    loadedCacheKey.value = null;
+  }
+
+  const result = await speckitStore.fetchSpecKit(
+    contextStore.repoPath,
+    undefined,
+    forceRefresh
+  );
+
+  if (result.ok) {
+    libraryStore.clearSelection();
+    libraryStore.clearSearch();
+    focusedPreviewId.value = null;
+    entitiesGenerated.value = false;
+    entityGenerationError.value = null;
+    speckitStore.pipelineReport = null;
+    speckitStore.pipelineError = null;
   }
 }
 
@@ -125,31 +304,50 @@ async function handleGenerateTasks() {
 
 function handleClose() {
   speckitStore.resetWorkflow();
+  libraryStore.clearSelection();
+  clearPreviewSearch();
+  focusedPreviewId.value = null;
   emit('close');
 }
 
 async function handleGenerateEntities() {
   if (!spec.value) return;
+  if (!contextStore.repoPath) {
+    entityGenerationError.value = 'Context repository path is not configured.';
+    return;
+  }
 
-  isGeneratingEntities.value = true;
   entityGenerationError.value = null;
 
   try {
-    const result = await window.api.speckit.toEntity(
-      contextStore.repoPath || '',
+    if (!fetchSummary.value || cacheStale.value) {
+      entityGenerationError.value = 'Spec Kit cache is stale or missing. Fetch the latest snapshot before generating entities.';
+      return;
+    }
+
+    if (previewSelectedCount.value === 0) {
+      entityGenerationError.value = 'Select at least one Spec Kit document before generating entities.';
+      return;
+    }
+
+    const sourcePreviewPaths = previewSelection.value.map((preview) => preview.source.path);
+
+    const response = await speckitStore.generateEntities(
+      contextStore.repoPath,
       spec.value.specPath,
-      { createFeature: true, createStories: true }
+      sourcePreviewPaths,
+      { createFeature: true, createStories: true },
     );
 
-    if (result.ok) {
+    if (response.ok) {
       entitiesGenerated.value = true;
     } else {
-      entityGenerationError.value = result.error || 'Failed to generate entities';
+      entityGenerationError.value = response.error || 'Failed to generate entities.';
+      entitiesGenerated.value = false;
     }
-  } catch (error: any) {
-    entityGenerationError.value = error.message || 'Unknown error generating entities';
-  } finally {
-    isGeneratingEntities.value = false;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error generating entities';
+    entityGenerationError.value = message;
   }
 }
 
@@ -354,6 +552,155 @@ function handleComplete() {
                 <h3 class="text-lg font-semibold text-secondary-900">Generate Task List</h3>
               </div>
 
+              <div class="ml-10 space-y-3 p-4 bg-surface-1 border border-surface-variant rounded-m3-md">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    @click="handleFetchSpecKit(false)"
+                    :disabled="speckitStore.isFetchingSpecKit"
+                    class="px-4 py-2 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {{ speckitStore.isFetchingSpecKit ? 'Fetching...' : 'Fetch Spec Kit' }}
+                  </button>
+                  <button
+                    @click="handleFetchSpecKit(true)"
+                    :disabled="speckitStore.isFetchingSpecKit"
+                    class="px-4 py-2 text-sm border border-surface-variant rounded-m3-lg hover:bg-surface-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Force Refresh
+                  </button>
+                </div>
+
+                <SpeckitFetchStatus
+                  :summary="fetchSummary ?? undefined"
+                  :error="speckitStore.fetchError"
+                  :is-fetching="speckitStore.isFetchingSpecKit"
+                />
+              </div>
+
+              <div
+                v-if="fetchSummary?.status.ok"
+                class="ml-10 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]"
+              >
+                <div class="flex flex-col gap-3">
+                  <div class="flex flex-col gap-2">
+                    <div class="flex items-center gap-2">
+                      <input
+                        v-model="previewSearch"
+                        type="search"
+                        placeholder="Search Spec Kit library"
+                        class="flex-1 rounded-m3-md border border-surface-variant bg-surface-1 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        :disabled="previewIsLoading"
+                      />
+                      <button
+                        v-if="previewSearch"
+                        type="button"
+                        @click="clearPreviewSearch"
+                        class="text-xs text-secondary-600 hover:text-secondary-900"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <button
+                        v-for="type in availablePreviewTypes"
+                        :key="type"
+                        type="button"
+                        @click="togglePreviewFilter(type)"
+                        :class="[
+                          'rounded-m3-full border px-3 py-1 text-xs font-medium transition-colors',
+                          activePreviewTypes.includes(type)
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-surface-variant bg-surface-2 text-secondary-700 hover:bg-surface-3'
+                        ]"
+                      >
+                        {{ entityTypeLabels[type] }}
+                        <span class="ml-1 text-[11px] text-secondary-400">
+                          {{ previewTotals.get(type) ?? 0 }}
+                        </span>
+                      </button>
+                      <button
+                        v-if="previewHasFilters"
+                        type="button"
+                        @click="resetPreviewFilters"
+                        class="rounded-m3-full border border-surface-variant px-3 py-1 text-xs text-secondary-700 hover:bg-surface-3"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-if="previewCollection" class="text-xs text-secondary-600">
+                    Release <span class="font-semibold text-secondary-900">{{ previewCollection.releaseTag }}</span>
+                    • Commit {{ previewCollection.commit }}
+                    <span v-if="previewSelectedCount > 0" class="ml-2 text-primary-700">
+                      {{ previewSelectedCount }} selected
+                    </span>
+                  </div>
+
+                  <div v-if="previewError" class="rounded-m3-md border border-error-200 bg-error-50 px-3 py-2 text-xs text-error-700">
+                    {{ previewError }}
+                  </div>
+
+                  <div v-else class="space-y-3 rounded-m3-md border border-surface-variant bg-surface-1 p-3 text-sm">
+                    <div v-if="previewIsLoading" class="text-secondary-500">Loading Spec Kit previews…</div>
+                    <div v-else-if="previewGroups.length === 0" class="text-secondary-500">
+                      No documents match the selected filters.
+                    </div>
+                    <template v-else>
+                      <div
+                        v-for="group in previewGroups"
+                        :key="group.entityType"
+                        class="space-y-2"
+                      >
+                        <div class="text-xs font-semibold uppercase tracking-wide text-secondary-500">
+                          {{ entityTypeLabels[group.entityType] }}
+                        </div>
+                        <ul class="space-y-1">
+                          <li
+                            v-for="item in group.items"
+                            :key="item.id"
+                            class="rounded-m3-md border border-transparent hover:border-primary-200 hover:bg-primary-50"
+                          >
+                            <label class="flex items-start gap-2 px-2 py-2 text-xs sm:text-sm">
+                              <input
+                                type="checkbox"
+                                class="mt-0.5 h-4 w-4 rounded border-surface-variant text-primary focus:ring-primary"
+                                :checked="isPreviewSelected(item.id)"
+                                @change="togglePreviewSelection(item.id)"
+                              />
+                              <button
+                                type="button"
+                                class="flex flex-col items-start text-left transition-colors"
+                                :class="focusedPreviewId === item.id ? 'text-primary-700' : 'text-secondary-800'"
+                                @click="selectPreview(item.id)"
+                              >
+                                <span class="font-semibold">
+                                  {{ item.displayName }}
+                                </span>
+                                <span class="text-[11px] text-secondary-500">
+                                  {{ item.source.path }}
+                                </span>
+                              </button>
+                            </label>
+                          </li>
+                        </ul>
+                      </div>
+                    </template>
+                  </div>
+
+                  <div v-if="previewWarnings.length" class="rounded-m3-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    <div class="font-semibold uppercase tracking-wide">Library Warnings</div>
+                    <ul class="mt-1 list-disc pl-5">
+                      <li v-for="warning in previewWarnings" :key="warning">
+                        {{ warning }}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <SpeckitPreviewPane :preview="focusedPreview" :is-loading="previewIsLoading" />
+              </div>
+
               <div v-if="!taskList" class="ml-10 space-y-3">
                 <button
                   @click="handleGenerateTasks"
@@ -401,11 +748,15 @@ function handleComplete() {
                 <div v-if="generateEntities && !entitiesGenerated" class="mt-3">
                   <button
                     @click="handleGenerateEntities"
-                    :disabled="isGeneratingEntities"
+                    :disabled="generatingEntities || cacheStale"
                     class="px-4 py-2 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {{ isGeneratingEntities ? 'Generating Entities...' : 'Generate Entities' }}
+                    {{ generatingEntities ? 'Generating Entities...' : 'Generate Entities' }}
                   </button>
+
+                  <p v-if="cacheStale" class="text-sm text-error-600 mt-2">
+                    Refresh Spec Kit cache to clear the 7-day freshness guard.
+                  </p>
 
                   <p v-if="entityGenerationError" class="text-sm text-error-600 mt-2">
                     {{ entityGenerationError }}
@@ -417,6 +768,18 @@ function handleComplete() {
                     <strong>✓ Entities Generated</strong>
                     <p class="text-xs mt-1">Feature and UserStory entities created in contexts/</p>
                   </div>
+                </div>
+
+                <div
+                  v-if="generatingEntities || runningPipelines || pipelineReport || pipelineError"
+                  class="mt-4"
+                >
+                  <SpeckitPipelineStatus
+                    :report="pipelineReport"
+                    :error="pipelineError"
+                    :is-running="generatingEntities || runningPipelines"
+                    :source-previews="selectedPreviewPaths"
+                  />
                 </div>
               </div>
 
