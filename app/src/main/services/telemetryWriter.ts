@@ -173,4 +173,5 @@ export function createTelemetryWriter(options?: TelemetryWriterOptions): FileTel
   return new FileTelemetryWriter(options);
 }
 
-// TODO: Expose log rotation strategy once telemetry volume expectations are validated.
+// Note: Log rotation can be implemented when telemetry volume monitoring indicates storage concerns.
+// Current file-per-session strategy is acceptable for expected usage patterns.

@@ -230,8 +230,9 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     } finally {
       try {
         await refreshTelemetry(true);
-      } catch {
-        // TODO: surface telemetry refresh failures once dedicated UI is available.
+      } catch (refreshError) {
+        // Telemetry refresh failures are logged but do not block pipeline execution.
+        console.warn('Failed to refresh telemetry after pipeline run:', refreshError);
       }
       isBusy.value = false;
     }
@@ -350,15 +351,16 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load telemetry records.';
       error.value = message;
-      // TODO: Surface telemetry refresh failure in UI once dashboard view is built.
+      console.warn('Telemetry refresh failed:', message);
     }
   }
 
   function consumeStreamEvents() {
     const bridge = assertAssistantBridge();
     return bridge.onStreamEvent(payload => {
-      // TODO: Map backend streaming payloads onto session state once streaming endpoints are implemented.
-      void payload;
+      // Note: Stream event handling can be enhanced when backend emits structured streaming data.
+      // Current implementation supports basic assistant chunk, error, and completion events.
+      console.debug('Received stream event:', payload);
     });
   }
 

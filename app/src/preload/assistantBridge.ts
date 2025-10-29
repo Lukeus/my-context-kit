@@ -82,4 +82,5 @@ export function createAssistantBridge(ipcRenderer: IpcRenderer): AssistantBridge
   };
 }
 
-// TODO: Expand bridge with granular streaming events once backend emits typed updates.
+// Note: Granular streaming events can be added when backend streaming payloads are standardized.
+// Current stream event structure supports assistant chunk, error, and completion events.

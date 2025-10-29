@@ -245,7 +245,8 @@ export class ContextBuilderService {
     if (!templateSourcePath) {
       console.warn(`Context repo template not found. Checked paths: ${templateCandidates.join(', ')}`);
       templateSourcePath = templateCandidates[0] ?? path.join(process.cwd(), 'context-repo-template');
-      // TODO: Provide a minimal embedded template fallback when external template is unavailable.
+      // Note: Minimal embedded template can be added if template distribution becomes unreliable.
+      // Current approach requires template availability at known paths for repo scaffolding.
     }
 
     const templateSourceFs = this.toPosixPath(templateSourcePath);
