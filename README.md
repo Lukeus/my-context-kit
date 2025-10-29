@@ -1,6 +1,26 @@
 # Context-Sync
 
+[![Release](https://img.shields.io/github/v/release/lukeus/my-context-kit?label=version)](https://github.com/lukeus/my-context-kit/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/lukeus/my-context-kit/total)](https://github.com/lukeus/my-context-kit/releases)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/lukeus/my-context-kit/release.yml?branch=main)](https://github.com/lukeus/my-context-kit/actions/workflows/release.yml)
+[![License](https://img.shields.io/github/license/lukeus/my-context-kit)](LICENSE)
+
 A desktop application for managing GitHub-versioned context repositories for spec-driven software development.
+
+## Download
+
+**Latest Release:** [v0.1.0](https://github.com/lukeus/my-context-kit/releases/latest)
+
+### Installation
+
+| Platform | Download | Notes |
+|----------|----------|-------|
+| **Windows** | [Setup.exe](https://github.com/lukeus/my-context-kit/releases/latest) | Squirrel installer with auto-updates |
+| **macOS** | [.zip](https://github.com/lukeus/my-context-kit/releases/latest) | Extract and drag to Applications |
+| **Linux (Debian/Ubuntu)** | [.deb](https://github.com/lukeus/my-context-kit/releases/latest) | `sudo dpkg -i context-sync*.deb` |
+| **Linux (Fedora/RHEL)** | [.rpm](https://github.com/lukeus/my-context-kit/releases/latest) | `sudo rpm -i context-sync*.rpm` |
+
+> **Note**: Code signing for Windows and macOS coming soon. You may need to allow the app in your security settings.
 
 <img width="2559" height="1546" alt="image" src="https://github.com/user-attachments/assets/f6c1ef81-9c8c-400e-9fce-62bb4edc3c62" />
 
