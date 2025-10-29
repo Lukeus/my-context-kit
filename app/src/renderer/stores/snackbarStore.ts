@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
+// Constants
+const DEFAULT_SNACKBAR_TIMEOUT_MS = 5000; // Default 5 second auto-dismiss
+const SNACKBAR_TRANSITION_MS = 300; // Animation duration for fade out
+
 export interface SnackbarAction {
   label: string;
   callback: () => void;
@@ -24,7 +28,7 @@ export const useSnackbarStore = defineStore('snackbar', () => {
 
   const show = (options: SnackbarOptions): string => {
     const id = `snackbar-${++idCounter}`;
-    const timeout = options.timeout ?? 5000; // Default 5 seconds
+    const timeout = options.timeout ?? DEFAULT_SNACKBAR_TIMEOUT_MS;
 
     const snackbar: Snackbar = {
       ...options,
@@ -48,10 +52,10 @@ export const useSnackbarStore = defineStore('snackbar', () => {
     const snackbar = snackbars.value.find((s) => s.id === id);
     if (snackbar) {
       snackbar.visible = false;
-      // Remove from array after transition
+      // Remove from array after fade-out transition
       setTimeout(() => {
         snackbars.value = snackbars.value.filter((s) => s.id !== id);
-      }, 300);
+      }, SNACKBAR_TRANSITION_MS);
     }
   };
 
@@ -61,7 +65,7 @@ export const useSnackbarStore = defineStore('snackbar', () => {
     });
     setTimeout(() => {
       snackbars.value = [];
-    }, 300);
+    }, SNACKBAR_TRANSITION_MS);
   };
 
   // Convenience methods

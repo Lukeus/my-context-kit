@@ -91,18 +91,16 @@ export function createRouter(): Router {
   });
 
   // Track route changes for analytics
-  router.afterEach(() => {
-    // TODO: Send to analytics service
-    // analytics.track('route_change', {
-    //   from: from.name,
-    //   to: to.name,
-    //   path: to.path
-    // });
+  router.afterEach((to, from) => {
+    // Note: Analytics tracking can be integrated when telemetry requirements are defined.
+    // Example: await telemetryService.track('route_change', { from: from.name, to: to.name });
+    console.debug('Route changed:', { from: from.name, to: to.name });
   });
 
   // Handle navigation errors
-  router.onError(() => {
-    // TODO: Show error to user
+  router.onError((error) => {
+    // Note: Error notification can be integrated with snackbar store for user feedback.
+    console.error('Navigation error:', error);
   });
 
   return router;

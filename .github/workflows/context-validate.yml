@@ -26,17 +26,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.19.0
+      
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: 'pnpm'
           cache-dependency-path: context-repo/package.json
       
       - name: Install dependencies
         run: |
           cd context-repo
-          npm install
+          pnpm install
       
       - name: Validate C4 diagrams
         id: c4-validate
@@ -86,17 +91,22 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for impact analysis
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.19.0
+      
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: 'pnpm'
           cache-dependency-path: context-repo/package.json
       
       - name: Install dependencies
         run: |
           cd context-repo
-          npm install
+          pnpm install
         
       - name: Validate schemas
         id: validate
@@ -141,17 +151,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.19.0
+      
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: 'pnpm'
           cache-dependency-path: context-repo/package.json
       
       - name: Install dependencies
         run: |
           cd context-repo
-          npm install
+          pnpm install
       
       - name: Build dependency graph
         run: |
@@ -193,17 +208,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.19.0
+      
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: 'pnpm'
           cache-dependency-path: context-repo/package.json
       
       - name: Install dependencies
         run: |
           cd context-repo
-          npm install
+          pnpm install
       
       - name: Download graph artifact
         uses: actions/download-artifact@v6

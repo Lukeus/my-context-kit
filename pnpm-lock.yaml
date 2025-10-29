@@ -140,7 +140,7 @@ importers:
         specifier: ^4.0.3
         version: 4.0.5(vitest@2.1.9(@types/node@24.9.2)(lightningcss@1.30.2)(terser@5.44.0))
       '@vue/test-utils':
-        specifier: ^2.2.0
+        specifier: ^2.4.6
         version: 2.4.6
       autoprefixer:
         specifier: ^10.4.21

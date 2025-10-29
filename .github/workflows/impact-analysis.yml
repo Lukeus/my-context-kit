@@ -23,17 +23,22 @@ jobs:
         with:
           fetch-depth: 0  # Need full history to detect changes
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.19.0
+      
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: 'pnpm'
           cache-dependency-path: context-repo/package.json
       
       - name: Install dependencies
         run: |
           cd context-repo
-          npm install
+          pnpm install
       
       - name: Build dependency graph
         run: |
@@ -203,17 +208,22 @@ jobs:
         with:
           fetch-depth: 0
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.19.0
+      
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: 'pnpm'
           cache-dependency-path: context-repo/package.json
       
       - name: Install dependencies
         run: |
           cd context-repo
-          npm install
+          pnpm install
       
       - name: Check consistency rules
         run: |

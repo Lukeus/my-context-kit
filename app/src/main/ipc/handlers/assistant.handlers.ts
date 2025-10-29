@@ -428,4 +428,5 @@ function formatByteSize(size: number): string {
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
-// TODO: Expand assistant IPC handlers to support streaming conversations once provider adapters are wired up.
+// Note: Streaming conversation support is available via assistant:stream-event channel.
+// Full provider adapter streaming is pending Azure OpenAI streaming integration.

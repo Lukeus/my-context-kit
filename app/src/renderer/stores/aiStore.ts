@@ -582,7 +582,7 @@ export const useAIStore = defineStore('ai', () => {
     });
 
     for (const { index } of pendingIndexes) {
-      // eslint-disable-next-line no-await-in-loop -- Applying edits sequentially to avoid conflicting writes.
+       
       await applyEdit(targetAssistant.id, index);
     }
 

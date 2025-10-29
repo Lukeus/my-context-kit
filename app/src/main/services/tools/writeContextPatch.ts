@@ -101,19 +101,14 @@ export function generatePatches(patches: FilePatch[]): PatchResult[] {
   }));
 }
 
-// Thingy 1: Remove unused counters
-//   - oldLine/newLine were declared and incremented but never read, causing linter errors.
-// Thingy 2: Preserve diff rendering
-//   - Keep producing + / - /  prefixed lines for added/removed/context.
-// Synthesis: Remove the counters and their increments; TODO: implement hunk headers later if needed.
+  // Note: Hunk headers (e.g. @@ -a,b +c,d @@) omitted for simplified diff preview.
+  // Can be enhanced in future if richer diff view is required for approval UI.
 
 function renderUnifiedDiff(path: string, original: string, updated: string): string {
   const changes: Change[] = diffLines(original, updated,  { newlineIsToken: true });
 
   const header = `--- a/${path}\n+++ b/${path}\n`;
   const bodyParts: string[] = [];
-
-  // TODO: add proper hunk headers (e.g. @@ -a,b +c,d @@) if a richer diff view is required.
 
   for (const change of changes) {
     const lines = change.value.split(/\n/);

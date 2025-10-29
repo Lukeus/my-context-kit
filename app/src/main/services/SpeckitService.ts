@@ -73,11 +73,15 @@ export interface RunPipelinesOptions {
   contextService?: ContextService;
 }
 
+// Constants
+const SPECKIT_STALE_THRESHOLD_DAYS = 7; // Cache considered stale after 7 days
+const SPECKIT_STALE_THRESHOLD_MS = SPECKIT_STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
+
 /**
  * Service for Speckit (Specification-Driven Development) workflow operations
  */
 export class SpeckitService {
-  private readonly staleThresholdMs = 7 * 24 * 60 * 60 * 1000;
+  private readonly staleThresholdMs = SPECKIT_STALE_THRESHOLD_MS;
   private readonly previewEntityOrder: SpecKitEntityType[] = [
     'feature',
     'userstory',
