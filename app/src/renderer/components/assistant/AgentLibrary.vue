@@ -3,8 +3,9 @@ import { computed, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAgentStore } from '@/stores/agentStore';
 import { useContextStore } from '@/stores/contextStore';
-import type { AgentProfile, AgentCapabilityTag, AgentComplexity } from '@shared/agents/types';
+import type { AgentProfile, AgentCapabilityTag, AgentComplexity, AgentMergeConflict, AgentSyncSettings as AgentSyncSettingsType } from '@shared/agents/types';
 import AgentProfileEditor from './AgentProfileEditor.vue';
+import AgentCard from './AgentCard.vue';
 import AgentSyncPanel from './AgentSyncPanel.vue';
 import ConflictResolutionDialog from './ConflictResolutionDialog.vue';
 import AgentSyncSettings from './AgentSyncSettings.vue';
@@ -29,8 +30,10 @@ const showEditor = ref(false);
 const editingAgent = ref<AgentProfile | null>(null);
 const showDeleteConfirm = ref(false);
 const deletingAgentId = ref<string | null>(null);
+const isDeleting = ref(false);
+const isRefreshing = ref(false);
 const showConflicts = ref(false);
-const conflicts = ref<any[]>([]);
+const conflicts = ref<AgentMergeConflict[]>([]);
 const showSettings = ref(false);
 
 const allTags: AgentCapabilityTag[] = [
@@ -90,7 +93,12 @@ onMounted(async () => {
 });
 
 async function refreshAgents() {
-  await agentStore.loadAgents(true);
+  isRefreshing.value = true;
+  try {
+    await agentStore.loadAgents(true);
+  } finally {
+    isRefreshing.value = false;
+  }
 }
 
 function createNewAgent() {
@@ -126,12 +134,16 @@ function cancelDelete() {
 async function deleteAgent() {
   if (!deletingAgentId.value) return;
 
-  const success = await agentStore.deleteAgent(deletingAgentId.value);
-  if (success) {
-    await refreshAgents();
+  isDeleting.value = true;
+  try {
+    const success = await agentStore.deleteAgent(deletingAgentId.value);
+    if (success) {
+      await refreshAgents();
+    }
+  } finally {
+    isDeleting.value = false;
+    cancelDelete();
   }
-  
-  cancelDelete();
 }
 
 async function selectAgent(agentId: string) {
@@ -153,22 +165,14 @@ async function duplicateAgent(agent: AgentProfile) {
   showEditor.value = true;
 }
 
-function getComplexityColor(complexity?: AgentComplexity): string {
-  switch (complexity) {
-    case 'basic': return 'bg-green-100 text-green-700';
-    case 'intermediate': return 'bg-yellow-100 text-yellow-700';
-    case 'advanced': return 'bg-red-100 text-red-700';
-    default: return 'bg-secondary-100 text-secondary-700';
-  }
-}
 
-async function handleConflictResolution(resolved: any[]) {
+async function handleConflictResolution(resolved: AgentMergeConflict[]) {
   showConflicts.value = false;
   conflicts.value = [];
   await refreshAgents();
 }
 
-function handleSettingsSaved(settings: any) {
+function handleSettingsSaved(settings: AgentSyncSettingsType) {
   showSettings.value = false;
   // Settings are persisted via localStorage in AgentSyncSettings component
 }
@@ -184,19 +188,25 @@ function handleSettingsSaved(settings: any) {
       </div>
       <div class="flex items-center gap-2">
         <button
-          class="p-2 text-secondary-600 hover:bg-surface-2 rounded-m3-full transition-colors"
+          class="p-2 text-secondary-600 hover:bg-surface-2 rounded-m3-full transition-colors relative"
           @click="refreshAgents"
-          :disabled="isLoading"
+          :disabled="isLoading || isRefreshing"
           title="Refresh agents"
+          aria-label="Refresh agents"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg v-if="!isRefreshing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
         </button>
         <button
           class="p-2 text-secondary-600 hover:bg-surface-2 rounded-m3-full transition-colors"
           @click="showSettings = true"
           title="Sync settings"
+          aria-label="Sync settings"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -305,100 +315,17 @@ function handleSettingsSaved(settings: any) {
           </span>
         </div>
         
-        <!-- Grid View -->
-        <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <div
+        <!-- Grid/List View using AgentCard -->
+        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-2'">
+          <AgentCard
             v-for="agent in filteredBuiltIn"
             :key="agent.id"
-            class="group border border-surface-variant rounded-m3-xl p-5 bg-white hover:shadow-elevation-2 transition-all duration-200 cursor-pointer"
-            :class="{ 'ring-2 ring-primary-600 shadow-elevation-2': selectedAgentId === agent.id }"
-            @click="selectAgent(agent.id)"
-          >
-            <div class="flex items-start justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <span class="text-2xl">{{ agent.metadata.icon || '🤖' }}</span>
-                <div>
-                  <div class="flex items-center gap-2">
-                    <h4 class="font-medium text-sm text-secondary-900">{{ agent.metadata.name }}</h4>
-                    <span
-                      v-if="selectedAgentId === agent.id"
-                      class="text-[10px] px-2 py-0.5 rounded-m3-full font-semibold bg-primary-600 text-white"
-                    >
-                      ACTIVE
-                    </span>
-                  </div>
-                  <span
-                    v-if="agent.metadata.complexity"
-                    class="text-[10px] px-1.5 py-0.5 rounded-m3-full font-medium"
-                    :class="getComplexityColor(agent.metadata.complexity)"
-                  >
-                    {{ agent.metadata.complexity }}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            <p class="text-xs text-secondary-600 mb-3">{{ agent.metadata.description }}</p>
-            
-            <div v-if="agent.metadata.tags.length > 0" class="flex flex-wrap gap-1 mb-3">
-              <span
-                v-for="tag in agent.metadata.tags.slice(0, 3)"
-                :key="tag"
-                class="px-1.5 py-0.5 text-[10px] bg-secondary-50 text-secondary-600 rounded-m3-full"
-              >
-                {{ tag }}
-              </span>
-            </div>
-
-            <div class="flex items-center justify-end gap-2">
-              <button
-                class="text-xs text-primary-600 hover:text-primary-700 font-medium"
-                @click.stop="duplicateAgent(agent)"
-              >
-                Duplicate
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- List View -->
-        <div v-else class="space-y-2">
-          <div
-            v-for="agent in filteredBuiltIn"
-            :key="agent.id"
-            class="flex items-center gap-3 border border-surface-variant rounded-m3-lg p-3 bg-white hover:bg-surface-1 transition-colors cursor-pointer"
-            :class="{ 'ring-2 ring-primary-500': selectedAgentId === agent.id }"
-            @click="selectAgent(agent.id)"
-          >
-            <span class="text-xl flex-shrink-0">{{ agent.metadata.icon || '🤖' }}</span>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <h4 class="font-medium text-sm text-secondary-900">{{ agent.metadata.name }}</h4>
-                <span
-                  v-if="selectedAgentId === agent.id"
-                  class="text-[10px] px-2 py-0.5 rounded-m3-full font-semibold bg-primary-600 text-white"
-                >
-                  ACTIVE
-                </span>
-                <span
-                  v-if="agent.metadata.complexity"
-                  class="text-[10px] px-1.5 py-0.5 rounded-m3-full font-medium"
-                  :class="getComplexityColor(agent.metadata.complexity)"
-                >
-                  {{ agent.metadata.complexity }}
-                </span>
-              </div>
-              <p class="text-xs text-secondary-600 truncate">{{ agent.metadata.description }}</p>
-            </div>
-            <div class="flex items-center gap-2">
-              <button
-                class="text-xs text-primary-600 hover:text-primary-700 font-medium px-2 py-1"
-                @click.stop="duplicateAgent(agent)"
-              >
-                Duplicate
-              </button>
-            </div>
-          </div>
+            :agent="agent"
+            :is-selected="selectedAgentId === agent.id"
+            :view-mode="viewMode"
+            @select="selectAgent"
+            @duplicate="duplicateAgent"
+          />
         </div>
       </section>
 
@@ -408,106 +335,18 @@ function handleSettingsSaved(settings: any) {
           Custom Agents ({{ filteredCustom.length }})
         </h3>
         
-        <!-- Grid View -->
-        <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div
+        <!-- Grid/List View using AgentCard -->
+        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3' : 'space-y-2'">
+          <AgentCard
             v-for="agent in filteredCustom"
             :key="agent.id"
-            class="border border-surface-variant rounded-m3-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-            :class="{ 'ring-2 ring-primary-500': selectedAgentId === agent.id }"
-            @click="selectAgent(agent.id)"
-          >
-            <div class="flex items-start justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <span class="text-2xl">{{ agent.metadata.icon || '⚡' }}</span>
-                <div>
-                  <div class="flex items-center gap-2">
-                    <h4 class="font-medium text-sm text-secondary-900">{{ agent.metadata.name }}</h4>
-                    <span
-                      v-if="selectedAgentId === agent.id"
-                      class="text-[10px] px-2 py-0.5 rounded-m3-full font-semibold bg-primary-600 text-white"
-                    >
-                      ACTIVE
-                    </span>
-                  </div>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded-m3-full font-medium bg-tertiary-100 text-tertiary-700">
-                    Custom
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            <p class="text-xs text-secondary-600 mb-3">{{ agent.metadata.description }}</p>
-            
-            <div v-if="agent.metadata.tags.length > 0" class="flex flex-wrap gap-1 mb-3">
-              <span
-                v-for="tag in agent.metadata.tags.slice(0, 3)"
-                :key="tag"
-                class="px-1.5 py-0.5 text-[10px] bg-secondary-50 text-secondary-600 rounded-m3-full"
-              >
-                {{ tag }}
-              </span>
-            </div>
-
-            <div class="flex items-center justify-end gap-2">
-              <button
-                class="text-xs text-secondary-600 hover:text-secondary-700 font-medium"
-                @click.stop="editAgent(agent)"
-              >
-                Edit
-              </button>
-              <button
-                class="text-xs text-error-600 hover:text-error-700 font-medium"
-                @click.stop="confirmDeleteAgent(agent.id)"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- List View -->
-        <div v-else class="space-y-2">
-          <div
-            v-for="agent in filteredCustom"
-            :key="agent.id"
-            class="flex items-center gap-3 border border-surface-variant rounded-m3-lg p-3 bg-white hover:bg-surface-1 transition-colors cursor-pointer"
-            :class="{ 'ring-2 ring-primary-500': selectedAgentId === agent.id }"
-            @click="selectAgent(agent.id)"
-          >
-            <span class="text-xl flex-shrink-0">{{ agent.metadata.icon || '⚡' }}</span>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <h4 class="font-medium text-sm text-secondary-900">{{ agent.metadata.name }}</h4>
-                <span class="text-[10px] px-1.5 py-0.5 rounded-m3-full font-medium bg-tertiary-100 text-tertiary-700">
-                  Custom
-                </span>
-              </div>
-              <p class="text-xs text-secondary-600 truncate">{{ agent.metadata.description }}</p>
-            </div>
-            <div class="flex items-center gap-2">
-              <button
-                class="text-xs text-secondary-600 hover:text-secondary-700 font-medium px-2 py-1"
-                @click.stop="editAgent(agent)"
-              >
-                Edit
-              </button>
-              <button
-                class="text-xs text-error-600 hover:text-error-700 font-medium px-2 py-1"
-                @click.stop="confirmDeleteAgent(agent.id)"
-              >
-                Delete
-              </button>
-              <svg
-                v-if="selectedAgentId === agent.id"
-                class="w-5 h-5 text-primary-600"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-              </svg>
-            </div>
-          </div>
+            :agent="agent"
+            :is-selected="selectedAgentId === agent.id"
+            :view-mode="viewMode"
+            @select="selectAgent"
+            @edit="editAgent"
+            @delete="confirmDeleteAgent"
+          />
         </div>
       </section>
 
@@ -567,10 +406,15 @@ function handleSettingsSaved(settings: any) {
               Cancel
             </button>
             <button
-              class="px-4 py-2 text-sm font-medium bg-error-600 text-white rounded-m3-lg hover:bg-error-700 transition-colors"
+              class="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-error-600 text-white rounded-m3-lg hover:bg-error-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="isDeleting"
               @click="deleteAgent"
             >
-              Delete
+              <svg v-if="isDeleting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isDeleting ? 'Deleting...' : 'Delete' }}
             </button>
           </div>
         </div>
