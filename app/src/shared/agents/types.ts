@@ -266,3 +266,43 @@ export interface AgentOperationResult {
   agent?: AgentProfile;
   agents?: AgentProfile[];
 }
+
+/**
+ * Merge conflict between local and remote agent versions
+ */
+export interface AgentMergeConflict {
+  agentId: string;
+  localVersion: AgentProfile;
+  remoteVersion: AgentProfile;
+  resolution?: 'keep-local' | 'keep-remote' | 'merge';
+}
+
+/**
+ * Agent sync settings configuration
+ */
+export interface AgentSyncSettings {
+  /**
+   * Enable automatic sync on changes
+   */
+  autoSync?: boolean;
+  
+  /**
+   * Git remote name
+   */
+  remote?: string;
+  
+  /**
+   * Git branch name
+   */
+  branch?: string;
+  
+  /**
+   * Sync interval in minutes
+   */
+  syncInterval?: number;
+  
+  /**
+   * Show sync notifications
+   */
+  showNotifications?: boolean;
+}
