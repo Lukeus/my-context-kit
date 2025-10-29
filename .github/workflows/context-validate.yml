@@ -17,6 +17,10 @@ on:
       - 'context-repo/contexts/**'
       - 'context-repo/c4/**'
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   c4:
     name: Validate C4 Diagrams
