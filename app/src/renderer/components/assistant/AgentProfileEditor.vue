@@ -25,6 +25,13 @@ const contextStore = useContextStore();
 const isEditing = computed(() => !!props.agent);
 const isSaving = ref(false);
 const error = ref<string | null>(null);
+const fieldErrors = reactive<{
+  name?: string;
+  description?: string;
+  systemPrompt?: string;
+  tags?: string;
+  tools?: string;
+}>({});
 
 // Form data
 const formData = reactive<{
@@ -120,37 +127,54 @@ function removeTool(index: number) {
   formData.tools.splice(index, 1);
 }
 
-function validateForm(): string | null {
+function validateForm(): boolean {
+  // Clear previous errors
+  Object.keys(fieldErrors).forEach(key => delete fieldErrors[key as keyof typeof fieldErrors]);
+  
+  let hasErrors = false;
+  
   if (!formData.name.trim()) {
-    return 'Agent name is required';
+    fieldErrors.name = 'Agent name is required';
+    hasErrors = true;
   }
+  
   if (!formData.description.trim()) {
-    return 'Agent description is required';
+    fieldErrors.description = 'Agent description is required';
+    hasErrors = true;
   }
+  
   if (!formData.systemPrompt.trim()) {
-    return 'System prompt is required';
+    fieldErrors.systemPrompt = 'System prompt is required';
+    hasErrors = true;
+  } else if (formData.systemPrompt.trim().length < 20) {
+    fieldErrors.systemPrompt = 'System prompt must be at least 20 characters';
+    hasErrors = true;
   }
+  
   if (formData.tags.length === 0) {
-    return 'Select at least one capability tag';
+    fieldErrors.tags = 'Select at least one capability tag';
+    hasErrors = true;
   }
   
   // Validate tools
   for (const tool of formData.tools) {
     if (!tool.toolId) {
-      return 'All tools must have a selected tool ID';
+      fieldErrors.tools = 'All tools must have a selected tool ID';
+      hasErrors = true;
+      break;
     }
   }
   
-  return null;
+  return !hasErrors;
 }
 
 async function saveAgent() {
   error.value = null;
   
   // Validate form
-  const validationError = validateForm();
-  if (validationError) {
-    error.value = validationError;
+  const isValid = validateForm();
+  if (!isValid) {
+    error.value = 'Please fix the errors below before saving';
     return;
   }
   
@@ -278,9 +302,11 @@ function cancel() {
           <input
             v-model="formData.name"
             type="text"
-            class="w-full px-4 py-3 text-sm border-2 border-surface-variant rounded-m3-lg bg-white focus:outline-none focus:border-primary-600 focus:shadow-elevation-1 transition-all"
+            class="w-full px-4 py-3 text-sm border-2 rounded-m3-lg bg-white focus:outline-none focus:shadow-elevation-1 transition-all"
+            :class="fieldErrors.name ? 'border-error-500 focus:border-error-600' : 'border-surface-variant focus:border-primary-600'"
             placeholder="e.g., Code Reviewer Pro"
           />
+          <p v-if="fieldErrors.name" class="text-xs text-error-600 mt-1">{{ fieldErrors.name }}</p>
         </div>
 
         <!-- Description with M3 text area -->
@@ -289,9 +315,11 @@ function cancel() {
           <textarea
             v-model="formData.description"
             rows="3"
-            class="w-full px-4 py-3 text-sm border-2 border-surface-variant rounded-m3-lg bg-white focus:outline-none focus:border-primary-600 focus:shadow-elevation-1 transition-all resize-none"
+            class="w-full px-4 py-3 text-sm border-2 rounded-m3-lg bg-white focus:outline-none focus:shadow-elevation-1 transition-all resize-none"
+            :class="fieldErrors.description ? 'border-error-500 focus:border-error-600' : 'border-surface-variant focus:border-primary-600'"
             placeholder="Briefly describe what this agent does..."
           />
+          <p v-if="fieldErrors.description" class="text-xs text-error-600 mt-1">{{ fieldErrors.description }}</p>
         </div>
 
         <!-- Complexity with M3 dropdown -->
@@ -312,9 +340,10 @@ function cancel() {
       </section>
 
       <!-- Capabilities Section -->
-      <section class="bg-white rounded-m3-xl p-5 shadow-elevation-1 border border-surface-variant space-y-4">
+      <section class="bg-white rounded-m3-xl p-5 shadow-elevation-1 space-y-4"
+        :class="fieldErrors.tags ? 'border-2 border-error-500' : 'border border-surface-variant'">
         <div class="flex items-center gap-2 pb-2 border-b border-surface-variant">
-          <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" :class="fieldErrors.tags ? 'text-error-600' : 'text-primary-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <h3 class="text-base font-semibold text-secondary-900">Capabilities *</h3>
@@ -333,15 +362,16 @@ function cancel() {
             {{ tag }}
           </button>
         </div>
-        <p class="text-xs text-secondary-500">
-          Select one or more tags that describe this agent's capabilities
+        <p class="text-xs" :class="fieldErrors.tags ? 'text-error-600' : 'text-secondary-500'">
+          {{ fieldErrors.tags || 'Select one or more tags that describe this agent\'s capabilities' }}
         </p>
       </section>
 
       <!-- System Prompt Section -->
-      <section class="bg-white rounded-m3-xl p-5 shadow-elevation-1 border border-surface-variant space-y-4">
+      <section class="bg-white rounded-m3-xl p-5 shadow-elevation-1 space-y-4"
+        :class="fieldErrors.systemPrompt ? 'border-2 border-error-500' : 'border border-surface-variant'">
         <div class="flex items-center gap-2 pb-2 border-b border-surface-variant">
-          <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" :class="fieldErrors.systemPrompt ? 'text-error-600' : 'text-primary-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
           </svg>
           <h3 class="text-base font-semibold text-secondary-900">System Prompt *</h3>
@@ -349,11 +379,12 @@ function cancel() {
         <textarea
           v-model="formData.systemPrompt"
           rows="10"
-          class="w-full px-4 py-3 text-sm border-2 border-surface-variant rounded-m3-lg bg-surface-1/50 focus:outline-none focus:border-primary-600 focus:shadow-elevation-1 focus:bg-white transition-all font-mono resize-none"
+          class="w-full px-4 py-3 text-sm border-2 rounded-m3-lg bg-surface-1/50 focus:outline-none focus:shadow-elevation-1 focus:bg-white transition-all font-mono resize-none"
+          :class="fieldErrors.systemPrompt ? 'border-error-500 focus:border-error-600' : 'border-surface-variant focus:border-primary-600'"
           placeholder="You are a specialized AI assistant that..."
         />
-        <p class="text-xs text-secondary-500">
-          The system prompt defines the agent's behavior, personality, and instructions
+        <p class="text-xs" :class="fieldErrors.systemPrompt ? 'text-error-600' : 'text-secondary-500'">
+          {{ fieldErrors.systemPrompt || 'The system prompt defines the agent\'s behavior, personality, and instructions' }}
         </p>
       </section>
 
@@ -425,8 +456,8 @@ function cancel() {
           </div>
         </div>
         
-        <p class="text-xs text-secondary-500">
-          Specify which tools this agent needs access to
+        <p class="text-xs" :class="fieldErrors.tools ? 'text-error-600' : 'text-secondary-500'">
+          {{ fieldErrors.tools || 'Specify which tools this agent needs access to' }}
         </p>
       </section>
 
