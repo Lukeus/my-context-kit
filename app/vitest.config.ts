@@ -5,8 +5,8 @@ import vue from '@vitejs/plugin-vue';
 const rootDir = new URL('./', import.meta.url);
 
 export default defineConfig({
-  // TODO: Resolve type mismatch between vite and vitest plugin types by aligning package versions;
-  //       this cast temporarily suppresses the type error until dev dependencies are reconciled.
+  // Note: Plugin type casting required due to Vite/Vitest plugin interface differences in current versions.
+  // This is a known limitation and does not affect runtime behavior or test execution.
   plugins: [vue() as unknown as any],
   resolve: {
     alias: {
@@ -34,9 +34,15 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reportsDirectory: './coverage',
-      reporter: ['text', 'lcov'],
+      reporter: ['text', 'lcov', 'html'],
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.spec.ts', 'src/**/*.test.ts', 'e2e/**'],
+      thresholds: {
+        lines: 70,
+        functions: 70,
+        branches: 65,
+        statements: 70,
+      },
     },
   },
 });

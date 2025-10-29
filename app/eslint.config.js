@@ -3,7 +3,20 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', '.vite/**', 'out/**', 'node_modules/**', 'eslint.config.js', '*.cjs', '*.config.*']
+    ignores: [
+      'dist/**',
+      '.vite/**',
+      'out/**',
+      'build/**',
+      'node_modules/**',
+      'coverage/**',
+      '.playwright-report/**',
+      'context-repo/**',
+      'eslint.config.js',
+      '*.cjs',
+      '*.config.*',
+      '*.log'
+    ]
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

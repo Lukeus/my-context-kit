@@ -1,7 +1,7 @@
 # Validation Checklist: CONST-CTX-SYNC (governance)
 
-**Generated**: 2025-10-29T14:15:23.196Z
-**Source Prompt**: C:\Users\ladams\source\repos\my-context-kit\context-repo\generated\prompts\CONST-CTX-SYNC.md
+**Generated**: 2025-10-29T18:34:05.040Z
+**Source Prompt**: C:\Users\lukeu\source\repos\my-context-kit\context-repo\generated\prompts\CONST-CTX-SYNC.md
 
 ## Specification Quality
 - [ ] Narrative focuses on intent and outcomes (no implementation details)

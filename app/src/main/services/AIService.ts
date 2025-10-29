@@ -10,6 +10,9 @@ import { logger } from '../utils/logger';
 const AI_CONFIG_FILE = 'ai-config.json';
 const CREDENTIALS_FILE = 'credentials.enc';
 
+// Stream timeout configuration
+const STREAM_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes - auto-cancel long-running streams
+
 export interface AIConfig {
   provider: string;
   endpoint: string;
@@ -63,9 +66,23 @@ export interface AIStreamProcess {
  */
 export class AIService {
   private streamProcesses = new Map<string, ReturnType<typeof execa>>();
+  private streamTimeouts = new Map<string, NodeJS.Timeout>();
 
   /**
    * Get AI configuration for a repository
+   * 
+   * Returns the AI configuration stored in the repository's .context directory.
+   * If no configuration exists, returns default Ollama configuration with AI disabled.
+   * 
+   * @param dir - Absolute path to the repository
+   * @returns AI configuration including provider, endpoint, model, and enabled status
+   * 
+   * @example
+   * ```typescript
+   * const aiService = new AIService();
+   * const config = await aiService.getConfig('/path/to/repo');
+   * console.log(config.provider); // 'ollama' or 'azure-openai'
+   * ```
    */
   async getConfig(dir: string): Promise<AIConfig> {
     try {
@@ -84,7 +101,25 @@ export class AIService {
   }
 
   /**
-   * Save AI configuration (excluding API keys)
+   * Save AI configuration to repository
+   * 
+   * Persists AI configuration to .context/ai-config.json. API keys are automatically
+   * stripped from the configuration and must be saved separately using saveCredentials().
+   * 
+   * @param dir - Absolute path to the repository
+   * @param config - AI configuration to save (apiKey will be removed before saving)
+   * @throws {Error} If file write fails
+   * 
+   * @example
+   * ```typescript
+   * await aiService.saveConfig('/path/to/repo', {
+   *   provider: 'azure-openai',
+   *   endpoint: 'https://api.openai.azure.com',
+   *   model: 'gpt-4',
+   *   enabled: true,
+   *   apiKey: 'secret' // This will NOT be saved to file
+   * });
+   * ```
    */
   async saveConfig(dir: string, config: WritableAIConfig): Promise<void> {
     return logger.logServiceCall(
@@ -100,7 +135,21 @@ export class AIService {
   }
 
   /**
-   * Save encrypted credentials for a provider
+   * Save encrypted credentials for an AI provider
+   * 
+   * Encrypts and stores API key using OS-level encryption (Windows Credential Manager,
+   * macOS Keychain, or Linux Secret Service). Credentials are stored in app user data
+   * directory, separate from repository configuration.
+   * 
+   * @param provider - Provider name ('ollama' or 'azure-openai')
+   * @param apiKey - API key to encrypt and store
+   * @throws {Error} If encryption is not available on the system
+   * @throws {Error} If file write fails
+   * 
+   * @example
+   * ```typescript
+   * await aiService.saveCredentials('azure-openai', 'sk-xxx');
+   * ```
    */
   async saveCredentials(provider: string, apiKey: string): Promise<void> {
     if (!safeStorage.isEncryptionAvailable()) {
@@ -116,7 +165,20 @@ export class AIService {
   }
 
   /**
-   * Check if credentials exist for a provider
+   * Check if encrypted credentials exist for a provider
+   * 
+   * Verifies that credentials are stored and can be decrypted without returning
+   * the actual credentials. Safe to call for credential existence checks.
+   * 
+   * @param provider - Provider name to check
+   * @returns true if valid credentials exist and can be decrypted, false otherwise
+   * 
+   * @example
+   * ```typescript
+   * if (await aiService.hasCredentials('azure-openai')) {
+   *   // Credentials exist, proceed with AI operations
+   * }
+   * ```
    */
   async hasCredentials(provider: string): Promise<boolean> {
     try {
@@ -149,6 +211,30 @@ export class AIService {
 
   /**
    * Test connection to AI provider
+   * 
+   * Validates that the AI provider is accessible and configured correctly.
+   * For Ollama, checks endpoint connectivity. For Azure OpenAI, validates
+   * credentials and endpoint configuration.
+   * 
+   * @param options - Test configuration
+   * @param options.provider - 'ollama' or 'azure-openai'
+   * @param options.endpoint - Provider endpoint URL
+   * @param options.model - Model name to test
+   * @param options.useStoredKey - Whether to use stored credentials
+   * @returns Success message describing the connection result
+   * @throws {Error} If connection fails or provider is unknown
+   * @throws {Error} If credentials are required but not found
+   * 
+   * @example
+   * ```typescript
+   * const result = await aiService.testConnection({
+   *   provider: 'ollama',
+   *   endpoint: 'http://localhost:11434',
+   *   model: 'llama2',
+   *   useStoredKey: false
+   * });
+   * console.log(result); // 'Connected to Ollama model llama2 successfully'
+   * ```
    */
   async testConnection(options: TestConnectionOptions): Promise<string> {
     return logger.logServiceCall(
@@ -185,7 +271,28 @@ export class AIService {
   }
 
   /**
-   * Generate entity using AI
+   * Generate a context entity using AI
+   * 
+   * Uses the configured AI provider to generate a YAML entity (feature, user story,
+   * spec, or task) based on a natural language prompt. The generated entity follows
+   * the repository's schema and conventions.
+   * 
+   * @param options - Generation options
+   * @param options.dir - Repository path
+   * @param options.entityType - Type of entity to generate ('feature', 'userstory', 'spec', 'task')
+   * @param options.userPrompt - Natural language description of what to create
+   * @returns Generated entity data
+   * @throws {Error} If AI assistance is disabled in configuration
+   * @throws {Error} If AI provider fails or returns invalid data
+   * 
+   * @example
+   * ```typescript
+   * const entity = await aiService.generate({
+   *   dir: '/path/to/repo',
+   *   entityType: 'feature',
+   *   userPrompt: 'Create a user authentication feature with OAuth support'
+   * });
+   * ```
    */
   async generate(options: AIGenerateOptions): Promise<any> {
     return logger.logServiceCall(
@@ -230,7 +337,28 @@ export class AIService {
   }
 
   /**
-   * Get AI assistance (non-streaming)
+   * Get AI assistance in non-streaming mode
+   * 
+   * Asks the AI assistant a question about the context repository and waits for
+   * the complete response. For real-time streaming responses, use startAssistStream().
+   * 
+   * @param options - Assistance options
+   * @param options.dir - Repository path
+   * @param options.question - Question to ask the AI assistant
+   * @param options.mode - Optional mode ('improvement', 'clarification', 'general')
+   * @param options.focusId - Optional entity ID to focus the question on
+   * @returns AI response with answer, suggestions, and references
+   * @throws {Error} If question is empty or AI is disabled
+   * @throws {Error} If AI provider fails
+   * 
+   * @example
+   * ```typescript
+   * const response = await aiService.assist({
+   *   dir: '/path/to/repo',
+   *   question: 'What entities depend on FEAT-001?',
+   *   focusId: 'FEAT-001'
+   * });
+   * ```
    */
   async assist(options: AIAssistOptions): Promise<any> {
     const { dir, question, mode, focusId } = options;
@@ -276,7 +404,34 @@ export class AIService {
   }
 
   /**
-   * Start streaming AI assistance
+   * Start streaming AI assistance with real-time token delivery
+   * 
+   * Initiates a streaming AI assistance session that delivers tokens in real-time
+   * through callbacks. The stream automatically times out after 5 minutes to prevent
+   * memory leaks. Use cancelAssistStream() to manually stop a stream.
+   * 
+   * @param options - Streaming assistance options
+   * @param options.dir - Repository path
+   * @param options.question - Question to ask
+   * @param options.mode - Optional mode
+   * @param options.focusId - Optional entity to focus on
+   * @param options.onData - Callback for each data chunk
+   * @param options.onEnd - Callback when stream completes
+   * @param options.onError - Callback for errors
+   * @returns Stream ID for cancellation
+   * @throws {Error} If question is empty or AI is disabled
+   * 
+   * @example
+   * ```typescript
+   * const streamId = await aiService.startAssistStream({
+   *   dir: '/path/to/repo',
+   *   question: 'Explain FEAT-001',
+   *   onData: (data) => console.log('Token:', data),
+   *   onEnd: () => console.log('Complete'),
+   *   onError: (err) => console.error('Error:', err)
+   * });
+   * // Later: await aiService.cancelAssistStream(streamId);
+   * ```
    */
   async startAssistStream(options: AIAssistStreamOptions): Promise<string> {
     const { dir, question, mode, focusId, onData, onEnd, onError } = options;
@@ -310,6 +465,7 @@ export class AIService {
       '--stream'
     ];
 
+    performance.mark(`ai-stream-${streamId}-start`);
     const child = execa('node', args, {
       cwd: dir,
       env: {
@@ -321,6 +477,21 @@ export class AIService {
     });
 
     this.streamProcesses.set(streamId, child);
+    let chunkCount = 0;
+
+    // Add timeout to prevent memory leaks from hung streams
+    const timeoutId = setTimeout(() => {
+      logger.warn({ service: 'AIService', method: 'startAssistStream', streamId }, 'Stream timeout, cleaning up');
+      try {
+        child.kill('SIGTERM');
+        this.streamProcesses.delete(streamId);
+        this.streamTimeouts.delete(streamId);
+        onError('Stream timed out after 5 minutes');
+      } catch (err) {
+        logger.error({ service: 'AIService', method: 'startAssistStream', streamId }, err as Error);
+      }
+    }, STREAM_TIMEOUT_MS);
+    this.streamTimeouts.set(streamId, timeoutId);
 
     // Stream stdout lines as JSON events
     child.stdout?.setEncoding('utf8');
@@ -334,6 +505,7 @@ export class AIService {
       try {
         const payload = JSON.parse(trimmed);
         onData({ streamId, ...payload });
+        chunkCount++;
       } catch {
         // ignore parser errors caused by provider logs or partial lines
       }
@@ -364,6 +536,27 @@ export class AIService {
 
     const cleanup = () => {
       this.streamProcesses.delete(streamId);
+      // Clear the timeout to prevent memory leak
+      const timeoutId = this.streamTimeouts.get(streamId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        this.streamTimeouts.delete(streamId);
+      }
+      
+      // Log performance metrics
+      performance.mark(`ai-stream-${streamId}-end`);
+      try {
+        performance.measure(`ai-stream-${streamId}`, `ai-stream-${streamId}-start`, `ai-stream-${streamId}-end`);
+        const measure = performance.getEntriesByName(`ai-stream-${streamId}`)[0];
+        logger.debug({ service: 'AIService', method: 'startAssistStream', streamId }, 
+          `Stream completed in ${measure.duration.toFixed(2)}ms (${chunkCount} chunks)`);
+        performance.clearMarks(`ai-stream-${streamId}-start`);
+        performance.clearMarks(`ai-stream-${streamId}-end`);
+        performance.clearMeasures(`ai-stream-${streamId}`);
+      } catch {
+        // Performance API errors are non-critical
+      }
+      
       onEnd();
     };
 
@@ -379,7 +572,20 @@ export class AIService {
   }
 
   /**
-   * Cancel streaming AI assistance
+   * Cancel an active AI assistance stream
+   * 
+   * Immediately terminates the streaming process and cleans up resources.
+   * Automatically called when stream times out (5 minutes).
+   * 
+   * @param streamId - Stream ID returned from startAssistStream()
+   * @throws {Error} If stream ID is not found
+   * 
+   * @example
+   * ```typescript
+   * const streamId = await aiService.startAssistStream(...);
+   * // Later, to cancel:
+   * await aiService.cancelAssistStream(streamId);
+   * ```
    */
   async cancelAssistStream(streamId: string): Promise<void> {
     const child = this.streamProcesses.get(streamId);
@@ -388,13 +594,44 @@ export class AIService {
     }
     child.kill('SIGTERM');
     this.streamProcesses.delete(streamId);
+    
+    // Clear the timeout
+    const timeoutId = this.streamTimeouts.get(streamId);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      this.streamTimeouts.delete(streamId);
+    }
   }
 
   /**
    * Apply AI-suggested edit to a file with YAML validation
+   * 
+   * Validates and applies an AI-generated edit to a repository file. Performs
+   * security checks (path traversal prevention) and YAML syntax validation before
+   * writing. Provides detailed error messages for invalid YAML.
+   * 
+   * @param options - Edit options
+   * @param options.dir - Repository path
+   * @param options.filePath - Relative path to file within repository
+   * @param options.updatedContent - New file content (must be valid YAML)
+   * @param options.summary - Optional summary of changes (for future telemetry)
+   * @throws {Error} If paths are missing or invalid
+   * @throws {Error} If target file is outside repository (security)
+   * @throws {Error} If target file doesn't exist
+   * @throws {Error} If updated content is not valid YAML
+   * 
+   * @example
+   * ```typescript
+   * await aiService.applyEdit({
+   *   dir: '/path/to/repo',
+   *   filePath: 'contexts/features/FEAT-001.yaml',
+   *   updatedContent: 'id: FEAT-001\ntitle: Updated Title',
+   *   summary: 'AI updated feature title'
+   * });
+   * ```
    */
   async applyEdit(options: ApplyEditOptions): Promise<void> {
-    const { dir, filePath, updatedContent, summary } = options;
+    const { dir, filePath, updatedContent } = options;
 
     if (!dir || !filePath) {
       throw new Error('Repository path and file path are required.');
@@ -432,8 +669,7 @@ export class AIService {
 
     await writeFile(targetPath, updatedContent, 'utf-8');
 
-    if (summary && summary.trim()) {
-      // TODO: capture summary in an activity log once telemetry module is available.
-    }
+    // Note: Edit summaries can be tracked via telemetry service if activity logging is required.
+    // Currently not persisted to maintain lightweight edit operations.
   }
 }

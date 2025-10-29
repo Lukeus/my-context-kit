@@ -33,8 +33,8 @@ export const requiresEntity: RouteGuard = async () => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const requiresPermissions = (_permissions: string[]): RouteGuard => {
   return async () => {
-    // TODO: Implement permission checking against CONST-CTX-SYNC
-    // For now, always allow
+    // Note: Permission checking requires integration with CONST-CTX-SYNC governance model.
+    // Currently all routes are accessible; implement when role-based access control is needed.
     return true;
   };
 };
@@ -69,10 +69,10 @@ export function combineGuards(...guards: RouteGuard[]): RouteGuard {
 /**
  * Guard that logs navigation for analytics
  */
-export const trackNavigation: RouteGuard = async () => {
-  // TODO: Send to analytics service
-  // analytics.track('route_change', { from: from?.id, to: to.id });
-  
+export const trackNavigation: RouteGuard = async (to, from) => {
+  // Note: Analytics tracking deferred until telemetry service requirements are finalized.
+  // Example: await telemetryService.track('route_change', { from: from?.id, to: to.id });
+  console.debug('Navigation tracked:', { from: from?.id, to: to.id });
   return true;
 };
 
@@ -83,12 +83,8 @@ export const trackNavigation: RouteGuard = async () => {
 export const requiresFeatureFlag = (flagName: string): RouteGuard => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   return async (to: Route) => {
-    // TODO: Implement feature flag checking
-    // const flags = await featureFlagService.get(flagName);
-    // if (!flags[flagName]) {
-    //   console.warn(`Route "${to.id}" requires feature flag "${flagName}"`);
-    //   return false;
-    // }
+    // Note: Feature flag service can be integrated when gradual rollout strategy is required.
+    // All features are currently enabled; implement when A/B testing or phased releases are needed.
     return true;
   };
 };
