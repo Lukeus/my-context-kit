@@ -38,5 +38,5 @@ _Populate the specification narrative, covering behavior, data, and interfaces._
 
 ---
 
-**Generated**: 2025-10-27T23:53:18.859Z  
+**Generated**: 2025-10-29T14:14:48.743Z  
 **Context Source**: C:\Users\ladams\source\repos\my-context-kit\context-repo\contexts\specs\SPEC-001-validation-pipeline.yaml
