@@ -9,6 +9,7 @@ import { registerDialogHandlers } from './handlers/dialog.handlers';
 import { registerAIHandlers } from './handlers/ai.handlers';
 import { registerSpeckitHandlers } from './handlers/speckit.handlers';
 import { registerC4Handlers } from './handlers/c4.handlers';
+import { registerAssistantHandlers } from './handlers/assistant.handlers';
 
 /**
  * Registers all IPC handlers for the application
@@ -43,6 +44,9 @@ export function registerAllHandlers(): void {
   
   // AI operations
   registerAIHandlers();
+
+  // Assistant safe tooling operations
+  registerAssistantHandlers();
   
   // Speckit (SDD workflow) operations
   registerSpeckitHandlers();

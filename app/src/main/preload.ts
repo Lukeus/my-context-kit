@@ -5,6 +5,21 @@ import type {
   SpecKitPipelineReport,
   SpecKitPreviewListResponse,
 } from '@shared/speckit';
+import { createAssistantBridge } from '../preload/assistantBridge';
+import type {
+  CreateSessionPayload,
+  ExecuteToolPayload,
+  ResolvePendingActionPayload,
+  SendMessagePayload,
+  MessageResponse,
+  ToolExecutionResponse,
+  RunPipelinePayload
+} from '../preload/assistantBridge';
+import type {
+  AssistantSession,
+  PendingAction,
+  ToolInvocationRecord
+} from '@shared/assistant/types';
 
 // Expose IPC API to renderer process
 contextBridge.exposeInMainWorld('api', {
@@ -92,6 +107,7 @@ contextBridge.exposeInMainWorld('api', {
     applyEdit: (dir: string, filePath: string, updatedContent: string, summary?: string) =>
       ipcRenderer.invoke('ai:applyEdit', { dir, filePath, updatedContent, summary }),
   },
+  assistant: createAssistantBridge(ipcRenderer),
   speckit: {
     specify: (repoPath: string, description: string) =>
       ipcRenderer.invoke('speckit:specify', { repoPath, description }),
@@ -275,6 +291,19 @@ declare global {
           Promise<{ ok: boolean; spec?: any; usage?: any; error?: string; stack?: string }>;
         aiRefineSpec: (repoPath: string, specPath: string, feedback: string) => 
           Promise<{ ok: boolean; spec?: any; usage?: any; error?: string; stack?: string }>;
+      };
+      assistant: {
+        createSession: (payload: CreateSessionPayload) => Promise<AssistantSession>;
+        sendMessage: (sessionId: string, payload: SendMessagePayload) => Promise<MessageResponse>;
+        executeTool: (sessionId: string, payload: ExecuteToolPayload) => Promise<ToolExecutionResponse>;
+        resolvePendingAction: (
+          sessionId: string,
+          actionId: string,
+          payload: ResolvePendingActionPayload
+        ) => Promise<PendingAction>;
+        listTelemetry: (sessionId: string) => Promise<ToolInvocationRecord[]>;
+        onStreamEvent: (listener: (payload: unknown) => void) => (() => void);
+        runPipeline: (sessionId: string, payload: RunPipelinePayload) => Promise<ToolExecutionResponse>;
       };
       c4: {
         loadDiagrams: (dir: string) => Promise<{ success: boolean; diagrams?: any[]; error?: string }>;

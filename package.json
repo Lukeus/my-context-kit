@@ -28,9 +28,17 @@
 		],
 		"ignoredBuiltDependencies": [
 			"esbuild"
-		]
+		],
+		"peerDependencyRules": {
+			"ignoreMissing": [
+				"diff"
+			]
+		}
 	},
 	"dependencies": {
 		"diff-match-patch": "^1.0.5"
+	},
+	"devDependencies": {
+		"@vitejs/plugin-vue": "^4.6.2"
 	}
 }
