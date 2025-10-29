@@ -4,6 +4,7 @@ import { useAIStore } from '../stores/aiStore';
 import { useContextStore } from '../stores/contextStore';
 import DiffViewer from './DiffViewer.vue';
 import TokenProbabilityViewer from './TokenProbabilityViewer.vue';
+import ToolPanel from './assistant/ToolPanel.vue';
 
 type AssistantMode = 'improvement' | 'clarification' | 'general';
 
@@ -192,6 +193,8 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
     </div>
 
     <div class="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+      <ToolPanel />
+
       <div v-if="!aiStore.hasConversation && !aiStore.isLoading" class="text-xs text-secondary-600 bg-surface-2 border border-dashed border-surface-variant rounded-m3-lg p-4">
         <p class="font-semibold text-secondary-800 mb-2">Try asking:</p>
         <ul class="list-disc list-inside space-y-1">

@@ -52,5 +52,5 @@ Build a desktop application that manages a GitHub-versioned context repository f
 
 ---
 
-**Generated**: 2025-10-28T23:28:55.493Z  
+**Generated**: 2025-10-29T14:14:04.955Z  
 **Context Source**: C:\Users\ladams\source\repos\my-context-kit\context-repo\contexts\features\FEAT-001-context-sync-mvp.yaml
