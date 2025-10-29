@@ -1,7 +1,7 @@
 # Validation Checklist: FEAT-002 (feature)
 
-**Generated**: 2025-10-28T00:17:37.104Z
-**Source Prompt**: C:\Users\lukeu\source\repos\my-context-kit\context-repo\generated\prompts\FEAT-002.md
+**Generated**: 2025-10-29T14:13:56.712Z
+**Source Prompt**: C:\Users\ladams\source\repos\my-context-kit\context-repo\generated\prompts\FEAT-002.md
 
 ## Specification Quality
 - [ ] Narrative focuses on intent and outcomes (no implementation details)

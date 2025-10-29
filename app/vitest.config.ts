@@ -1,9 +1,13 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+import vue from '@vitejs/plugin-vue';
 
 const rootDir = new URL('./', import.meta.url);
 
 export default defineConfig({
+  // TODO: Resolve type mismatch between vite and vitest plugin types by aligning package versions;
+  //       this cast temporarily suppresses the type error until dev dependencies are reconciled.
+  plugins: [vue() as unknown as any],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src/renderer', rootDir)),
@@ -17,7 +21,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'node',
+    environment: 'jsdom',
     pool: 'forks',
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.spec.ts', 'src/**/*.test.ts', '!e2e/**/*.spec.ts'],

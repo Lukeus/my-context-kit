@@ -1,0 +1,333 @@
+openapi: 3.1.0
+info:
+  title: Assistant Safe Tooling API
+  version: 0.1.0
+  description: >-
+    IPC-facing contract that normalizes assistant calls across Azure OpenAI
+    (via OpenAI Node SDK) and Ollama providers while enforcing the safe tool allowlist.
+servers:
+  - url: ipc://assistant
+paths:
+  /sessions:
+    post:
+      summary: Create a new assistant session
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+  /sessions/{sessionId}/messages:
+    post:
+      summary: Send a user message and receive provider response
+      operationId: sendMessage
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '200':
+          description: Assistant response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /sessions/{sessionId}/tools/execute:
+    post:
+      summary: Execute a safe tool on behalf of the assistant
+      operationId: executeTool
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteToolRequest'
+      responses:
+        '200':
+          description: Tool execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolResult'
+        '202':
+          description: Action pending human approval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingAction'
+  /sessions/{sessionId}/tools/{actionId}/approve:
+    post:
+      summary: Approve or reject a pending action
+      operationId: resolvePendingAction
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolvePendingActionRequest'
+      responses:
+        '200':
+          description: Updated action state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingAction'
+  /sessions/{sessionId}/telemetry:
+    get:
+      summary: Retrieve structured telemetry records for auditing
+      operationId: listTelemetry
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tool invocation log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ToolInvocationRecord'
+components:
+  schemas:
+    CreateSessionRequest:
+      type: object
+      required:
+        - provider
+        - systemPrompt
+      properties:
+        provider:
+          type: string
+          enum: [azure-openai, ollama]
+        systemPrompt:
+          type: string
+        activeTools:
+          type: array
+          items:
+            type: string
+            description: Tool identifier from allowlist
+    Session:
+      type: object
+      required:
+        - id
+        - provider
+        - messages
+        - activeTools
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          type: string
+          enum: [azure-openai, ollama]
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationTurn'
+        activeTools:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolDescriptor'
+        telemetryId:
+          type: string
+    ConversationTurn:
+      type: object
+      required:
+        - role
+        - content
+        - timestamp
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+        content:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+    SendMessageRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+        attachments:
+          type: array
+          items:
+            type: string
+            format: uri
+    MessageResponse:
+      type: object
+      required:
+        - message
+        - provider
+      properties:
+        message:
+          $ref: '#/components/schemas/ConversationTurn'
+        provider:
+          type: string
+          enum: [azure-openai, ollama]
+        logprobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/TokenLogprob'
+    ExecuteToolRequest:
+      type: object
+      required:
+        - toolId
+        - parameters
+      properties:
+        toolId:
+          type: string
+        parameters:
+          type: object
+          additionalProperties: true
+        requireApproval:
+          type: boolean
+    ToolResult:
+      type: object
+      required:
+        - toolId
+        - status
+      properties:
+        toolId:
+          type: string
+        status:
+          type: string
+          enum: [succeeded, failed]
+        output:
+          type: object
+          additionalProperties: true
+        auditRecordId:
+          type: string
+          format: uuid
+    PendingAction:
+      type: object
+      required:
+        - id
+        - toolId
+        - createdAt
+        - approvalState
+      properties:
+        id:
+          type: string
+          format: uuid
+        toolId:
+          type: string
+        diffPreview:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        approvalState:
+          type: string
+          enum: [pending, approved, rejected, expired]
+    ResolvePendingActionRequest:
+      type: object
+      required:
+        - decision
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject]
+        notes:
+          type: string
+    ToolInvocationRecord:
+      type: object
+      required:
+        - id
+        - toolId
+        - status
+        - startedAt
+        - finishedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        toolId:
+          type: string
+        status:
+          type: string
+          enum: [pending, succeeded, failed, aborted]
+        parameters:
+          type: object
+          additionalProperties: true
+        resultSummary:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+    TokenLogprob:
+      type: object
+      required:
+        - token
+        - logprob
+      properties:
+        token:
+          type: string
+        logprob:
+          type: number
+        topAlternatives:
+          type: array
+          items:
+            type: object
+            properties:
+              token:
+                type: string
+              logprob:
+                type: number
+```},

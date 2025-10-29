@@ -1,6 +1,6 @@
 # Validation Checklist: CONST-CTX-SYNC (governance)
 
-**Generated**: 2025-10-28T23:30:51.732Z
+**Generated**: 2025-10-29T14:15:23.196Z
 **Source Prompt**: C:\Users\ladams\source\repos\my-context-kit\context-repo\generated\prompts\CONST-CTX-SYNC.md
 
 ## Specification Quality

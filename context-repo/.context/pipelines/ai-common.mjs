@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import httpsProxyAgentPkg from 'https-proxy-agent';
+const { HttpsProxyAgent } = httpsProxyAgentPkg;
 
 const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.https_proxy || process.env.http_proxy;
 const agent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
@@ -13,6 +14,22 @@ function applyAgent(options) {
 
 const AZURE_API_VERSION = '2024-12-01-preview';
 const azureLogprobSupportCache = new Map();
+
+function normaliseUsage(tokens) {
+  if (!tokens) {
+    return null;
+  }
+
+  const promptTokens = tokens.prompt_tokens ?? tokens.promptTokens ?? tokens.prompt_eval_count ?? 0;
+  const completionTokens = tokens.completion_tokens ?? tokens.completionTokens ?? tokens.eval_count ?? 0;
+  const totalTokens = tokens.total_tokens ?? tokens.totalTokens ?? promptTokens + completionTokens;
+
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens
+  };
+}
 
 function getAzureLogprobKey(endpoint, model) {
   return `${endpoint}::${model}`;
@@ -234,7 +251,7 @@ function createAzureOpenAIStream({ endpoint, apiKey, model, systemPrompt, userPr
             const choice = (obj.choices && obj.choices[0]) || {};
             collectLogprobs(choice);
             if (obj.usage) {
-              metadata.usage = obj.usage;
+              metadata.usage = normaliseUsage(obj.usage);
             }
             const text = extractTextDelta(choice);
             if (text) {
@@ -354,11 +371,10 @@ async function callOllama({ endpoint, model, systemPrompt, userPrompt, responseF
     return {
       ok: true,
       content: data.response,
-      usage: {
-        prompt_tokens: data.prompt_eval_count || 0,
-        completion_tokens: data.eval_count || 0,
-        total_tokens: (data.prompt_eval_count || 0) + (data.eval_count || 0)
-      },
+      usage: normaliseUsage({
+        prompt_eval_count: data.prompt_eval_count || 0,
+        eval_count: data.eval_count || 0
+      }),
       logprobs: null // Ollama doesn't support logprobs by default
     };
   } catch (error) {
@@ -415,11 +431,10 @@ function createOllamaStream({ endpoint, model, systemPrompt, userPrompt, respons
             yield obj.response;
           }
           if (obj.done && obj.total_duration) {
-            metadata.usage = {
-              prompt_tokens: obj.prompt_eval_count || 0,
-              completion_tokens: obj.eval_count || 0,
-              total_tokens: (obj.prompt_eval_count || 0) + (obj.eval_count || 0)
-            };
+            metadata.usage = normaliseUsage({
+              prompt_eval_count: obj.prompt_eval_count || 0,
+              eval_count: obj.eval_count || 0
+            });
           }
         } catch {
           // ignore malformed line
@@ -556,11 +571,7 @@ async function callAzureOpenAI({ endpoint, apiKey, model, systemPrompt, userProm
     return {
       ok: true,
       content: contentText,
-      usage: {
-        prompt_tokens: data.usage?.prompt_tokens ?? 0,
-        completion_tokens: data.usage?.completion_tokens ?? 0,
-        total_tokens: data.usage?.total_tokens ?? 0
-      },
+      usage: normaliseUsage(data.usage),
       logprobs: tokenProbs.length > 0 ? tokenProbs : null
     };
   } catch (error) {
