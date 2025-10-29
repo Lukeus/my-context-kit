@@ -1,0 +1,52 @@
+# Label PRs based on changed files
+
+# Application code
+'app':
+  - app/**/*
+
+# Context repository
+'context-repo':
+  - context-repo/**/*
+
+# Documentation
+'documentation':
+  - '**/*.md'
+  - docs/**/*
+
+# CI/CD
+'ci/cd':
+  - .github/workflows/**/*
+  - .github/**/*.yml
+
+# Configuration
+'configuration':
+  - '**/*.json'
+  - '**/*.yaml'
+  - '**/*.yml'
+  - '**/*.config.*'
+  - '**/tsconfig*.json'
+  - '**/.eslintrc*'
+  - '**/package.json'
+
+# Tests
+'tests':
+  - '**/*.test.*'
+  - '**/*.spec.*'
+  - app/tests/**/*
+  - app/e2e/**/*
+
+# Frontend
+'frontend':
+  - app/src/renderer/**/*
+  - '**/*.vue'
+  - '**/*.css'
+
+# Backend
+'backend':
+  - app/src/main/**/*
+  - app/src/preload/**/*
+
+# Dependencies
+'dependencies':
+  - '**/package.json'
+  - '**/pnpm-lock.yaml'

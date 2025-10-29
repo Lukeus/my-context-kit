@@ -89,6 +89,16 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: app/pnpm-lock.yaml
       
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            app/node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('app/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+      
       - name: Install dependencies
         run: |
           cd app
