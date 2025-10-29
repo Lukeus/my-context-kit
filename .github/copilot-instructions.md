@@ -47,6 +47,14 @@ My Context Kit is a desktop application built with Electron, Vue 3, and Tailwind
 - Never deploy without explicit confirmation from user
 - Never commit changes unless explicitly requested
 
+### Release Management
+- Follow semantic versioning (major.minor.patch)
+- Update CHANGELOG.md before every release
+- Use version bump scripts: `pnpm version:patch|minor|major`
+- Never create releases without running full test suite
+- Code signing for Windows/macOS is planned (not yet implemented)
+- Releases are automated via GitHub Actions on tag push
+
 ### Testing
 - Never assume test frameworks - check README or search codebase first
 - Verify solutions with tests when possible
@@ -93,6 +101,12 @@ pnpm validate       # Validate YAML entities
 pnpm build-graph    # Build dependency graph
 pnpm impact         # Run impact analysis
 pnpm generate       # Generate prompts
+
+# Release management (from project root)
+pnpm version:patch  # Bump patch version (0.1.0 → 0.1.1)
+pnpm version:minor  # Bump minor version (0.1.0 → 0.2.0)
+pnpm version:major  # Bump major version (0.1.0 → 1.0.0)
+pnpm release:prepare # Run all pre-release checks
 ```
 
 ## Important Reminders
