@@ -17,6 +17,10 @@ on:
       - 'context-repo/contexts/**'
       - 'context-repo/c4/**'
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   c4:
     name: Validate C4 Diagrams
@@ -37,6 +41,16 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
           cache-dependency-path: context-repo/package.json
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            context-repo/node_modules
+          key: ${{ runner.os }}-pnpm-context-${{ hashFiles('context-repo/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-context-
       
       - name: Install dependencies
         run: |

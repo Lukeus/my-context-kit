@@ -1,0 +1,44 @@
+# Auto-assign reviewers to PRs
+
+# Number of reviewers to assign
+addReviewers: true
+addAssignees: false
+
+# List of reviewers (GitHub usernames)
+reviewers:
+  - lukeu
+
+# Assign reviewers based on file paths
+filePathAssignments:
+  - patterns:
+      - 'app/src/renderer/**/*'
+      - '**/*.vue'
+    reviewers:
+      - lukeu
+  
+  - patterns:
+      - 'app/src/main/**/*'
+      - 'app/src/preload/**/*'
+    reviewers:
+      - lukeu
+  
+  - patterns:
+      - 'context-repo/**/*'
+    reviewers:
+      - lukeu
+  
+  - patterns:
+      - '.github/workflows/**/*'
+    reviewers:
+      - lukeu
+
+# Number of reviewers to pick from the list
+numberOfReviewers: 1
+
+# Skip certain branches or users
+skipKeywords:
+  - wip
+  - draft
+
+# Skip draft PRs
+skipDraftPR: true
