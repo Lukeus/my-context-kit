@@ -1,0 +1,60 @@
+# Label PRs based on changed files
+# Configuration for actions/labeler@v5
+
+app:
+- changed-files:
+  - any-glob-to-any-file: 'app/**'
+
+context-repo:
+- changed-files:
+  - any-glob-to-any-file: 'context-repo/**'
+
+documentation:
+- changed-files:
+  - any-glob-to-any-file:
+    - '**/*.md'
+    - 'docs/**'
+
+'ci/cd':
+- changed-files:
+  - any-glob-to-any-file:
+    - '.github/workflows/**'
+    - '.github/**/*.yml'
+
+configuration:
+- changed-files:
+  - any-glob-to-any-file:
+    - '**/*.json'
+    - '**/*.yaml'
+    - '**/*.yml'
+    - '**/*.config.*'
+    - '**/tsconfig*.json'
+    - '**/.eslintrc*'
+    - '**/package.json'
+
+tests:
+- changed-files:
+  - any-glob-to-any-file:
+    - '**/*.test.*'
+    - '**/*.spec.*'
+    - 'app/tests/**'
+    - 'app/e2e/**'
+
+frontend:
+- changed-files:
+  - any-glob-to-any-file:
+    - 'app/src/renderer/**'
+    - '**/*.vue'
+    - '**/*.css'
+
+backend:
+- changed-files:
+  - any-glob-to-any-file:
+    - 'app/src/main/**'
+    - 'app/src/preload/**'
+
+dependencies:
+- changed-files:
+  - any-glob-to-any-file:
+    - '**/package.json'
+    - '**/pnpm-lock.yaml'

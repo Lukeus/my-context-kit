@@ -89,6 +89,16 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: app/pnpm-lock.yaml
       
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            app/node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('app/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+      
       - name: Install dependencies
         run: |
           cd app
@@ -105,13 +115,21 @@ jobs:
         run: |
           Get-ChildItem -Path app\out\make -Recurse -File
       
+      - name: Find Windows artifacts
+        id: find_windows
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path app\out\make\squirrel.windows -Include *.exe,*.nupkg -Recurse | Select-Object -ExpandProperty FullName
+          $fileList = $files -join "`n"
+          echo "files=$fileList" >> $env:GITHUB_OUTPUT
+          echo "Found files:"
+          echo $fileList
+      
       - name: Upload Windows Squirrel installer
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: |
-            app/out/make/squirrel.windows/**/*.exe
-            app/out/make/squirrel.windows/**/*.nupkg
+          files: ${{ steps.find_windows.outputs.files }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -152,12 +170,18 @@ jobs:
         run: |
           find app/out/make -type f
       
+      - name: Find macOS artifacts
+        id: find_macos
+        run: |
+          files=$(find app/out/make/zip/darwin -name "*.zip" -type f | tr '\n' ' ')
+          echo "files=$files" >> $GITHUB_OUTPUT
+          echo "Found files: $files"
+      
       - name: Upload macOS ZIP
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: |
-            app/out/make/zip/darwin/**/*.zip
+          files: ${{ steps.find_macos.outputs.files }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -203,13 +227,20 @@ jobs:
         run: |
           find app/out/make -type f
       
+      - name: Find Linux artifacts
+        id: find_linux
+        run: |
+          deb_files=$(find app/out/make -name "*.deb" -type f)
+          rpm_files=$(find app/out/make -name "*.rpm" -type f)
+          all_files="$deb_files $rpm_files"
+          echo "files=$all_files" >> $GITHUB_OUTPUT
+          echo "Found files: $all_files"
+      
       - name: Upload Linux packages
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: |
-            app/out/make/deb/**/*.deb
-            app/out/make/rpm/**/*.rpm
+          files: ${{ steps.find_linux.outputs.files }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

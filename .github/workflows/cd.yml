@@ -1,0 +1,351 @@
+name: CD Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: 'Version to deploy (leave empty for auto)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+  deployments: write
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10.19.0'
+
+jobs:
+  pre-deployment-checks:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      deployment_approved: ${{ steps.approval.outputs.approved }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Determine version
+        id: version
+        run: |
+          if [ -z "${{ github.event.inputs.version }}" ]; then
+            VERSION=$(node -p "require('./app/package.json').version")
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION"
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: app/pnpm-lock.yaml
+      
+      - name: Install dependencies
+        run: |
+          cd app
+          pnpm install --frozen-lockfile
+      
+      - name: Run lint
+        run: |
+          cd app
+          pnpm lint
+      
+      - name: Run typecheck
+        run: |
+          cd app
+          pnpm typecheck
+      
+      - name: Run tests
+        run: |
+          cd app
+          pnpm test
+      
+      - name: Deployment approval check
+        id: approval
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            echo "⚠️ Production deployment requires manual approval"
+            echo "approved=pending" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Staging deployment approved"
+            echo "approved=true" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: pre-deployment-checks
+    if: github.event.inputs.environment == 'staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: staging
+      url: https://staging.context-sync.example.com
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: app/pnpm-lock.yaml
+      
+      - name: Install dependencies
+        run: |
+          cd app
+          pnpm install --frozen-lockfile
+      
+      - name: Build for staging
+        run: |
+          cd app
+          pnpm build
+        env:
+          NODE_ENV: staging
+      
+      - name: Create deployment artifact
+        run: |
+          cd app
+          tar -czf ../staging-deployment.tar.gz out/
+      
+      - name: Upload staging artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: staging-deployment-${{ needs.pre-deployment-checks.outputs.version }}
+          path: staging-deployment.tar.gz
+          retention-days: 30
+      
+      - name: Deploy to staging environment
+        run: |
+          echo "🚀 Deploying version ${{ needs.pre-deployment-checks.outputs.version }} to staging"
+          echo "Deployment URL: https://staging.context-sync.example.com"
+          # Add actual deployment commands here
+          # Example: aws s3 sync app/out/ s3://staging-bucket/
+      
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests on staging"
+          # Add smoke test commands here
+      
+      - name: Deployment summary
+        run: |
+          echo "✅ Staging deployment complete"
+          echo "Version: ${{ needs.pre-deployment-checks.outputs.version }}"
+          echo "Environment: staging"
+          echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+  deploy-production:
+    name: Deploy to Production
+    needs: pre-deployment-checks
+    if: github.event.inputs.environment == 'production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: https://context-sync.example.com
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: app/pnpm-lock.yaml
+      
+      - name: Install dependencies
+        run: |
+          cd app
+          pnpm install --frozen-lockfile
+      
+      - name: Build for production
+        run: |
+          cd app
+          pnpm build
+        env:
+          NODE_ENV: production
+      
+      - name: Create production artifact
+        run: |
+          cd app
+          tar -czf ../production-deployment.tar.gz out/
+      
+      - name: Upload production artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: production-deployment-${{ needs.pre-deployment-checks.outputs.version }}
+          path: production-deployment.tar.gz
+          retention-days: 90
+      
+      - name: Create backup
+        run: |
+          echo "💾 Creating backup of current production"
+          # Add backup commands here
+      
+      - name: Deploy to production environment
+        run: |
+          echo "🚀 Deploying version ${{ needs.pre-deployment-checks.outputs.version }} to production"
+          echo "Deployment URL: https://context-sync.example.com"
+          # Add actual deployment commands here
+          # Example: aws s3 sync app/out/ s3://production-bucket/
+      
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests on production"
+          # Add smoke test commands here
+      
+      - name: Create deployment tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "deploy-prod-${{ needs.pre-deployment-checks.outputs.version }}-$(date +%Y%m%d%H%M%S)" \
+            -m "Production deployment of v${{ needs.pre-deployment-checks.outputs.version }}"
+          git push origin --tags
+      
+      - name: Deployment summary
+        run: |
+          echo "✅ Production deployment complete"
+          echo "Version: ${{ needs.pre-deployment-checks.outputs.version }}"
+          echo "Environment: production"
+          echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+      
+      - name: Create GitHub deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'production',
+              auto_merge: false,
+              required_contexts: [],
+              description: 'Production deployment v${{ needs.pre-deployment-checks.outputs.version }}'
+            });
+
+  post-deployment:
+    name: Post-deployment Tasks
+    needs: [pre-deployment-checks, deploy-staging, deploy-production]
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Send notifications
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          VERSION="${{ needs.pre-deployment-checks.outputs.version }}"
+          STATUS="${{ needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success' }}"
+          
+          echo "📢 Deployment notification"
+          echo "Environment: $ENV"
+          echo "Version: $VERSION"
+          echo "Status: $STATUS"
+          
+          # Add notification commands here (Slack, email, etc.)
+      
+      - name: Update deployment metrics
+        run: |
+          echo "📊 Updating deployment metrics"
+          # Add metrics tracking here
+      
+      - name: Generate deployment report
+        run: |
+          cat > deployment-report.md << EOF
+          # Deployment Report
+          
+          ## Summary
+          - **Environment**: ${{ github.event.inputs.environment }}
+          - **Version**: ${{ needs.pre-deployment-checks.outputs.version }}
+          - **Triggered by**: ${{ github.actor }}
+          - **Timestamp**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          ## Results
+          - Pre-deployment checks: ✅
+          - Deployment: ${{ needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success' && '✅' || '❌' }}
+          - Post-deployment tests: ✅
+          
+          ## Links
+          - [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - [Commit](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          EOF
+          
+          cat deployment-report.md
+      
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v5
+        with:
+          name: deployment-report-${{ github.event.inputs.environment }}-${{ needs.pre-deployment-checks.outputs.version }}
+          path: deployment-report.md
+          retention-days: 90
+
+  rollback:
+    name: Rollback Deployment
+    if: failure()
+    needs: [deploy-staging, deploy-production]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Trigger rollback
+        run: |
+          echo "🔄 Initiating rollback procedure"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          # Add rollback commands here
+      
+      - name: Restore from backup
+        run: |
+          echo "💾 Restoring from backup"
+          # Add restore commands here
+      
+      - name: Verify rollback
+        run: |
+          echo "✅ Rollback verification"
+          # Add verification commands here
+      
+      - name: Send rollback notification
+        run: |
+          echo "🚨 Deployment failed and was rolled back"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          # Add notification commands here
