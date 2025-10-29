@@ -77,6 +77,26 @@ export function registerGitHandlers(): void {
     }
   });
 
+  ipcMain.handle('git:pull', async (_event, { dir, remote, branch }: { dir: string; remote?: string; branch?: string }) => {
+    try {
+      const service = new GitService(dir);
+      await service.pull(remote, branch);
+      return successWith({});
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
+    }
+  });
+
+  ipcMain.handle('git:fetch', async (_event, { dir, remote }: { dir: string; remote?: string }) => {
+    try {
+      const service = new GitService(dir);
+      await service.fetch(remote);
+      return successWith({});
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
+    }
+  });
+
   ipcMain.handle('git:push', async (_event, { dir, remote, branch }: { dir: string; remote?: string; branch?: string }) => {
     try {
       const service = new GitService(dir);

@@ -299,6 +299,36 @@ export class GitService {
   }
 
   /**
+   * Pulls changes from remote
+   */
+  async pull(remote = 'origin', branch?: string): Promise<void> {
+    try {
+      await this.git.pull(remote, branch);
+    } catch (error: unknown) {
+      throw new GitError(
+        error instanceof Error ? error.message : 'Failed to pull changes',
+        'pull',
+        { remote, branch }
+      );
+    }
+  }
+
+  /**
+   * Fetches from remote without merging
+   */
+  async fetch(remote = 'origin'): Promise<void> {
+    try {
+      await this.git.fetch(remote);
+    } catch (error: unknown) {
+      throw new GitError(
+        error instanceof Error ? error.message : 'Failed to fetch from remote',
+        'fetch',
+        { remote }
+      );
+    }
+  }
+
+  /**
    * Pushes changes to remote
    */
   async push(remote = 'origin', branch?: string): Promise<void> {

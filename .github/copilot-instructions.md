@@ -1,7 +1,9 @@
-# GitHub Copilot Instructions for Context-Sync
+# GitHub Copilot Instructions for My Context Kit
 
 ## Project Overview
-Context-Sync is a desktop application built with Electron Forge, Vue 3, and Tailwind CSS that manages a GitHub-versioned context repository for spec-driven software development.
+My Context Kit is a desktop application built with Electron, Vue 3, and Tailwind CSS that manages context repositories for spec-driven software development. It provides AI-powered assistance for validating, navigating, and maintaining structured context graphs.
+
+**Note**: Also see `AGENTS.md` in the root for comprehensive architectural guidance.
 
 ## Key Guidelines
 
@@ -15,6 +17,7 @@ Context-Sync is a desktop application built with Electron Forge, Vue 3, and Tail
 - All context-repo operations execute through IPC to pipeline scripts
 - C4 diagrams are treated as first-class entities in the Context Tree
 - Single left panel architecture - avoid duplicate navigation panels
+- **AI Assistant Unification**: Two separate AI implementations exist (`aiStore` + `assistantStore`). When working on AI features, prioritize using `assistantStore` (session-based) and plan migration from legacy `aiStore`
 
 ### Code Quality
 - Never take shortcuts for speed - prioritize quality and correctness
@@ -34,7 +37,7 @@ Context-Sync is a desktop application built with Electron Forge, Vue 3, and Tail
 - Leverage Pinia for state management
 
 ### Styling
-- Use Tailwind utility classes - avoid custom CSS when possible
+- Use Tailwind utility classes with Material 3 design tokens (e.g., `bg-surface`, `text-secondary-900`, `rounded-m3-lg`)
 - Follow mobile-first responsive design
 - Extract common patterns to reusable components
 
@@ -54,10 +57,15 @@ Context-Sync is a desktop application built with Electron Forge, Vue 3, and Tail
 app/
   src/
     main/           # Electron main process + IPC handlers
+      ipc/handlers/ # IPC handlers for renderer<->main
+      services/     # Business logic (assistantSessionManager, etc.)
+    preload/        # Context isolation bridges
     renderer/       # Vue 3 application
       components/   # Vue components
-      stores/       # Pinia stores (contextStore loads C4 diagrams)
+        assistant/  # Safe tooling assistant UI components
+      stores/       # Pinia stores (aiStore, assistantStore, contextStore)
       styles/       # Tailwind CSS
+    shared/         # Shared types between main/renderer (assistant/types.ts)
 
 context-repo/
   .context/
@@ -88,8 +96,25 @@ pnpm generate       # Generate prompts
 ```
 
 ## Important Reminders
-- Follow OAuth 2.0 best practices for authentication features
 - Maintain context isolation in Electron (no nodeIntegration)
 - Use CSP headers for security
 - All secrets must be environment variables - never plain text
 - Git operations use simple-git or isomorphic-git libraries
+- **AI Features**: Use session-based approach from `assistantStore`, guard risky operations with approvals, log telemetry for all tool invocations
+- Support both Azure OpenAI and Ollama providers
+
+## AI Assistant Architecture (Critical)
+
+### Current State
+The app has **TWO separate AI assistant implementations** that need unification:
+
+1. **Legacy**: `aiStore.ts` + `AIAssistantModal.vue` (direct API calls, streaming, edit suggestions)
+2. **New**: `assistantStore.ts` + `components/assistant/` (session-based, tools, approvals, telemetry)
+
+### When Working on AI Features
+- Prefer `assistantStore` for new features (better architecture)
+- Plan migration path from `aiStore` to unified implementation
+- See `AGENTS.md` for detailed unification strategy
+- Always add telemetry logging for tool invocations
+- Use approval workflows for risky operations
+- Support streaming and non-streaming modes

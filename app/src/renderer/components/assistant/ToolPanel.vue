@@ -7,6 +7,7 @@ import type { AssistantPipelineName, ToolInvocationRecord } from '@shared/assist
 import TranscriptView from './TranscriptView.vue';
 import ResponsePane from './ResponsePane.vue';
 import ApprovalDialog from './ApprovalDialog.vue';
+import AgentSelector from './AgentSelector.vue';
 
 interface PipelineOption {
   id: AssistantPipelineName;
@@ -246,6 +247,20 @@ watch(
         class="px-2 py-1 text-[10px] font-medium rounded-m3-full border border-primary-200 bg-primary-50 text-primary-700"
       >Session active</span>
     </header>
+
+    <!-- Agent Selector -->
+    <div class="rounded-m3-lg border border-surface-variant bg-white shadow-elevation-1">
+      <div class="p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-semibold text-secondary-700">AI Agent</label>
+          <span class="text-[10px] text-secondary-500">Choose the assistant's behavior</span>
+        </div>
+        <AgentSelector />
+        <p class="text-[11px] text-secondary-500">
+          Agents define the assistant's system prompt, capabilities, and behavior. Select a specialized agent for your task or use the default Context Assistant.
+        </p>
+      </div>
+    </div>
 
     <div class="rounded-m3-lg border border-surface-variant bg-white shadow-elevation-1">
       <div class="p-4 space-y-4">
