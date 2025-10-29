@@ -20,6 +20,7 @@ import type {
   PendingAction,
   ToolInvocationRecord
 } from '@shared/assistant/types';
+import { agentBridge, type AgentBridge } from '../preload/agentBridge';
 
 // Expose IPC API to renderer process
 contextBridge.exposeInMainWorld('api', {
@@ -108,6 +109,7 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('ai:applyEdit', { dir, filePath, updatedContent, summary }),
   },
   assistant: createAssistantBridge(ipcRenderer),
+  agent: agentBridge,
   speckit: {
     specify: (repoPath: string, description: string) =>
       ipcRenderer.invoke('speckit:specify', { repoPath, description }),
@@ -305,6 +307,7 @@ declare global {
         onStreamEvent: (listener: (payload: unknown) => void) => (() => void);
         runPipeline: (sessionId: string, payload: RunPipelinePayload) => Promise<ToolExecutionResponse>;
       };
+      agent: AgentBridge;
       c4: {
         loadDiagrams: (dir: string) => Promise<{ success: boolean; diagrams?: any[]; error?: string }>;
         analyze: (filePath: string) => Promise<{ success: boolean; analysis?: any; validation?: any; error?: string }>;

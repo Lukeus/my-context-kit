@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue';
-import { defineStore } from 'pinia';
+import { defineStore, storeToRefs } from 'pinia';
 import type {
   AssistantPipelineName,
   AssistantProvider,
@@ -17,6 +17,8 @@ import type {
   ToolExecutionResponse,
   RunPipelinePayload
 } from '@/../preload/assistantBridge';
+import type { AgentProfile } from '@shared/agents/types';
+import { useAgentStore } from './agentStore';
 
 function assertAssistantBridge(): typeof window.api.assistant {
   if (!window.api?.assistant) {
@@ -45,6 +47,10 @@ interface ContextReadResult {
 }
 
 export const useAssistantStore = defineStore('assistant-safe-tools', () => {
+  // Get access to agent store
+  const agentStore = useAgentStore();
+  const { selectedAgent } = storeToRefs(agentStore);
+  
   const session = ref<AssistantSession | null>(null);
   const conversation = ref<ConversationTurn[]>([]);
   const pendingApprovals = ref<PendingAction[]>([]);
@@ -55,6 +61,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const lastUpdated = ref<string | null>(null);
   const contextReadResult = ref<ContextReadResult | null>(null);
   const contextReadError = ref<string | null>(null);
+  const activeAgentProfile = ref<AgentProfile | null>(null);
 
   const hasSession = computed(() => Boolean(session.value));
   const activeProvider = computed<AssistantProvider | null>(() => session.value?.provider ?? null);
@@ -99,14 +106,21 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     pendingApprovals.value = [...pendingApprovals.value, pending];
   }
 
-  async function createSession(payload: CreateSessionPayload) {
+  async function createSession(payload: CreateSessionPayload, agentProfile?: AgentProfile) {
     const bridge = assertAssistantBridge();
     isBusy.value = true;
     error.value = null;
+    
+    // Apply agent profile if provided
+    const sessionPayload = agentProfile ? applyAgentProfile(payload, agentProfile) : payload;
+    
     try {
-      const created = await bridge.createSession(payload);
+      const created = await bridge.createSession(sessionPayload);
       applySession(created);
       telemetry.value = [];
+      
+      // Store active agent profile
+      activeAgentProfile.value = agentProfile ?? null;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create assistant session.';
       error.value = message;
@@ -114,6 +128,38 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     } finally {
       isBusy.value = false;
     }
+  }
+  
+  /**
+   * Apply agent profile configuration to session payload
+   */
+  function applyAgentProfile(payload: CreateSessionPayload, agent: AgentProfile): CreateSessionPayload {
+    // Use agent's system prompt
+    const systemPrompt = agent.systemPrompt || payload.systemPrompt;
+    
+    // Use agent's tool requirements
+    const activeTools = agent.tools
+      ? agent.tools.filter(t => t.required).map(t => t.toolId)
+      : payload.activeTools;
+    
+    // Apply agent configuration
+    const config: Record<string, unknown> = {};
+    if (agent.config?.temperature !== undefined) {
+      config.temperature = agent.config.temperature;
+    }
+    if (agent.config?.maxTokens !== undefined) {
+      config.maxTokens = agent.config.maxTokens;
+    }
+    if (agent.config?.enableLogprobs !== undefined) {
+      config.enableLogprobs = agent.config.enableLogprobs;
+    }
+    
+    return {
+      ...payload,
+      systemPrompt,
+      activeTools: activeTools || payload.activeTools,
+      ...config
+    };
   }
 
   async function sendMessage(payload: SendMessagePayload) {
@@ -179,21 +225,21 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     }
   }
 
-  async function ensurePipelineSession(provider: AssistantProvider): Promise<AssistantSession> {
+  async function ensurePipelineSession(provider: AssistantProvider, agent?: AgentProfile): Promise<AssistantSession> {
     const requiredTools = [PIPELINE_TOOL_ID, CONTEXT_READ_TOOL_ID];
 
     if (session.value && session.value.provider === provider) {
       const hasAllTools = requiredTools.every(toolId => session.value?.activeTools?.some(tool => tool.id === toolId));
-      if (hasAllTools) {
+      if (hasAllTools && (!agent || activeAgentProfile.value?.id === agent.id)) {
         return session.value;
       }
     }
 
     await createSession({
       provider,
-      systemPrompt: PIPELINE_SESSION_PROMPT,
+      systemPrompt: agent?.systemPrompt || PIPELINE_SESSION_PROMPT,
       activeTools: requiredTools
-    });
+    }, agent);
 
     if (!session.value) {
       throw new Error('Failed to initialise assistant session.');
@@ -208,7 +254,10 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
 
     const provider = options.provider ?? 'azure-openai';
     const bridge = assertAssistantBridge();
-    const activeSession = await ensurePipelineSession(provider);
+    
+    // Use the currently selected agent from agentStore
+    const agent = selectedAgent.value;
+    const activeSession = await ensurePipelineSession(provider, agent || undefined);
 
     isBusy.value = true;
     error.value = null;
@@ -248,7 +297,10 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
 
     const provider = options.provider ?? 'azure-openai';
     const bridge = assertAssistantBridge();
-    const activeSession = await ensurePipelineSession(provider);
+    
+    // Use the currently selected agent from agentStore
+    const agent = selectedAgent.value;
+    const activeSession = await ensurePipelineSession(provider, agent || undefined);
 
     isBusy.value = true;
     error.value = null;
@@ -373,6 +425,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     lastUpdated.value = null;
     contextReadResult.value = null;
     contextReadError.value = null;
+    activeAgentProfile.value = null;
   }
 
   return {
@@ -385,6 +438,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     lastUpdated,
     contextReadResult,
     contextReadError,
+    activeAgentProfile,
     hasSession,
     activeProvider,
     activeTools,
