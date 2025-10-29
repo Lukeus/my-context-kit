@@ -1,69 +1,60 @@
 # Label PRs based on changed files
-# Format for actions/labeler@v5
+# Configuration for actions/labeler@v5
 
-# Application code
 app:
-  - changed-files:
-    - any-glob-to-any-file: 'app/**/*'
+- changed-files:
+  - any-glob-to-any-file: 'app/**'
 
-# Context repository
 context-repo:
-  - changed-files:
-    - any-glob-to-any-file: 'context-repo/**/*'
+- changed-files:
+  - any-glob-to-any-file: 'context-repo/**'
 
-# Documentation
 documentation:
-  - changed-files:
-    - any-glob-to-any-file:
-      - '**/*.md'
-      - 'docs/**/*'
+- changed-files:
+  - any-glob-to-any-file:
+    - '**/*.md'
+    - 'docs/**'
 
-# CI/CD
-ci/cd:
-  - changed-files:
-    - any-glob-to-any-file:
-      - '.github/workflows/**/*'
-      - '.github/**/*.yml'
+'ci/cd':
+- changed-files:
+  - any-glob-to-any-file:
+    - '.github/workflows/**'
+    - '.github/**/*.yml'
 
-# Configuration
 configuration:
-  - changed-files:
-    - any-glob-to-any-file:
-      - '**/*.json'
-      - '**/*.yaml'
-      - '**/*.yml'
-      - '**/*.config.*'
-      - '**/tsconfig*.json'
-      - '**/.eslintrc*'
-      - '**/package.json'
+- changed-files:
+  - any-glob-to-any-file:
+    - '**/*.json'
+    - '**/*.yaml'
+    - '**/*.yml'
+    - '**/*.config.*'
+    - '**/tsconfig*.json'
+    - '**/.eslintrc*'
+    - '**/package.json'
 
-# Tests
 tests:
-  - changed-files:
-    - any-glob-to-any-file:
-      - '**/*.test.*'
-      - '**/*.spec.*'
-      - 'app/tests/**/*'
-      - 'app/e2e/**/*'
+- changed-files:
+  - any-glob-to-any-file:
+    - '**/*.test.*'
+    - '**/*.spec.*'
+    - 'app/tests/**'
+    - 'app/e2e/**'
 
-# Frontend
 frontend:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'app/src/renderer/**/*'
-      - '**/*.vue'
-      - '**/*.css'
+- changed-files:
+  - any-glob-to-any-file:
+    - 'app/src/renderer/**'
+    - '**/*.vue'
+    - '**/*.css'
 
-# Backend
 backend:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'app/src/main/**/*'
-      - 'app/src/preload/**/*'
+- changed-files:
+  - any-glob-to-any-file:
+    - 'app/src/main/**'
+    - 'app/src/preload/**'
 
-# Dependencies
 dependencies:
-  - changed-files:
-    - any-glob-to-any-file:
-      - '**/package.json'
-      - '**/pnpm-lock.yaml'
+- changed-files:
+  - any-glob-to-any-file:
+    - '**/package.json'
+    - '**/pnpm-lock.yaml'
