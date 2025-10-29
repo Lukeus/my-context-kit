@@ -19,7 +19,13 @@
 		"test:e2e:debug": "pnpm --filter context-sync test:e2e:debug",
 		"test:e2e:report": "pnpm --filter context-sync test:e2e:report",
 		"test:all": "pnpm --filter context-sync test:all",
-		"install:all": "pnpm install && cd app && pnpm install"
+		"install:all": "pnpm install && cd app && pnpm install",
+		"version:patch": "node scripts/version-bump.mjs patch",
+		"version:minor": "node scripts/version-bump.mjs minor",
+		"version:major": "node scripts/version-bump.mjs major",
+		"release:prepare": "pnpm lint && pnpm typecheck && pnpm test:all",
+		"release:tag": "git tag -a v$(node -p \"require('./app/package.json').version\") -m \"Release v$(node -p \"require('./app/package.json').version\")\"",
+		"release:push": "git push origin main && git push origin --tags"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [

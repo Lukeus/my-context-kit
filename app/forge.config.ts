@@ -6,13 +6,27 @@ import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { PublisherGithub } from '@electron-forge/publisher-github';
 
 const config: ForgeConfig = {
   packagerConfig: {
     executableName: 'context-sync',
     asar: true,
+    icon: './assets/icon',
+    appBundleId: 'com.lukeus.context-sync',
+    appCategoryType: 'public.app-category.developer-tools',
   },
   rebuildConfig: {},
+  publishers: [
+    new PublisherGithub({
+      repository: {
+        owner: 'lukeus',
+        name: 'my-context-kit',
+      },
+      prerelease: false,
+      draft: true,
+    }),
+  ],
   makers: [
     new MakerSquirrel({}),
     new MakerZIP({}, ['darwin']),
