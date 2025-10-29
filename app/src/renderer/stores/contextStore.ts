@@ -49,6 +49,9 @@ interface RepoRegistryResult {
   error?: string;
 }
 
+// Constants
+const FILE_WATCH_DEBOUNCE_MS = 250; // Debounce to prevent excessive graph rebuilds on rapid file changes
+
 export const useContextStore = defineStore('context', () => {
   // State
   const repoPath = ref('');
@@ -71,11 +74,12 @@ export const useContextStore = defineStore('context', () => {
       disposeFileWatcher = null;
     }
     if (watchedRepoPath) {
-    try {
-      await window.api.repos.unwatch(watchedRepoPath);
-    } catch {
-      // Ignore cleanup errors silently
-    }
+      try {
+        await window.api.repos.unwatch(watchedRepoPath);
+      } catch (err) {
+        // Log cleanup errors but don't throw - this is a non-critical cleanup operation
+        console.debug('[contextStore] Failed to unwatch repo during cleanup:', watchedRepoPath, err);
+      }
       watchedRepoPath = null;
     }
     if (fileChangeDebounce) {
@@ -99,8 +103,9 @@ export const useContextStore = defineStore('context', () => {
 
     try {
       await window.api.repos.watch(normalized);
-    } catch {
-      // Swallow watch errors so repo changes do not crash the UI.
+    } catch (err) {
+      // Swallow watch errors to prevent UI crashes, but log for debugging
+      console.warn('[contextStore] Failed to start repo watch:', normalized, err);
       return;
     }
 
@@ -117,7 +122,7 @@ export const useContextStore = defineStore('context', () => {
       fileChangeDebounce = setTimeout(async () => {
         await loadGraph();
         fileChangeDebounce = null;
-      }, 250);
+      }, FILE_WATCH_DEBOUNCE_MS);
     });
   }
 
@@ -147,7 +152,8 @@ export const useContextStore = defineStore('context', () => {
       }
 
       await startRepoWatch(repoPath.value);
-    } catch {
+    } catch (err) {
+      console.error('[contextStore] Failed to initialize store, applying default repo path:', err);
       await applyDefaultRepoPath();
     }
     
@@ -167,7 +173,8 @@ export const useContextStore = defineStore('context', () => {
         repoPath.value = '';
         await stopRepoWatch();
       }
-    } catch {
+    } catch (err) {
+      console.error('[contextStore] Failed to apply default repo path:', err);
       repoPath.value = '';
       await stopRepoWatch();
     }
@@ -228,9 +235,9 @@ export const useContextStore = defineStore('context', () => {
       await window.api.settings.set('repoPath', normalizedPath);
       await ensureRepoInRegistry(normalizedPath, { setActive: true });
       await refreshRepoRegistry();
-    } catch {
-      // Ignore errors
-    } finally{
+    } catch (err) {
+      console.warn('[contextStore] Failed to persist repo path or update registry:', err);
+    } finally {
       await startRepoWatch(normalizedPath);
     }
   }
@@ -453,6 +460,15 @@ function setActiveEntity(entityId: string | null) {
     return availableRepos.value.some(repo => repo.path === normalized);
   }
 
+  /**
+   * Cleanup function to be called when the store is no longer needed
+   * Stops file watching and clears any pending timeouts to prevent memory leaks
+   */
+  function cleanup() {
+    stopRepoWatch();
+    // Any other cleanup can be added here
+  }
+
   return {
     // State
     repoPath,
@@ -483,6 +499,7 @@ function setActiveEntity(entityId: string | null) {
     addRepository,
     removeRepository,
     getActiveRepoMeta,
-    isRepoRegistered
+    isRepoRegistered,
+    cleanup
   };
 });

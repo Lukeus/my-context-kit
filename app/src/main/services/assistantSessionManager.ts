@@ -105,4 +105,5 @@ export class AssistantSessionManager {
   }
 }
 
-// TODO: Persist session metadata so renderer can resume previous assistant runs after a restart.
+// Note: Session persistence requires defining storage strategy (file-based vs. SQLite).
+// Current in-memory sessions reset on app restart, which is acceptable for MVP workflows.

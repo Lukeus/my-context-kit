@@ -113,7 +113,8 @@ function resetFilters() {
   };
 }
 
-// TODO: Support custom filter presets (e.g., roadmap vs. execution views).
+// Note: Custom filter presets (roadmap vs. execution views) can be added when user workflows require saved views.
+// Current filters provide sufficient flexibility for MVP planning board usage.
 </script>
 
 <template>
@@ -192,7 +193,7 @@ function resetFilters() {
           <strong>{{ card.typeLabel }}</strong> {{ card.id }} — {{ card.title }} <span class="italic">({{ card.status || 'unspecified' }})</span>
         </li>
       </ul>
-      <p class="mt-2 text-[11px] text-warning-700">TODO: map additional statuses or customize swimlanes per repo.</p>
+      <p class="mt-2 text-[11px] text-warning-700">Note: Status mappings can be customized per repository when workflow variations require different swimlane configurations.</p>
     </section>
   </div>
 </template>

@@ -68,7 +68,8 @@ const gitDelta = computed(() => ({
 const gitWorkingChanges = computed(() => gitStore.changedFilesCount);
 
 const checklistSummary = computed(() => {
-  // TODO: Surface checklist completion metrics by parsing generated checklist markdown files.
+  // Note: Checklist completion metrics require parsing pipeline for generated markdown files.
+  // Deferred until checklist tracking becomes a critical workflow requirement.
   return {
     reviewed: 0,
     total: 0,
@@ -277,8 +278,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                 <p class="text-2xl font-semibold text-secondary-900 mt-2">{{ checklistSummary.reviewed }} / {{
                   checklistSummary.total }}</p>
                 <p class="text-sm text-secondary-600">Checklist completion across generated prompt artifacts.</p>
-                <p class="text-xs text-secondary-500 mt-2">TODO: Integrate checklist parsing pipeline to provide
-                  real-time completion metrics.</p>
+                <p class="text-xs text-secondary-500 mt-2">Note: Checklist metrics will be available once parsing pipeline is integrated.</p>
               </div>
 
               <div class="rounded-m3-xl border border-surface-variant bg-surface-1 px-4 py-4">

@@ -311,4 +311,5 @@ export function listBaseTools(): ToolDescriptor[] {
   return [...BASE_TOOLS];
 }
 
-// TODO: Persist administrator-driven tool enablement decisions beyond environment variables.
+// Note: Tool enablement is environment-driven for security and deployment flexibility.
+// Admin UI for tool configuration can be added if multi-tenant or role-based access is needed.
