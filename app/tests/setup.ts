@@ -47,6 +47,17 @@ type SpeckitApi = {
   aiRefineSpec: StubMethod;
 };
 
+type AgentApi = {
+  listAgents: StubMethod;
+  getAgent: StubMethod;
+  createAgent: StubMethod;
+  updateAgent: StubMethod;
+  deleteAgent: StubMethod;
+  validateAgent: StubMethod;
+  exportAgent: StubMethod;
+  importAgent: StubMethod;
+};
+
 const createDefaultStub = () => vi.fn(async () => ({}));
 
 beforeEach(() => {
@@ -131,6 +142,17 @@ beforeEach(() => {
     aiRefineSpec: createDefaultStub(),
   };
 
+  const agentApi: AgentApi = {
+    listAgents: createDefaultStub(),
+    getAgent: createDefaultStub(),
+    createAgent: createDefaultStub(),
+    updateAgent: createDefaultStub(),
+    deleteAgent: createDefaultStub(),
+    validateAgent: createDefaultStub(),
+    exportAgent: createDefaultStub(),
+    importAgent: createDefaultStub(),
+  };
+
   (global as any).window = {
     api: {
       repos: repoApi,
@@ -143,6 +165,7 @@ beforeEach(() => {
       app: appApi,
       dialog: dialogApi,
       speckit: speckitApi,
+      agent: agentApi,
     },
   };
 });

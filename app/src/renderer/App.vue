@@ -9,6 +9,7 @@ import { useContextStore } from './stores/contextStore';
 import { useBuilderStore } from './stores/builderStore';
 import { useAIStore } from './stores/aiStore';
 import { useGitStore } from './stores/gitStore';
+import { useAgentStore } from './stores/agentStore';
 import { useSnackbar } from './composables/useSnackbar';
 import { useRouting } from './composables/useRouting';
 
@@ -20,6 +21,7 @@ const AISettingsModal = defineAsyncComponent(() => import('./components/AISettin
 const SpeckitWizard = defineAsyncComponent(() => import('./components/SpeckitWizard.vue'));
 const CommandPalette = defineAsyncComponent(() => import('./components/CommandPalette.vue'));
 const ContextBuilderModal = defineAsyncComponent(() => import('./components/ContextBuilderModal.vue'));
+const AgentLibrary = defineAsyncComponent(() => import('./components/assistant/AgentLibrary.vue'));
 
 // Lazy-loaded tab components (Phase 1.2 - only loaded when tab is active)
 const YamlEditor = defineAsyncComponent(() => import('./components/YamlEditor.vue'));
@@ -42,6 +44,7 @@ import AIAssistantPanel from './components/AIAssistantPanel.vue';
 const contextStore = useContextStore();
 const builderStore = useBuilderStore();
 const gitStore = useGitStore();
+const agentStore = useAgentStore();
 const {
   show: snackbarVisible,
   message: snackbarMessage,
@@ -83,7 +86,7 @@ const lastValidationAt = ref<string | null>(null);
 const lastValidationStatus = ref<'success' | 'error' | null>(null);
 const lastGraphRefresh = ref<string | null>(null);
 
-type NavId = 'hub' | 'entities' | 'graph' | 'git' | 'validate' | 'docs' | 'ai' | 'c4' | 'entity';
+type NavId = 'hub' | 'entities' | 'graph' | 'git' | 'validate' | 'docs' | 'ai' | 'c4' | 'entity' | 'agents';
 type NavRailId = Exclude<NavId, 'entity'>;
 
 const activeNavId = ref<NavId>('hub');
@@ -91,6 +94,7 @@ const activeNavId = ref<NavId>('hub');
 const navRailItems: Array<{ id: NavRailId; label: string; requiresRepo?: boolean; shortcut?: string }> = [
   { id: 'hub', label: 'Hub', shortcut: 'Home' },
   { id: 'entities', label: 'Tree', shortcut: 'Toggle' },
+  { id: 'agents', label: 'Agents', shortcut: 'Manage' },
   { id: 'c4', label: 'C4', shortcut: 'Architecture' },
   { id: 'graph', label: 'Graph', requiresRepo: true, shortcut: 'View' },
   { id: 'git', label: 'Git', requiresRepo: true, shortcut: 'Status' },
@@ -214,7 +218,8 @@ async function handleNavClick(id: NavRailId) {
     'hub': 'hub',
     'c4': 'c4',
     'docs': 'docs',
-    'entities': 'entities'
+    'entities': 'entities',
+    'agents': 'agents'
   };
   
   if (routeMap[id]) {
@@ -237,6 +242,9 @@ async function handleNavClick(id: NavRailId) {
           contextStore.setActiveEntity(allEntities[0].id);
         }
       }
+      break;
+    case 'agents':
+      openAgentLibrary();
       break;
     case 'c4':
       openC4Builder();
@@ -270,6 +278,8 @@ function isNavActive(id: NavRailId) {
       return activeNavId.value === 'hub';
     case 'entities':
       return activeNavId.value === 'entities';
+    case 'agents':
+      return activeNavId.value === 'agents';
     case 'c4':
       return activeNavId.value === 'c4';
     case 'graph':
@@ -433,6 +443,19 @@ onMounted(async () => {
     await gitStore.loadBranches();
   }
   
+  // Auto-sync: Pull agents on startup if enabled
+  try {
+    const syncSettings = localStorage.getItem('agent-sync-settings');
+    if (syncSettings) {
+      const settings = JSON.parse(syncSettings);
+      if (settings.autoPullOnStart && contextStore.repoPath) {
+        await agentStore.pullAgents();
+      }
+    }
+  } catch (error) {
+    console.warn('Auto-sync on startup failed:', error);
+  }
+  
   window.addEventListener('mousemove', handleMouseMove);
   window.addEventListener('mouseup', stopResize);
   window.addEventListener('keydown', handleKeyboard);
@@ -516,6 +539,12 @@ function openC4Builder() {
   contextStore.setActiveEntity(null);
   activeNavId.value = 'c4';
   leftPanelOpen.value = true; // Open left panel for C4 diagrams
+}
+
+function openAgentLibrary() {
+  contextStore.setActiveEntity(null);
+  activeNavId.value = 'agents';
+  leftPanelOpen.value = false; // Agent library is full-width
 }
 
 
@@ -1112,6 +1141,23 @@ async function handleRemoveRepo(id: string) {
           </div>
         </div>
 
+        <!-- Agent Library View -->
+        <Suspense v-else-if="activeNavId === 'agents'">
+          <template #default>
+            <AgentLibrary />
+          </template>
+          <template #fallback>
+            <div class="flex items-center justify-center h-full">
+              <div class="text-center">
+                <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-sm text-secondary-600">Loading agent library...</p>
+              </div>
+            </div>
+          </template>
+        </Suspense>
         <!-- Documentation View -->
         <Suspense v-else-if="activeNavId === 'docs'">
           <template #default>
