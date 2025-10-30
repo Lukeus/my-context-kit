@@ -65,7 +65,7 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
       <div class="max-w-4xl mx-auto">
         <!-- Overview Section -->
         <div v-if="activeSection === 'overview'" class="space-y-6">
-          <div class="bg-white rounded-m3-lg shadow-elevation-1 p-6">
+          <div class="bg-white rounded-m3-md shadow-elevation-1 p-6">
             <h2 class="text-2xl font-bold text-primary-700 mb-4">What is Context-Sync?</h2>
             <p class="text-secondary-700 mb-4">
               Context-Sync is designed to manage context repositories for spec-driven development. It helps you maintain a structured repository of features, user stories, specifications, and tasks while analyzing the impact of changes across your project.
@@ -76,8 +76,8 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-white rounded-m3-lg shadow-elevation-1 p-6">
-              <div class="w-12 h-12 bg-purple-100 rounded-m3-full flex items-center justify-center mb-4">
+            <div class="bg-white rounded-m3-md shadow-elevation-1 p-6">
+              <div class="w-12 h-12 bg-purple-100 rounded-m3-md flex items-center justify-center mb-4">
                 <svg class="w-6 h-6 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
@@ -88,8 +88,8 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
               </p>
             </div>
 
-            <div class="bg-white rounded-m3-lg shadow-elevation-1 p-6">
-              <div class="w-12 h-12 bg-primary-100 rounded-m3-full flex items-center justify-center mb-4">
+            <div class="bg-white rounded-m3-md shadow-elevation-1 p-6">
+              <div class="w-12 h-12 bg-primary-100 rounded-m3-md flex items-center justify-center mb-4">
                 <svg class="w-6 h-6 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
@@ -100,8 +100,8 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
               </p>
             </div>
 
-            <div class="bg-white rounded-m3-lg shadow-elevation-1 p-6">
-              <div class="w-12 h-12 bg-tertiary-100 rounded-m3-full flex items-center justify-center mb-4">
+            <div class="bg-white rounded-m3-md shadow-elevation-1 p-6">
+              <div class="w-12 h-12 bg-tertiary-100 rounded-m3-md flex items-center justify-center mb-4">
                 <svg class="w-6 h-6 text-tertiary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
@@ -112,8 +112,8 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
               </p>
             </div>
 
-            <div class="bg-white rounded-m3-lg shadow-elevation-1 p-6">
-              <div class="w-12 h-12 bg-secondary-100 rounded-m3-full flex items-center justify-center mb-4">
+            <div class="bg-white rounded-m3-md shadow-elevation-1 p-6">
+              <div class="w-12 h-12 bg-secondary-100 rounded-m3-md flex items-center justify-center mb-4">
                 <svg class="w-6 h-6 text-secondary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                 </svg>
@@ -129,7 +129,7 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
             <h3 class="text-lg font-semibold text-primary-900 mb-2">Quick Start</h3>
             <ol class="list-decimal list-inside space-y-2 text-secondary-700">
               <li>Set your context repository path below</li>
-              <li>Press <kbd class="px-2 py-1 text-xs font-semibold bg-surface-3 rounded">Ctrl+N</kbd> to create a new entity with AI assistance</li>
+              <li>Press <kbd class="px-2 py-1 text-xs font-semibold bg-surface-3 rounded-m3-md">Ctrl+N</kbd> to create a new entity with AI assistance</li>
               <li>Browse entities in the Context Tree (left sidebar)</li>
               <li>Select an entity to view and edit its YAML definition</li>
               <li>Run impact analysis to see affected entities</li>
@@ -138,7 +138,7 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
           </div>
 
           <!-- Path Configuration -->
-          <div class="bg-white rounded-m3-lg shadow-elevation-2 p-6">
+          <div class="bg-white rounded-m3-md shadow-elevation-2 p-6">
             <h3 class="text-xl font-semibold text-primary-700 mb-4">Configure Repository Path</h3>
             <div class="space-y-4">
               <div>
@@ -162,7 +162,7 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
 
         <!-- Setup Guide Section -->
         <div v-if="activeSection === 'setup'" class="space-y-6">
-          <div class="bg-white rounded-m3-lg shadow-elevation-1 p-6">
+          <div class="bg-white rounded-m3-md shadow-elevation-1 p-6">
             <h2 class="text-2xl font-bold text-primary-700 mb-4">Setup Guide</h2>
             <p class="text-secondary-700 mb-6">
               Follow these steps to set up your context repository for use with Context-Sync.
@@ -171,7 +171,7 @@ const activeSection = ref<'overview' | 'setup' | 'features' | 'workflow'>('overv
             <div class="space-y-6">
               <div>
                 <h3 class="text-lg font-semibold text-primary-700 mb-3 flex items-center gap-2">
-                  <span class="w-8 h-8 bg-primary-500 text-white rounded-m3-full flex items-center justify-center text-sm font-bold">1</span>
+                  <span class="w-8 h-8 bg-primary-500 text-white rounded-m3-md flex items-center justify-center text-sm font-bold">1</span>
                   Repository Structure
                 </h3>
                 <p class="text-secondary-700 mb-3 ml-10">
@@ -197,7 +197,7 @@ my-context-repo/
 
               <div>
                 <h3 class="text-lg font-semibold text-primary-700 mb-3 flex items-center gap-2">
-                  <span class="w-8 h-8 bg-primary-500 text-white rounded-m3-full flex items-center justify-center text-sm font-bold">2</span>
+                  <span class="w-8 h-8 bg-primary-500 text-white rounded-m3-md flex items-center justify-center text-sm font-bold">2</span>
                   YAML Entity Format
                 </h3>
                 <p class="text-secondary-700 mb-3 ml-10">
@@ -222,7 +222,7 @@ tags:
 
               <div>
                 <h3 class="text-lg font-semibold text-primary-700 mb-3 flex items-center gap-2">
-                  <span class="w-8 h-8 bg-primary-500 text-white rounded-m3-full flex items-center justify-center text-sm font-bold">3</span>
+                  <span class="w-8 h-8 bg-primary-500 text-white rounded-m3-md flex items-center justify-center text-sm font-bold">3</span>
                   Initialize Git Repository
                 </h3>
                 <p class="text-secondary-700 mb-3 ml-10">
@@ -239,7 +239,7 @@ git commit -m "Initial context repository"</pre>
 
               <div>
                 <h3 class="text-lg font-semibold text-primary-700 mb-3 flex items-center gap-2">
-                  <span class="w-8 h-8 bg-primary-500 text-white rounded-m3-full flex items-center justify-center text-sm font-bold">4</span>
+                  <span class="w-8 h-8 bg-primary-500 text-white rounded-m3-md flex items-center justify-center text-sm font-bold">4</span>
                   Connect to Context-Sync
                 </h3>
                 <p class="text-secondary-700 ml-10">
@@ -252,7 +252,7 @@ git commit -m "Initial context repository"</pre>
 
         <!-- Features Section -->
         <div v-if="activeSection === 'features'" class="space-y-6">
-          <div class="bg-white rounded-m3-lg shadow-elevation-1 p-6">
+          <div class="bg-white rounded-m3-md shadow-elevation-1 p-6">
             <h2 class="text-2xl font-bold text-primary-700 mb-6">Features</h2>
 
             <div class="space-y-8">
@@ -348,7 +348,7 @@ git commit -m "Initial context repository"</pre>
 
         <!-- Workflow Section -->
         <div v-if="activeSection === 'workflow'" class="space-y-6">
-          <div class="bg-white rounded-m3-lg shadow-elevation-1 p-6">
+          <div class="bg-white rounded-m3-md shadow-elevation-1 p-6">
             <h2 class="text-2xl font-bold text-primary-700 mb-4">Typical Workflow</h2>
             <p class="text-secondary-700 mb-6">
               Here's how you might use Context-Sync in your day-to-day development workflow:
@@ -357,7 +357,7 @@ git commit -m "Initial context repository"</pre>
             <div class="space-y-6">
               <div class="flex gap-4">
                 <div class="flex-shrink-0">
-                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-full flex items-center justify-center text-xl font-bold">
+                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-md flex items-center justify-center text-xl font-bold">
                     1
                   </div>
                 </div>
@@ -371,7 +371,7 @@ git commit -m "Initial context repository"</pre>
 
               <div class="flex gap-4">
                 <div class="flex-shrink-0">
-                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-full flex items-center justify-center text-xl font-bold">
+                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-md flex items-center justify-center text-xl font-bold">
                     2
                   </div>
                 </div>
@@ -385,7 +385,7 @@ git commit -m "Initial context repository"</pre>
 
               <div class="flex gap-4">
                 <div class="flex-shrink-0">
-                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-full flex items-center justify-center text-xl font-bold">
+                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-md flex items-center justify-center text-xl font-bold">
                     3
                   </div>
                 </div>
@@ -399,7 +399,7 @@ git commit -m "Initial context repository"</pre>
 
               <div class="flex gap-4">
                 <div class="flex-shrink-0">
-                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-full flex items-center justify-center text-xl font-bold">
+                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-md flex items-center justify-center text-xl font-bold">
                     4
                   </div>
                 </div>
@@ -413,7 +413,7 @@ git commit -m "Initial context repository"</pre>
 
               <div class="flex gap-4">
                 <div class="flex-shrink-0">
-                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-full flex items-center justify-center text-xl font-bold">
+                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-md flex items-center justify-center text-xl font-bold">
                     5
                   </div>
                 </div>
@@ -427,7 +427,7 @@ git commit -m "Initial context repository"</pre>
 
               <div class="flex gap-4">
                 <div class="flex-shrink-0">
-                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-full flex items-center justify-center text-xl font-bold">
+                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-md flex items-center justify-center text-xl font-bold">
                     6
                   </div>
                 </div>
@@ -441,7 +441,7 @@ git commit -m "Initial context repository"</pre>
 
               <div class="flex gap-4">
                 <div class="flex-shrink-0">
-                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-full flex items-center justify-center text-xl font-bold">
+                  <div class="w-12 h-12 bg-primary-500 text-white rounded-m3-md flex items-center justify-center text-xl font-bold">
                     7
                   </div>
                 </div>

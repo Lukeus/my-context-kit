@@ -263,7 +263,7 @@ onBeforeUnmount(() => {
       
       <div class="flex items-center gap-3">
         <span v-if="isDirty" class="text-xs text-tertiary-700 font-medium flex items-center gap-1">
-          <span class="w-2 h-2 bg-tertiary-500 rounded-full"></span>
+          <span class="w-2 h-2 bg-tertiary-500 rounded-m3-md-full"></span>
           Unsaved
         </span>
         <span v-if="saveMessage" class="text-xs text-secondary-700">{{ saveMessage }}</span>
@@ -271,7 +271,7 @@ onBeforeUnmount(() => {
         <button
           @click="saveFile"
           :disabled="!isDirty || isSaving || !filePath"
-          class="px-4 py-2 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium"
+          class="px-4 py-2 text-sm bg-primary text-white rounded-m3-md hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium"
         >
           {{ isSaving ? 'Saving...' : 'Save (Ctrl+S)' }}
         </button>

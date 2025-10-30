@@ -393,7 +393,7 @@ onBeforeUnmount(() => {
     <!-- Header -->
     <div class="px-6 py-4 border-b border-surface-variant bg-surface-2 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3">
-        <div class="p-2.5 bg-primary-600 text-white rounded-m3-lg shadow-elevation-1">
+        <div class="p-2.5 bg-primary-600 text-white rounded-m3-md shadow-elevation-1">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
           </svg>
@@ -405,7 +405,7 @@ onBeforeUnmount(() => {
       </div>
       <button
         @click="fitToScreen"
-        class="inline-flex items-center gap-2 text-sm font-medium px-3 py-2 bg-surface-3 hover:bg-surface-4 rounded-m3-lg transition-colors border border-surface-variant text-secondary-800"
+        class="inline-flex items-center gap-2 text-sm font-medium px-3 py-2 bg-surface-3 hover:bg-surface-4 rounded-m3-md transition-colors border border-surface-variant text-secondary-800"
         title="Fit graph to screen"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -438,7 +438,7 @@ onBeforeUnmount(() => {
         <span
           v-for="(nodeId, index) in selectedNodes"
           :key="nodeId"
-          class="px-3 py-1 text-xs font-medium bg-primary-50 text-primary-700 rounded-m3-full border border-primary-100 shadow-elevation-1"
+          class="px-3 py-1 text-xs font-medium bg-primary-50 text-primary-700 rounded-m3-md border border-primary-100 shadow-elevation-1"
         >
           {{ index === 0 ? 'Start:' : 'End:' }} {{ nodeId }}
         </span>
@@ -451,14 +451,14 @@ onBeforeUnmount(() => {
           @input="searchNodes"
           type="text"
           placeholder="Search nodes..."
-          class="w-full px-3 py-2 text-sm border border-surface-variant rounded-m3-lg bg-surface-1 focus:outline-none focus:ring-2 focus:ring-primary-400 text-secondary-900 placeholder:text-secondary-500"
+          class="w-full px-3 py-2 text-sm border border-surface-variant rounded-m3-md bg-surface-1 focus:outline-none focus:ring-2 focus:ring-primary-400 text-secondary-900 placeholder:text-secondary-500"
         />
       </div>
 
       <!-- Layout selector -->
       <select
         v-model="layoutType"
-        class="px-3 py-2 text-sm border border-surface-variant rounded-m3-lg bg-surface-1 focus:outline-none focus:ring-2 focus:ring-primary-400 text-secondary-900"
+        class="px-3 py-2 text-sm border border-surface-variant rounded-m3-md bg-surface-1 focus:outline-none focus:ring-2 focus:ring-primary-400 text-secondary-900"
         title="Change graph layout"
       >
         <option value="cose">Force-Directed</option>
@@ -471,7 +471,7 @@ onBeforeUnmount(() => {
       <div class="flex gap-1">
         <button
           @click="zoomIn"
-          class="p-2 hover:bg-surface-3 rounded-m3-lg transition-colors text-secondary-700 border border-transparent hover:border-surface-variant"
+          class="p-2 hover:bg-surface-3 rounded-m3-md transition-colors text-secondary-700 border border-transparent hover:border-surface-variant"
           title="Zoom In"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -480,7 +480,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           @click="zoomOut"
-          class="p-2 hover:bg-surface-3 rounded-m3-lg transition-colors text-secondary-700 border border-transparent hover:border-surface-variant"
+          class="p-2 hover:bg-surface-3 rounded-m3-md transition-colors text-secondary-700 border border-transparent hover:border-surface-variant"
           title="Zoom Out"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -489,7 +489,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           @click="resetZoom"
-          class="p-2 hover:bg-surface-3 rounded-m3-lg transition-colors text-secondary-700 border border-transparent hover:border-surface-variant"
+          class="p-2 hover:bg-surface-3 rounded-m3-md transition-colors text-secondary-700 border border-transparent hover:border-surface-variant"
           title="Reset Zoom"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -498,7 +498,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           @click="toggleLabels"
-          class="p-2 rounded-m3-lg transition-colors border"
+          class="p-2 rounded-m3-md transition-colors border"
           :class="showLabels ? 'bg-primary-100 text-primary-700 border-primary-200' : 'text-secondary-700 border-transparent hover:border-surface-variant hover:bg-surface-3'"
           title="Toggle Labels"
         >
@@ -509,7 +509,7 @@ onBeforeUnmount(() => {
         <button
           v-if="selectedNodes.length > 0 || highlightedPath.length > 0"
           @click="clearSelection"
-          class="px-3 py-1.5 text-xs bg-tertiary-100 text-tertiary-700 hover:bg-tertiary-200 rounded-m3-lg transition-colors border border-tertiary-200"
+          class="px-3 py-1.5 text-xs bg-tertiary-100 text-tertiary-700 hover:bg-tertiary-200 rounded-m3-md transition-colors border border-tertiary-200"
         >
           Clear ({{ selectedNodes.length }})
         </button>
@@ -519,27 +519,27 @@ onBeforeUnmount(() => {
     <!-- Legend -->
     <div class="px-6 py-3 border-b border-surface-variant bg-surface-2 flex items-center gap-4 text-xs flex-wrap text-secondary-700">
       <div class="flex items-center gap-1">
-        <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: nodeColors.feature }"></span>
+        <span class="w-3 h-3 rounded-m3-md-full" :style="{ backgroundColor: nodeColors.feature }"></span>
         <span>Feature</span>
       </div>
       <div class="flex items-center gap-1">
-        <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: nodeColors.userstory }"></span>
+        <span class="w-3 h-3 rounded-m3-md-full" :style="{ backgroundColor: nodeColors.userstory }"></span>
         <span>Story</span>
       </div>
       <div class="flex items-center gap-1">
-        <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: nodeColors.spec }"></span>
+        <span class="w-3 h-3 rounded-m3-md-full" :style="{ backgroundColor: nodeColors.spec }"></span>
         <span>Spec</span>
       </div>
       <div class="flex items-center gap-1">
-        <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: nodeColors.task }"></span>
+        <span class="w-3 h-3 rounded-m3-md-full" :style="{ backgroundColor: nodeColors.task }"></span>
         <span>Task</span>
       </div>
       <div class="flex items-center gap-1">
-        <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: nodeColors.service }"></span>
+        <span class="w-3 h-3 rounded-m3-md-full" :style="{ backgroundColor: nodeColors.service }"></span>
         <span>Service</span>
       </div>
       <div class="flex items-center gap-1">
-        <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: nodeColors.package }"></span>
+        <span class="w-3 h-3 rounded-m3-md-full" :style="{ backgroundColor: nodeColors.package }"></span>
         <span>Package</span>
       </div>
       <div class="ml-4 text-secondary-600">
@@ -558,7 +558,7 @@ onBeforeUnmount(() => {
             <h3 class="text-sm font-semibold text-secondary-900">Entity Details</h3>
             <button
               @click="closeDetailPanel"
-              class="text-secondary-500 hover:text-secondary-800 transition-colors rounded-m3-full p-1 hover:bg-surface-3"
+              class="text-secondary-500 hover:text-secondary-800 transition-colors rounded-m3-md p-1 hover:bg-surface-3"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -570,7 +570,7 @@ onBeforeUnmount(() => {
             <!-- Entity Header -->
             <div class="flex items-start gap-3">
               <div
-                class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                class="w-12 h-12 rounded-m3-md-full flex items-center justify-center flex-shrink-0"
                 :style="{ backgroundColor: nodeColors[selectedEntity._type as keyof typeof nodeColors] || '#6B7280' }"
               >
                 <span class="text-white font-semibold text-base">{{ selectedEntity.id.substring(0, 2) }}</span>
@@ -580,7 +580,7 @@ onBeforeUnmount(() => {
                 <p class="text-sm text-secondary-600 mt-1">{{ selectedEntity.title || selectedEntity.name || 'Untitled' }}</p>
                 <div class="flex items-center gap-2 mt-2">
                   <span
-                    class="px-2 py-1 text-xs font-medium rounded capitalize"
+                    class="px-2 py-1 text-xs font-medium rounded-m3-md capitalize"
                     :style="{
                       backgroundColor: nodeColors[selectedEntity._type as keyof typeof nodeColors] + '20',
                       color: nodeColors[selectedEntity._type as keyof typeof nodeColors]
@@ -590,7 +590,7 @@ onBeforeUnmount(() => {
                   </span>
                   <span
                     v-if="selectedEntity.status"
-                    class="px-2 py-1 text-xs font-medium rounded"
+                    class="px-2 py-1 text-xs font-medium rounded-m3-md"
                     :class="{
                       'bg-green-100 text-green-800': selectedEntity.status === 'done',
                       'bg-yellow-100 text-yellow-800': selectedEntity.status === 'in-progress' || selectedEntity.status === 'doing',
@@ -606,7 +606,7 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Connections -->
-            <div class="bg-surface-2 border border-surface-variant rounded-m3-lg p-3">
+            <div class="bg-surface-2 border border-surface-variant rounded-m3-md p-3">
               <h5 class="text-xs font-semibold text-secondary-700 mb-2 uppercase tracking-wide">Connections</h5>
               <div class="flex gap-4">
                 <div class="text-center">
@@ -718,7 +718,7 @@ onBeforeUnmount(() => {
             <div class="pt-4 border-t border-surface-variant space-y-2">
               <button
                 @click="openInEditor"
-                class="w-full px-4 py-2 bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 transition-colors flex items-center justify-center gap-2 shadow-elevation-1"
+                class="w-full px-4 py-2 bg-primary-600 text-white rounded-m3-md hover:bg-primary-700 transition-colors flex items-center justify-center gap-2 shadow-elevation-1"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

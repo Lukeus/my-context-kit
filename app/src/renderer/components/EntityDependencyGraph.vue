@@ -343,7 +343,7 @@ onBeforeUnmount(() => {
           </p>
         </div>
         <div class="flex items-center gap-2">
-          <div class="flex items-center gap-1 bg-surface-2 border border-surface-variant rounded-m3-lg p-1">
+          <div class="flex items-center gap-1 bg-surface-2 border border-surface-variant rounded-m3-md p-1">
             <button
               @click="changeLayout('breadthfirst')"
               :class="layoutType === 'breadthfirst' ? 'bg-primary-600 text-white' : 'text-secondary-700 hover:bg-surface-3'"
@@ -424,11 +424,11 @@ onBeforeUnmount(() => {
       <div class="flex items-center justify-between text-xs">
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-1.5">
-            <div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+            <div class="w-2.5 h-2.5 rounded-m3-md-full bg-green-500"></div>
             <span class="text-secondary-700">{{ relatedEntities.incoming }} incoming</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <div class="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+            <div class="w-2.5 h-2.5 rounded-m3-md-full bg-blue-500"></div>
             <span class="text-secondary-700">{{ relatedEntities.outgoing }} outgoing</span>
           </div>
         </div>

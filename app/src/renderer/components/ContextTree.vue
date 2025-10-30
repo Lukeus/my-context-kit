@@ -193,7 +193,7 @@ watch(() => searchQuery.value, (newQuery) => {
         <button
           v-if="searchQuery"
           @click="searchQuery = ''"
-          class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-secondary-500 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-full transition-colors"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-secondary-500 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-md transition-colors"
           title="Clear search"
         >
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,7 +215,7 @@ watch(() => searchQuery.value, (newQuery) => {
         <button
           @click="createNewEntity('feature')"
           :disabled="!hasRepoConfigured"
-          class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-m3-full bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white transition-all shadow-elevation-1 hover:shadow-elevation-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-m3-md bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white transition-all shadow-elevation-1 hover:shadow-elevation-2 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Create new entity (Ctrl+N)"
         >
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -280,7 +280,7 @@ watch(() => searchQuery.value, (newQuery) => {
           <button
             v-if="typesWithCreation.has(type)"
             @click.stop="createNewEntity(type)"
-            class="ml-2 p-1 text-primary-600 hover:bg-primary-100 rounded transition-colors"
+            class="ml-2 p-1 text-primary-600 hover:bg-primary-100 rounded-m3-md transition-colors"
             :title="'Create new ' + entityTypeLabels[type].toLowerCase()"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -312,7 +312,7 @@ watch(() => searchQuery.value, (newQuery) => {
             >
               <!-- Status indicator -->
               <span
-                class="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-elevation-1"
+                class="w-2.5 h-2.5 rounded-m3-md-full flex-shrink-0 shadow-elevation-1"
                 :class="getStatusColor(entity.status, entity._type)"
               ></span>
 
@@ -322,7 +322,7 @@ watch(() => searchQuery.value, (newQuery) => {
                   <div class="text-sm font-medium truncate text-secondary-900">
                     {{ entity._type === 'c4diagram' ? entity.title : entity.id }}
                   </div>
-                  <span v-if="entity._type === 'c4diagram' && entity.level" class="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-m3-full flex-shrink-0">
+                  <span v-if="entity._type === 'c4diagram' && entity.level" class="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-m3-md flex-shrink-0">
                     {{ entity.level }}
                   </span>
                 </div>
@@ -335,7 +335,7 @@ watch(() => searchQuery.value, (newQuery) => {
 
             <!-- Quick Ask AI action -->
             <button
-              class="flex-shrink-0 p-1.5 mr-2 rounded-m3-full text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors"
+              class="flex-shrink-0 p-1.5 mr-2 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors"
               title="Ask AI about this entity"
               @click="askAI(entity.id)"
             >
@@ -346,7 +346,7 @@ watch(() => searchQuery.value, (newQuery) => {
 
             <!-- Stale/Issue indicator -->
             <div v-if="isEntityStale(entity.id)" class="flex-shrink-0 mr-2" title="Needs review">
-              <span class="inline-block w-2.5 h-2.5 rounded-full bg-tertiary-500"></span>
+              <span class="inline-block w-2.5 h-2.5 rounded-m3-md-full bg-tertiary-500"></span>
             </div>
           </div>
         </div>
@@ -358,7 +358,7 @@ watch(() => searchQuery.value, (newQuery) => {
       <button
         @click="loadEntities"
         :disabled="contextStore.isLoading"
-        class="w-full px-4 py-2.5 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium"
+        class="w-full px-4 py-2.5 text-sm bg-primary text-white rounded-m3-md hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium"
       >
         {{ contextStore.isLoading ? 'Loading...' : 'Refresh' }}
       </button>

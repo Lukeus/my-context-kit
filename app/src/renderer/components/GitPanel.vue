@@ -225,7 +225,7 @@ onMounted(async () => {
           <h2 class="text-lg font-semibold text-primary-700">Git Integration</h2>
           <div class="flex items-center gap-2 mt-1">
             <span class="text-xs text-secondary-600">Branch:</span>
-            <span class="text-xs font-mono bg-primary-100 text-primary-800 px-2 py-1 rounded-m3-sm">
+            <span class="text-xs font-mono bg-primary-100 text-primary-800 px-2 py-1 rounded-m3-md">
               {{ gitStore.currentBranch || 'unknown' }}
             </span>
             <span v-if="gitStore.hasUncommittedChanges" class="text-xs text-tertiary-700">
@@ -307,10 +307,10 @@ onMounted(async () => {
             <div
               v-for="file in gitStore.changedFiles"
               :key="file"
-              class="flex items-center gap-3 p-3 hover:bg-surface-2 rounded-m3-lg border border-surface-variant transition-all group hover:shadow-elevation-1"
+              class="flex items-center gap-3 p-3 hover:bg-surface-2 rounded-m3-md border border-surface-variant transition-all group hover:shadow-elevation-1"
             >
               <span
-                class="px-2 py-1 text-xs font-bold font-mono rounded-m3-sm shadow-sm"
+                class="px-2 py-1 text-xs font-bold font-mono rounded-m3-md shadow-elevation-1"
                 :class="getFileStatusColor(file)"
               >
                 {{ getFileStatus(file) }}
@@ -319,7 +319,7 @@ onMounted(async () => {
               <div class="flex items-center gap-1">
                 <button
                   @click.stop="handleViewDiff(file)"
-                  class="p-2 rounded-m3-full hover:bg-primary-100 text-secondary-600 hover:text-primary-700 transition-colors"
+                  class="p-2 rounded-m3-md hover:bg-primary-100 text-secondary-600 hover:text-primary-700 transition-colors"
                   title="View diff"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -329,7 +329,7 @@ onMounted(async () => {
                 </button>
                 <button
                   @click.stop="handleRevertFile(file)"
-                  class="p-2 rounded-m3-full hover:bg-error-100 text-secondary-600 hover:text-error-700 transition-colors"
+                  class="p-2 rounded-m3-md hover:bg-error-100 text-secondary-600 hover:text-error-700 transition-colors"
                   title="Revert changes to this file"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -373,13 +373,13 @@ onMounted(async () => {
               <label
                 v-for="file in gitStore.changedFiles"
                 :key="file"
-                class="flex items-center gap-2 p-1 hover:bg-surface-2 rounded-m3-sm text-sm cursor-pointer"
+                class="flex items-center gap-2 p-1 hover:bg-surface-2 rounded-m3-md text-sm cursor-pointer"
               >
                 <input
                   type="checkbox"
                   :checked="selectedFiles.includes(file)"
                   @change="toggleFileSelection(file)"
-                  class="rounded"
+                  class="rounded-m3-md"
                 />
                 <span class="text-xs font-mono text-secondary-700">{{ file }}</span>
               </label>
@@ -413,7 +413,7 @@ onMounted(async () => {
           <button
             @click="handleCommit"
             :disabled="!commitMessage.trim() || gitStore.isLoading"
-            class="w-full px-4 py-2.5 bg-primary text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2 font-medium"
+            class="w-full px-4 py-2.5 bg-primary text-white rounded-m3-md hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2 font-medium"
           >
             {{ gitStore.isLoading ? 'Committing...' : 'Commit Changes' }}
           </button>
@@ -424,7 +424,7 @@ onMounted(async () => {
       <div v-if="activeTab === 'branches'" class="space-y-4">
         <button
           @click="showBranchModal = true"
-          class="w-full px-4 py-2.5 bg-primary text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 transition-all shadow-elevation-1 hover:shadow-elevation-2 font-medium"
+          class="w-full px-4 py-2.5 bg-primary text-white rounded-m3-md hover:bg-primary-700 active:bg-primary-800 transition-all shadow-elevation-1 hover:shadow-elevation-2 font-medium"
         >
           Create New Branch
         </button>
@@ -436,7 +436,7 @@ onMounted(async () => {
               v-for="branch in gitStore.allBranches"
               :key="branch"
               @click="handleCheckout(branch)"
-              class="w-full flex items-center gap-2 p-2 hover:bg-gray-50 rounded text-sm text-left"
+              class="w-full flex items-center gap-2 p-2 hover:bg-gray-50 rounded-m3-md text-sm text-left"
               :class="{ 'bg-blue-50 border border-blue-200': branch === gitStore.currentBranch }"
             >
               <svg v-if="branch === gitStore.currentBranch" class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
@@ -458,7 +458,7 @@ onMounted(async () => {
         </div>
 
         <div v-else>
-          <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+          <div class="bg-yellow-50 border border-yellow-200 rounded-m3-md p-3 mb-4">
             <p class="text-sm text-yellow-800">
               <strong>Note:</strong> Make sure to commit and push your changes before creating a PR.
             </p>
@@ -471,7 +471,7 @@ onMounted(async () => {
               v-model="prTitle"
               type="text"
               placeholder="feat: Add new feature..."
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-m3-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -490,7 +490,7 @@ onMounted(async () => {
               v-model="prBody"
               rows="10"
               placeholder="Describe the changes..."
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-m3-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
             ></textarea>
           </div>
 
@@ -501,7 +501,7 @@ onMounted(async () => {
               v-model="prBase"
               type="text"
               placeholder="main"
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-m3-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -509,7 +509,7 @@ onMounted(async () => {
           <button
             @click="handleCreatePR"
             :disabled="!prTitle.trim() || gitStore.isLoading"
-            class="w-full px-4 py-2.5 bg-green-600 text-white rounded-m3-lg hover:bg-green-700 active:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2 font-medium"
+            class="w-full px-4 py-2.5 bg-green-600 text-white rounded-m3-md hover:bg-green-700 active:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2 font-medium"
           >
             {{ gitStore.isLoading ? 'Creating PR...' : 'Create Pull Request' }}
           </button>
@@ -528,7 +528,7 @@ onMounted(async () => {
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
         @click.self="showBranchModal = false"
       >
-        <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-96 max-w-[90vw] border border-surface-variant overflow-hidden">
+        <div class="bg-surface rounded-m3-md shadow-elevation-5 w-96 max-w-[90vw] border border-surface-variant overflow-hidden">
           <div class="px-6 py-5 border-b border-surface-variant bg-surface-2">
             <h3 class="text-xl font-semibold text-secondary-900">Create New Branch</h3>
           </div>
@@ -537,21 +537,21 @@ onMounted(async () => {
               v-model="newBranchName"
               type="text"
               placeholder="feature/my-new-feature"
-              class="w-full px-4 py-2.5 bg-surface-1 border border-surface-variant rounded-m3-lg text-sm text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              class="w-full px-4 py-2.5 bg-surface-1 border border-surface-variant rounded-m3-md text-sm text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               @keyup.enter="handleCreateBranch"
             />
           </div>
           <div class="px-6 py-5 border-t border-surface-variant bg-surface-2 flex gap-3 justify-end">
             <button
               @click="showBranchModal = false"
-              class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 rounded-m3-lg transition-colors"
+              class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 rounded-m3-md transition-colors"
             >
               Cancel
             </button>
             <button
               @click="handleCreateBranch"
               :disabled="!newBranchName.trim() || gitStore.isLoading"
-              class="px-5 py-2.5 text-sm font-medium bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-2 hover:shadow-elevation-3"
+              class="px-5 py-2.5 text-sm font-medium bg-primary-600 text-white rounded-m3-md hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-2 hover:shadow-elevation-3"
             >
               Create & Checkout
             </button>
@@ -567,7 +567,7 @@ onMounted(async () => {
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
         @click.self="showDiffModal = false"
       >
-        <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-3/4 max-w-[95vw] h-3/4 max-h-[90vh] flex flex-col overflow-hidden border border-surface-variant">
+        <div class="bg-surface rounded-m3-md shadow-elevation-5 w-3/4 max-w-[95vw] h-3/4 max-h-[90vh] flex flex-col overflow-hidden border border-surface-variant">
           <div class="px-6 py-5 border-b border-surface-variant bg-surface-2 flex items-center justify-between">
             <div>
               <h3 class="text-xl font-semibold text-secondary-900">File Changes</h3>
@@ -575,7 +575,7 @@ onMounted(async () => {
             </div>
             <button
               @click="showDiffModal = false"
-              class="p-2 hover:bg-surface-3 rounded-m3-full transition-colors text-secondary-600 hover:text-secondary-900"
+              class="p-2 hover:bg-surface-3 rounded-m3-md transition-colors text-secondary-600 hover:text-secondary-900"
               title="Close"
             >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -613,7 +613,7 @@ onMounted(async () => {
           <div class="px-6 py-5 border-t border-surface-variant bg-surface-2 flex justify-end">
             <button
               @click="showDiffModal = false"
-              class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 rounded-m3-lg transition-colors"
+              class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 rounded-m3-md transition-colors"
             >
               Close
             </button>

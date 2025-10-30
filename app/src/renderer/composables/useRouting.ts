@@ -87,7 +87,7 @@ export function useRouting() {
 
   function copyDeepLinkToClipboard(name: RouteId, params?: RouteParams): void {
     const link = getDeepLink(name, params);
-    navigator.clipboard.writeText(link).catch(() => {
+    void navigator.clipboard.writeText(link).catch(() => {
       // Silently ignore clipboard errors
     });
   }
@@ -176,7 +176,7 @@ export async function initializeRouter() {
   router.registerAll(routes);
   
   // Set initial route to hub
-  router.navigate('hub');
+  void router.navigate('hub');
 }
 
 /**

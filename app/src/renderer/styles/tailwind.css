@@ -1,7 +1,14 @@
 @import "tailwindcss";
 
+/**
+ * Tailwind CSS v4 Theme Configuration
+ * 
+ * Single source of truth for design tokens per constitutional requirement II.
+ * Intel-inspired Material 3 color palette (approved constitutional deviation).
+ */
+
 @theme {
-  /* Intel Brand Colors */
+  /* Intel Brand Colors - Primary */
   --color-primary-50: #E6F4FF;
   --color-primary-100: #B3E0FF;
   --color-primary-200: #80CBFF;
@@ -14,6 +21,7 @@
   --color-primary-900: #002440;
   --color-primary: #0071C5;
   
+  /* Secondary Colors */
   --color-secondary-50: #F5F5F5;
   --color-secondary-100: #E8E8E8;
   --color-secondary-200: #D1D1D1;
@@ -26,6 +34,7 @@
   --color-secondary-900: #1A1A1A;
   --color-secondary: #5E5E5E;
   
+  /* Tertiary Colors */
   --color-tertiary-50: #FFF9E6;
   --color-tertiary-100: #FFECB3;
   --color-tertiary-200: #FFE082;
@@ -38,6 +47,7 @@
   --color-tertiary-900: #FF6F00;
   --color-tertiary: #FFC107;
   
+  /* Surface Colors */
   --color-surface: #FEF7FF;
   --color-surface-variant: #E7E0EC;
   --color-surface-dim: #DED8E1;
@@ -48,6 +58,7 @@
   --color-surface-4: #E9E2ED;
   --color-surface-5: #E6DEE9;
   
+  /* Error Colors */
   --color-error-50: #FCEEEE;
   --color-error-100: #F9DEDC;
   --color-error-200: #F2B8B5;

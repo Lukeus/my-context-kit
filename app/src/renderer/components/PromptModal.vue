@@ -63,7 +63,7 @@ function handleBackdropClick(event: MouseEvent) {
             </div>
             <button
               @click="emit('close')"
-              class="p-2 hover:bg-surface-3 rounded-m3-full transition-colors text-secondary-600 hover:text-secondary-900"
+              class="p-2 hover:bg-surface-3 rounded-m3-md transition-colors text-secondary-600 hover:text-secondary-900"
             >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -76,7 +76,7 @@ function handleBackdropClick(event: MouseEvent) {
             <div v-if="!prompt" class="text-center text-secondary-500 py-8">
               No prompt content available
             </div>
-            <div v-else class="bg-surface-2 rounded-m3-lg border border-surface-variant p-4">
+            <div v-else class="bg-surface-2 rounded-m3-md border border-surface-variant p-4">
               <pre class="text-sm font-mono text-secondary-900 whitespace-pre-wrap break-words">{{ prompt }}</pre>
             </div>
           </div>
@@ -91,7 +91,7 @@ function handleBackdropClick(event: MouseEvent) {
               <button
                 @click="copyToClipboard"
                 :disabled="!prompt"
-                class="px-5 py-2.5 text-sm font-medium bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-2 hover:shadow-elevation-3 flex items-center gap-2"
+                class="px-5 py-2.5 text-sm font-medium bg-primary-600 text-white rounded-m3-md hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-2 hover:shadow-elevation-3 flex items-center gap-2"
               >
                 <svg v-if="!isCopied" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -103,7 +103,7 @@ function handleBackdropClick(event: MouseEvent) {
               </button>
               <button
                 @click="emit('close')"
-                class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 rounded-m3-lg transition-colors"
+                class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 rounded-m3-md transition-colors"
               >
                 Close
               </button>

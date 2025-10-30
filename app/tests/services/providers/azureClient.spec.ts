@@ -7,13 +7,11 @@ const { createMock, openAiCtor, getCapturedOptions, resetCapturedOptions } = vi.
   const createMock = vi.fn();
   let capturedOptions: Record<string, unknown> | undefined;
 
-  const openAiCtor = vi.fn((options: Record<string, unknown>) => {
+  const openAiCtor = vi.fn(function(this: any, options: Record<string, unknown>) {
     capturedOptions = options;
-    return {
-      chat: {
-        completions: {
-          create: createMock,
-        },
+    this.chat = {
+      completions: {
+        create: createMock,
       },
     };
   });

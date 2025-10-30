@@ -1,20 +1,14 @@
 <!--
 Sync Impact Report
-Version change: N/A → 1.0.0
-Modified principles:
-- I. Git-Versioned Source of Truth
-- II. Deterministic Pipelines Before AI
-- III. Unified TypeScript & Build Discipline
-- IV. Validation & Impact Gatekeeping
-- V. Secure Desktop Boundary & Observability
+Version change: 1.0.0 → 1.0.1
+Modified principles: none
 Added sections:
-- Operational Stack Constraints
-- Workflow & Quality Gates
+- UI Design System (PATCH: clarification of Material 3 implementation)
 Removed sections: none
-Templates:
-- ✅ .specify/templates/plan-template.md (constitutional gates enumerated)
-- ✅ .specify/templates/spec-template.md (C4 impact guidance)
-- ✅ .specify/templates/tasks-template.md (pipeline tasks requirement)
+Rationale: Clarifies that Intel-inspired color palette is an approved deviation from
+standard Material 3 color system while maintaining M3 elevation, typography, and
+component patterns. Closes constitutional compliance gap identified in code review.
+Templates: no changes required
 Follow-up TODOs: none
 -->
 
@@ -52,8 +46,23 @@ releases remain auditable, and security reviews MUST cover any new integrations 
 - Node.js 20 LTS and pnpm (via Corepack) are the only approved runtime and package tools; lockfiles MUST stay committed.
 - Electron Forge with Vite bundles all processes; preload scripts MUST remain Node-disabled except for explicit bridges.
 - Pipelines execute with `node <repo>/.context/pipelines/*.mjs`; use deterministic configuration and document required env vars.
-- Tailwind CSS, Material 3 design, Vue 3 Composition API, and Pinia are mandatory in the renderer; deviations require constitutional amendments.
+- Tailwind CSS, Material 3 design patterns, Vue 3 Composition API, and Pinia are mandatory in the renderer; deviations require constitutional amendments.
 - C4 diagrams under `context-repo/c4/` MUST be updated in lock-step with architecture-affecting changes and reviewed in PRs.
+
+## UI Design System
+
+### Material 3 Implementation
+The UI follows Material 3 design patterns with an **Intel-inspired color palette** as an approved deviation from the standard M3 color system:
+
+- **Color Tokens**: Custom Intel brand colors (primary: #0068B5, secondary: #39424E, tertiary: #00A6D6) replace standard M3 dynamic color schemes
+- **Elevation System**: Standard M3 elevation shadows (elevation-1 through elevation-5) MUST be preserved
+- **Border Radius**: M3 shape system (m3-xs through m3-full) MUST be used consistently
+- **Typography**: Material Design type scale SHOULD be followed where applicable
+- **Component Patterns**: M3 interaction patterns (state layers, ripples, transitions) SHOULD be implemented
+
+**Rationale**: Intel brand identity requirements necessitate custom color palette while maintaining M3's spatial, elevation, and interaction paradigms for consistency and accessibility.
+
+**Configuration**: All design tokens MUST be defined in `app/tailwind.config.ts` as the single source of truth per Principle II (Deterministic Pipelines).
 
 ## Workflow & Quality Gates
 
@@ -72,4 +81,4 @@ releases remain auditable, and security reviews MUST cover any new integrations 
 - Ratification and amendment dates MUST stay in ISO format; every change includes a Sync Impact Report comment.
 - Compliance checks belong in PR templates and planning artifacts; reviewers MUST verify gates before approving.
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-28 | **Last Amended**: 2025-10-28
+**Version**: 1.0.1 | **Ratified**: 2025-10-28 | **Last Amended**: 2025-10-29

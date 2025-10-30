@@ -392,9 +392,9 @@ function handleComplete() {
               <div class="flex items-center gap-2">
                 <div 
                   :class="[
-                    'w-8 h-8 rounded-m3-full flex items-center justify-center text-sm font-semibold',
+                    'w-8 h-8 rounded-m3-full flex items-center justify-center text-sm font-semibold transition-all',
                     currentStep === 'specify' || currentStep === 'plan' || currentStep === 'tasks' || currentStep === 'complete'
-                      ? 'bg-primary text-white'
+                      ? 'bg-primary text-white shadow-elevation-1'
                       : 'bg-surface-3 text-secondary-600'
                   ]"
                 >
@@ -407,18 +407,18 @@ function handleComplete() {
                 <textarea
                   v-model="description"
                   placeholder="Describe your feature (e.g., 'Real-time chat system with message history')"
-                  class="w-full px-4 py-3 text-sm border border-surface-variant rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary bg-surface-1"
+                  class="w-full px-4 py-3 text-sm border-2 border-surface-variant rounded-m3-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-1 transition-colors"
                   rows="3"
                   :disabled="speckitStore.isCreatingSpec || isGeneratingAISpec"
                 />
 
                 <!-- AI Assistance Toggle -->
-                <div class="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-m3-md">
+                <div class="flex items-center gap-3 p-4 bg-tertiary-50 border-2 border-tertiary-200 rounded-m3-lg">
                   <input
                     id="useAI"
                     v-model="useAI"
                     type="checkbox"
-                    class="w-4 h-4 text-primary border-surface-variant rounded focus:ring-2 focus:ring-primary"
+                    class="w-4 h-4 text-primary-600 border-2 border-outline rounded-m3-xs focus:ring-2 focus:ring-primary/20 cursor-pointer accent-primary-600"
                   />
                   <label for="useAI" class="text-sm text-secondary-900 cursor-pointer flex-1">
                     <span class="font-semibold">✨ AI-Assisted Spec Generation</span>
@@ -433,7 +433,7 @@ function handleComplete() {
                   <button
                     @click="handleGenerateAISpec"
                     :disabled="!description.trim() || isGeneratingAISpec"
-                    class="px-4 py-2 text-sm bg-purple-600 text-white rounded-m3-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    class="px-4 py-2 text-sm font-medium bg-tertiary-600 text-white rounded-m3-lg hover:bg-tertiary-700 active:bg-tertiary-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all shadow-elevation-1 hover:shadow-elevation-2"
                   >
                     <span v-if="isGeneratingAISpec">🤖 Generating...</span>
                     <span v-else>✨ Generate with AI</span>
@@ -443,7 +443,7 @@ function handleComplete() {
                     v-if="!isGeneratingAISpec"
                     @click="handleCreateSpec"
                     :disabled="!description.trim() || speckitStore.isCreatingSpec"
-                    class="px-4 py-2 text-sm bg-surface-3 text-secondary-900 border border-surface-variant rounded-m3-lg hover:bg-surface-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="px-4 py-2 text-sm font-medium bg-surface-3 text-secondary-900 border-2 border-surface-variant rounded-m3-lg hover:bg-surface-4 active:bg-surface-5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     {{ speckitStore.isCreatingSpec ? 'Creating...' : 'Create Manually' }}
                   </button>
@@ -454,7 +454,7 @@ function handleComplete() {
                   v-if="!useAI"
                   @click="handleCreateSpec"
                   :disabled="!description.trim() || speckitStore.isCreatingSpec"
-                  class="px-4 py-2 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-4 py-2 text-sm font-medium bg-primary text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2"
                 >
                   {{ speckitStore.isCreatingSpec ? 'Creating...' : 'Create Spec' }}
                 </button>
@@ -468,11 +468,11 @@ function handleComplete() {
                 </p>
               </div>
 
-              <div v-else class="ml-10 p-4 bg-green-50 border border-green-200 rounded-m3-md">
+              <div v-else class="ml-10 p-4 bg-primary-50 border-2 border-primary-200 rounded-m3-lg">
                 <div class="text-sm space-y-1">
                   <div><strong>Spec Number:</strong> {{ spec.specNumber }}</div>
                   <div><strong>Branch:</strong> {{ spec.branchName }}</div>
-                  <div><strong>Path:</strong> <code class="text-xs bg-green-100 px-2 py-0.5 rounded">{{ spec.specPath }}</code></div>
+                  <div><strong>Path:</strong> <code class="text-xs bg-primary-100 px-2 py-0.5 rounded-m3-sm">{{ spec.specPath }}</code></div>
                 </div>
               </div>
             </div>
@@ -482,9 +482,9 @@ function handleComplete() {
               <div class="flex items-center gap-2">
                 <div 
                   :class="[
-                    'w-8 h-8 rounded-m3-full flex items-center justify-center text-sm font-semibold',
+                    'w-8 h-8 rounded-m3-full flex items-center justify-center text-sm font-semibold transition-all',
                     currentStep === 'plan' || currentStep === 'tasks' || currentStep === 'complete'
-                      ? 'bg-primary text-white'
+                      ? 'bg-primary text-white shadow-elevation-1'
                       : 'bg-surface-3 text-secondary-600'
                   ]"
                 >
@@ -500,7 +500,7 @@ function handleComplete() {
                     v-model="techStack[0]"
                     type="text"
                     placeholder="TypeScript"
-                    class="w-full px-3 py-2 text-sm border border-surface-variant rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary bg-surface-1"
+                    class="w-full px-3 py-2 text-sm border-2 border-surface-variant rounded-m3-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-1 transition-colors"
                     :disabled="speckitStore.isGeneratingPlan"
                   />
                 </div>
@@ -508,7 +508,7 @@ function handleComplete() {
                 <button
                   @click="handleGeneratePlan"
                   :disabled="speckitStore.isGeneratingPlan"
-                  class="px-4 py-2 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-4 py-2 text-sm font-medium bg-primary text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2"
                 >
                   {{ speckitStore.isGeneratingPlan ? 'Generating...' : 'Generate Plan' }}
                 </button>
@@ -518,17 +518,17 @@ function handleComplete() {
                 </p>
               </div>
 
-              <div v-else class="ml-10 p-4 bg-blue-50 border border-blue-200 rounded-m3-md">
+              <div v-else class="ml-10 p-4 bg-tertiary-50 border-2 border-tertiary-200 rounded-m3-lg">
                 <div class="text-sm space-y-2">
-                  <div><strong>Plan:</strong> <code class="text-xs bg-blue-100 px-2 py-0.5 rounded">{{ plan.planPath }}</code></div>
+                  <div><strong>Plan:</strong> <code class="text-xs bg-tertiary-100 px-2 py-0.5 rounded-m3-sm">{{ plan.planPath }}</code></div>
                   
                   <!-- Constitutional Gates -->
-                  <div v-if="gatesSummary" class="pt-2 border-t border-blue-200">
+                  <div v-if="gatesSummary" class="pt-2 border-t border-tertiary-200">
                     <div class="font-semibold mb-1">Constitutional Gates:</div>
-                    <div :class="gatesSummary.allPassed ? 'text-green-700' : 'text-error-600'">
+                    <div :class="gatesSummary.allPassed ? 'text-primary-700' : 'text-error-600'">
                       {{ gatesSummary.allPassed ? '✓ All gates passed' : `✗ ${gatesSummary.totalIssues} issues found` }}
                     </div>
-                    <div v-if="gatesSummary.warnings > 0" class="text-yellow-700 text-xs">
+                    <div v-if="gatesSummary.warnings > 0" class="text-error-700 text-xs">
                       ⚠ {{ gatesSummary.warnings }} warning(s)
                     </div>
                   </div>
@@ -541,9 +541,9 @@ function handleComplete() {
               <div class="flex items-center gap-2">
                 <div 
                   :class="[
-                    'w-8 h-8 rounded-m3-full flex items-center justify-center text-sm font-semibold',
+                    'w-8 h-8 rounded-m3-full flex items-center justify-center text-sm font-semibold transition-all',
                     currentStep === 'tasks' || currentStep === 'complete'
-                      ? 'bg-primary text-white'
+                      ? 'bg-primary text-white shadow-elevation-1'
                       : 'bg-surface-3 text-secondary-600'
                   ]"
                 >
@@ -552,19 +552,19 @@ function handleComplete() {
                 <h3 class="text-lg font-semibold text-secondary-900">Generate Task List</h3>
               </div>
 
-              <div class="ml-10 space-y-3 p-4 bg-surface-1 border border-surface-variant rounded-m3-md">
+              <div class="ml-10 space-y-3 p-4 bg-surface-1 border-2 border-surface-variant rounded-m3-lg">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <button
                     @click="handleFetchSpecKit(false)"
                     :disabled="speckitStore.isFetchingSpecKit"
-                    class="px-4 py-2 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="px-4 py-2 text-sm font-medium bg-primary text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2"
                   >
                     {{ speckitStore.isFetchingSpecKit ? 'Fetching...' : 'Fetch Spec Kit' }}
                   </button>
                   <button
                     @click="handleFetchSpecKit(true)"
                     :disabled="speckitStore.isFetchingSpecKit"
-                    class="px-4 py-2 text-sm border border-surface-variant rounded-m3-lg hover:bg-surface-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="px-4 py-2 text-sm font-medium border-2 border-surface-variant rounded-m3-lg hover:bg-surface-3 active:bg-surface-4 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     Force Refresh
                   </button>
@@ -588,7 +588,7 @@ function handleComplete() {
                         v-model="previewSearch"
                         type="search"
                         placeholder="Search Spec Kit library"
-                        class="flex-1 rounded-m3-md border border-surface-variant bg-surface-1 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        class="flex-1 rounded-m3-lg border-2 border-surface-variant bg-surface-1 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
                         :disabled="previewIsLoading"
                       />
                       <button
@@ -607,10 +607,10 @@ function handleComplete() {
                         type="button"
                         @click="togglePreviewFilter(type)"
                         :class="[
-                          'rounded-m3-full border px-3 py-1 text-xs font-medium transition-colors',
+                          'rounded-m3-lg border-2 px-3 py-1 text-xs font-medium transition-all',
                           activePreviewTypes.includes(type)
-                            ? 'border-primary bg-primary text-white'
-                            : 'border-surface-variant bg-surface-2 text-secondary-700 hover:bg-surface-3'
+                            ? 'border-primary bg-primary text-white shadow-elevation-1'
+                            : 'border-surface-variant bg-surface-2 text-secondary-700 hover:bg-surface-3 hover:border-primary/50'
                         ]"
                       >
                         {{ entityTypeLabels[type] }}
@@ -622,7 +622,7 @@ function handleComplete() {
                         v-if="previewHasFilters"
                         type="button"
                         @click="resetPreviewFilters"
-                        class="rounded-m3-full border border-surface-variant px-3 py-1 text-xs text-secondary-700 hover:bg-surface-3"
+                        class="rounded-m3-lg border-2 border-surface-variant px-3 py-1 text-xs font-medium text-secondary-700 hover:bg-surface-3 transition-all"
                       >
                         Reset
                       </button>
@@ -637,11 +637,11 @@ function handleComplete() {
                     </span>
                   </div>
 
-                  <div v-if="previewError" class="rounded-m3-md border border-error-200 bg-error-50 px-3 py-2 text-xs text-error-700">
+                  <div v-if="previewError" class="rounded-m3-lg border-2 border-error-200 bg-error-50 px-3 py-2 text-xs text-error-700">
                     {{ previewError }}
                   </div>
 
-                  <div v-else class="space-y-3 rounded-m3-md border border-surface-variant bg-surface-1 p-3 text-sm">
+                  <div v-else class="space-y-3 rounded-m3-lg border-2 border-surface-variant bg-surface-1 p-3 text-sm">
                     <div v-if="previewIsLoading" class="text-secondary-500">Loading Spec Kit previews…</div>
                     <div v-else-if="previewGroups.length === 0" class="text-secondary-500">
                       No documents match the selected filters.
@@ -659,12 +659,12 @@ function handleComplete() {
                           <li
                             v-for="item in group.items"
                             :key="item.id"
-                            class="rounded-m3-md border border-transparent hover:border-primary-200 hover:bg-primary-50"
+                            class="rounded-m3-lg border-2 border-transparent hover:border-primary-200 hover:bg-primary-50 transition-colors"
                           >
                             <label class="flex items-start gap-2 px-2 py-2 text-xs sm:text-sm">
                               <input
                                 type="checkbox"
-                                class="mt-0.5 h-4 w-4 rounded border-surface-variant text-primary focus:ring-primary"
+                                class="mt-0.5 h-4 w-4 rounded-m3-xs border-2 border-outline text-primary-600 focus:ring-2 focus:ring-primary/20 cursor-pointer accent-primary-600"
                                 :checked="isPreviewSelected(item.id)"
                                 @change="togglePreviewSelection(item.id)"
                               />
@@ -688,7 +688,7 @@ function handleComplete() {
                     </template>
                   </div>
 
-                  <div v-if="previewWarnings.length" class="rounded-m3-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <div v-if="previewWarnings.length" class="rounded-m3-lg border-2 border-error-200 bg-error-50 p-3 text-xs text-error-700">
                     <div class="font-semibold uppercase tracking-wide">Library Warnings</div>
                     <ul class="mt-1 list-disc pl-5">
                       <li v-for="warning in previewWarnings" :key="warning">
@@ -705,7 +705,7 @@ function handleComplete() {
                 <button
                   @click="handleGenerateTasks"
                   :disabled="speckitStore.isGeneratingTasks"
-                  class="px-4 py-2 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-4 py-2 text-sm font-medium bg-primary text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2"
                 >
                   {{ speckitStore.isGeneratingTasks ? 'Generating...' : 'Generate Tasks' }}
                 </button>
@@ -715,9 +715,9 @@ function handleComplete() {
                 </p>
               </div>
 
-              <div v-else class="ml-10 p-4 bg-purple-50 border border-purple-200 rounded-m3-md">
+              <div v-else class="ml-10 p-4 bg-tertiary-50 border-2 border-tertiary-200 rounded-m3-lg">
                 <div class="text-sm space-y-2">
-                  <div><strong>Tasks:</strong> <code class="text-xs bg-purple-100 px-2 py-0.5 rounded">{{ taskList.tasksPath }}</code></div>
+                  <div><strong>Tasks:</strong> <code class="text-xs bg-tertiary-100 px-2 py-0.5 rounded-m3-sm">{{ taskList.tasksPath }}</code></div>
                   <div><strong>Count:</strong> {{ taskList.tasks.length }} tasks</div>
                   <div><strong>Parallel Groups:</strong> {{ taskList.parallelGroups.length }}</div>
                 </div>
@@ -727,13 +727,13 @@ function handleComplete() {
             <!-- Complete -->
             <div v-if="taskList && currentStep === 'tasks'" class="ml-10 pt-4 space-y-4">
               <!-- Entity Generation Option -->
-              <div class="p-4 bg-surface-1 border border-surface-variant rounded-m3-md">
+              <div class="p-4 bg-surface-1 border-2 border-surface-variant rounded-m3-lg">
                 <div class="flex items-start gap-3">
                   <input
                     id="generateEntities"
                     v-model="generateEntities"
                     type="checkbox"
-                    class="mt-1 w-4 h-4 text-primary border-surface-variant rounded focus:ring-2 focus:ring-primary"
+                    class="mt-1 w-4 h-4 text-primary-600 border-2 border-outline rounded-m3-xs focus:ring-2 focus:ring-primary/20 cursor-pointer accent-primary-600"
                   />
                   <div class="flex-1">
                     <label for="generateEntities" class="text-sm font-semibold text-secondary-900 cursor-pointer">
@@ -749,7 +749,7 @@ function handleComplete() {
                   <button
                     @click="handleGenerateEntities"
                     :disabled="generatingEntities || cacheStale"
-                    class="px-4 py-2 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="px-4 py-2 text-sm font-medium bg-primary text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2"
                   >
                     {{ generatingEntities ? 'Generating Entities...' : 'Generate Entities' }}
                   </button>
@@ -763,8 +763,8 @@ function handleComplete() {
                   </p>
                 </div>
 
-                <div v-if="entitiesGenerated" class="mt-3 p-3 bg-green-50 border border-green-200 rounded-m3-md">
-                  <div class="text-sm text-green-800">
+                <div v-if="entitiesGenerated" class="mt-3 p-3 bg-primary-50 border-2 border-primary-200 rounded-m3-lg">
+                  <div class="text-sm text-primary-800">
                     <strong>✓ Entities Generated</strong>
                     <p class="text-xs mt-1">Feature and UserStory entities created in contexts/</p>
                   </div>
@@ -786,17 +786,17 @@ function handleComplete() {
               <button
                 @click="handleComplete"
                 :disabled="generateEntities && !entitiesGenerated"
-                class="px-6 py-3 text-sm bg-green-600 text-white rounded-m3-lg hover:bg-green-700 shadow-elevation-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                class="px-6 py-3 text-sm font-semibold bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 shadow-elevation-2 hover:shadow-elevation-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 ✓ Complete Workflow
               </button>
             </div>
 
             <!-- Success Message -->
-            <div v-if="currentStep === 'complete'" class="p-6 bg-green-100 border-2 border-green-500 rounded-m3-lg text-center">
+            <div v-if="currentStep === 'complete'" class="p-6 bg-primary-100 border-2 border-primary-500 rounded-m3-lg text-center">
               <div class="text-2xl mb-2">🎉</div>
-              <div class="text-lg font-semibold text-green-900">Workflow Complete!</div>
-              <div class="text-sm text-green-700 mt-2">
+              <div class="text-lg font-semibold text-primary-900">Workflow Complete!</div>
+              <div class="text-sm text-primary-700 mt-2">
                 Your specification, implementation plan, and task list have been created.
               </div>
             </div>
@@ -809,7 +809,7 @@ function handleComplete() {
             </div>
             <button
               @click="handleClose"
-              class="px-4 py-2 text-sm border border-surface-variant rounded-m3-md hover:bg-surface-3 transition-colors"
+              class="px-4 py-2 text-sm font-medium border-2 border-surface-variant rounded-m3-lg hover:bg-surface-3 active:bg-surface-4 transition-all"
             >
               Close
             </button>
@@ -863,7 +863,7 @@ function handleComplete() {
                 <div
                   v-for="(story, idx) in aiSpecData.userStories"
                   :key="idx"
-                  class="p-3 bg-blue-50 border border-blue-200 rounded-m3-md text-sm"
+                  class="p-3 bg-tertiary-50 border-2 border-tertiary-200 rounded-m3-lg text-sm"
                 >
                   <strong>As a {{ story.asA }}</strong>, I want <strong>{{ story.iWant }}</strong>, so that <strong>{{ story.soThat }}</strong>
                 </div>
@@ -879,9 +879,9 @@ function handleComplete() {
             </div>
 
             <!-- Constitutional Considerations -->
-            <div v-if="aiSpecData.constitutionalConsiderations" class="p-4 bg-yellow-50 border border-yellow-200 rounded-m3-md">
-              <label class="block text-xs font-semibold text-yellow-900 mb-2">🏛️ Constitutional Considerations</label>
-              <div class="space-y-1 text-sm text-yellow-800">
+            <div v-if="aiSpecData.constitutionalConsiderations" class="p-4 bg-tertiary-50 border-2 border-tertiary-200 rounded-m3-lg">
+              <label class="block text-xs font-semibold text-tertiary-900 mb-2">🏛️ Constitutional Considerations</label>
+              <div class="space-y-1 text-sm text-tertiary-800">
                 <div><strong>Simplicity:</strong> {{ aiSpecData.constitutionalConsiderations.simplicity }}</div>
                 <div><strong>Anti-Abstraction:</strong> {{ aiSpecData.constitutionalConsiderations.antiAbstraction }}</div>
                 <div><strong>Integration-First:</strong> {{ aiSpecData.constitutionalConsiderations.integrationFirst }}</div>
@@ -889,9 +889,9 @@ function handleComplete() {
             </div>
 
             <!-- Clarification Questions -->
-            <div v-if="aiSpecData.clarificationQuestions && aiSpecData.clarificationQuestions.length > 0" class="p-4 bg-orange-50 border border-orange-200 rounded-m3-md">
-              <label class="block text-xs font-semibold text-orange-900 mb-2">❓ Questions for Clarification</label>
-              <ul class="list-disc list-inside space-y-1 text-sm text-orange-800">
+            <div v-if="aiSpecData.clarificationQuestions && aiSpecData.clarificationQuestions.length > 0" class="p-4 bg-error-50 border-2 border-error-200 rounded-m3-lg">
+              <label class="block text-xs font-semibold text-error-900 mb-2">❓ Questions for Clarification</label>
+              <ul class="list-disc list-inside space-y-1 text-sm text-error-800">
                 <li v-for="(question, idx) in aiSpecData.clarificationQuestions" :key="idx">{{ question }}</li>
               </ul>
             </div>
@@ -918,7 +918,7 @@ function handleComplete() {
             <button
               @click="handleGenerateAISpec"
               :disabled="isGeneratingAISpec"
-              class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 rounded-m3-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 active:bg-surface-4 rounded-m3-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span v-if="isGeneratingAISpec">♻️ Regenerating...</span>
               <span v-else>♻️ Regenerate</span>
@@ -927,7 +927,7 @@ function handleComplete() {
             <div class="flex gap-3">
               <button
                 @click="showAIPreview = false"
-                class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 rounded-m3-lg transition-colors"
+                class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:bg-surface-3 active:bg-surface-4 rounded-m3-lg transition-all"
               >
                 Cancel
               </button>

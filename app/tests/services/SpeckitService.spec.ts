@@ -12,13 +12,38 @@ import type {
   SpecKitEntityType,
 } from '@shared/speckit';
 
-vi.mock('node:fs', () => ({
-  existsSync: vi.fn(),
-}));
+vi.mock('node:fs', () => {
+  const mocks = {
+    existsSync: vi.fn(),
+    promises: {
+      readFile: vi.fn(),
+      writeFile: vi.fn(),
+    },
+  };
+  return {
+    ...mocks,
+    default: mocks,
+  };
+});
 
 vi.mock('execa', () => ({
   execa: vi.fn(),
 }));
+
+vi.mock('../../src/main/services/AIService', () => {
+  return {
+    AIService: vi.fn(function(this: any) {
+      this.getConfig = vi.fn().mockResolvedValue({
+        provider: 'ollama',
+        endpoint: 'http://localhost:11434',
+        model: 'llama2',
+        enabled: true,
+      });
+      this.hasCredentials = vi.fn().mockResolvedValue(true);
+      this.getCredentials = vi.fn().mockResolvedValue('test-api-key');
+    }),
+  };
+});
 
 const isSuccessFetchResult = (payload: SpecKitFetchPipelineResult): payload is SpecKitFetchPipelineSuccess => payload.ok === true;
 

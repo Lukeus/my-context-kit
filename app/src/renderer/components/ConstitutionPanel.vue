@@ -192,17 +192,17 @@ onMounted(() => {
         class="p-4 bg-surface-1 border border-surface-variant rounded-m3-md hover:bg-surface-2 cursor-pointer transition-colors"
       >
         <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-m3-full bg-primary flex items-center justify-center text-white font-semibold flex-shrink-0">
+          <div class="w-10 h-10 rounded-m3-md bg-primary flex items-center justify-center text-white font-semibold flex-shrink-0">
             {{ article.number }}
           </div>
           <div class="flex-1 min-w-0">
             <h3 class="text-sm font-semibold text-secondary-900">{{ article.title }}</h3>
             <p class="text-xs text-secondary-600 mt-1">{{ article.description }}</p>
             <div class="flex items-center gap-2 mt-2">
-              <span class="text-[11px] px-2 py-0.5 bg-error-50 text-error-700 rounded-m3-small">
+              <span class="text-[11px] px-2 py-0.5 bg-error-50 text-error-700 rounded-m3-md">
                 {{ article.gates.filter(g => g.critical).length }} Critical
               </span>
-              <span class="text-[11px] px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-m3-small">
+              <span class="text-[11px] px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-m3-md">
                 {{ article.gates.filter(g => !g.critical).length }} Advisory
               </span>
             </div>
@@ -225,7 +225,7 @@ onMounted(() => {
           style="background-color: rgba(0, 0, 0, 0.5)"
           @click.self="closeDetails"
         >
-          <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[600px] max-h-[80vh] flex flex-col overflow-hidden">
+          <div class="bg-surface rounded-m3-md shadow-elevation-5 w-[600px] max-h-[80vh] flex flex-col overflow-hidden">
             <!-- Modal Header -->
             <div class="flex items-center justify-between px-6 py-4 bg-surface-2 border-b border-surface-variant">
               <div>
@@ -236,7 +236,7 @@ onMounted(() => {
               </div>
               <button
                 @click="closeDetails"
-                class="text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 p-2 rounded-m3-full transition-all"
+                class="text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 p-2 rounded-m3-md transition-all"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -256,7 +256,7 @@ onMounted(() => {
                     :class="gate.critical ? 'border-error-200' : 'border-yellow-200'"
                   >
                     <div
-                      class="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5"
+                      class="w-5 h-5 rounded-m3-md flex items-center justify-center flex-shrink-0 mt-0.5"
                       :class="gate.critical ? 'bg-error-100 text-error-700' : 'bg-yellow-100 text-yellow-700'"
                     >
                       {{ gate.critical ? '!' : 'i' }}
@@ -284,7 +284,7 @@ onMounted(() => {
             <div class="px-6 py-4 bg-surface-2 border-t border-surface-variant flex justify-end">
               <button
                 @click="closeDetails"
-                class="px-4 py-2 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700"
+                class="px-4 py-2 text-sm bg-primary text-white rounded-m3-md hover:bg-primary-700"
               >
                 Close
               </button>

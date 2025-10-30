@@ -87,7 +87,7 @@ function handleKeyDown(event: KeyboardEvent) {
         <div class="flex-1 overflow-y-auto p-4 space-y-4">
           <!-- Empty State -->
           <div v-if="!hasMessages" class="flex flex-col items-center justify-center h-full text-center px-4">
-            <div class="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mb-4">
+            <div class="w-16 h-16 rounded-m3-md-full bg-primary-100 flex items-center justify-center mb-4">
               <span class="text-3xl">{{ selectedAgent?.metadata.icon || '🤖' }}</span>
             </div>
             <h3 class="text-lg font-semibold text-secondary-900 mb-2">
@@ -114,14 +114,14 @@ function handleKeyDown(event: KeyboardEvent) {
               <!-- Assistant Avatar -->
               <div
                 v-if="message.role === 'assistant'"
-                class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 text-lg"
+                class="w-8 h-8 rounded-m3-md-full bg-primary-100 flex items-center justify-center flex-shrink-0 text-lg"
               >
                 {{ selectedAgent?.metadata.icon || '🤖' }}
               </div>
 
               <!-- Message Bubble -->
               <div
-                class="max-w-[70%] rounded-m3-lg px-4 py-2"
+                class="max-w-[70%] rounded-m3-md px-4 py-2"
                 :class="message.role === 'user'
                   ? 'bg-primary-600 text-white'
                   : 'bg-surface-1 text-secondary-900 border border-surface-variant'"
@@ -138,7 +138,7 @@ function handleKeyDown(event: KeyboardEvent) {
               <!-- User Avatar -->
               <div
                 v-if="message.role === 'user'"
-                class="w-8 h-8 rounded-full bg-secondary-200 flex items-center justify-center flex-shrink-0"
+                class="w-8 h-8 rounded-m3-md-full bg-secondary-200 flex items-center justify-center flex-shrink-0"
               >
                 <svg class="w-4 h-4 text-secondary-600" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
@@ -148,14 +148,14 @@ function handleKeyDown(event: KeyboardEvent) {
 
             <!-- Typing Indicator -->
             <div v-if="isBusy" class="flex gap-3">
-              <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 text-lg">
+              <div class="w-8 h-8 rounded-m3-md-full bg-primary-100 flex items-center justify-center flex-shrink-0 text-lg">
                 {{ selectedAgent?.metadata.icon || '🤖' }}
               </div>
-              <div class="bg-surface-1 rounded-m3-lg px-4 py-3 border border-surface-variant">
+              <div class="bg-surface-1 rounded-m3-md px-4 py-3 border border-surface-variant">
                 <div class="flex gap-1">
-                  <div class="w-2 h-2 bg-secondary-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
-                  <div class="w-2 h-2 bg-secondary-400 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
-                  <div class="w-2 h-2 bg-secondary-400 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+                  <div class="w-2 h-2 bg-secondary-400 rounded-m3-md-full animate-bounce" style="animation-delay: 0ms"></div>
+                  <div class="w-2 h-2 bg-secondary-400 rounded-m3-md-full animate-bounce" style="animation-delay: 150ms"></div>
+                  <div class="w-2 h-2 bg-secondary-400 rounded-m3-md-full animate-bounce" style="animation-delay: 300ms"></div>
                 </div>
               </div>
             </div>
@@ -169,12 +169,12 @@ function handleKeyDown(event: KeyboardEvent) {
               v-model="messageInput"
               placeholder="Ask about the repository..."
               rows="1"
-              class="flex-1 px-4 py-3 text-sm border border-surface-variant rounded-m3-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none max-h-32"
+              class="flex-1 px-4 py-3 text-sm border border-surface-variant rounded-m3-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none max-h-32"
               :disabled="isBusy"
               @keydown="handleKeyDown"
             />
             <button
-              class="px-4 py-3 rounded-m3-lg transition-all flex items-center gap-2"
+              class="px-4 py-3 rounded-m3-md transition-all flex items-center gap-2"
               :class="messageInput.trim() && !isBusy
                 ? 'bg-primary-600 text-white hover:bg-primary-700'
                 : 'bg-secondary-200 text-secondary-500 cursor-not-allowed'"
