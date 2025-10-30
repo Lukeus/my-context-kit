@@ -52,10 +52,12 @@ jobs:
       
       - name: Validate commit message
         if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          echo "PR Title: ${{ github.event.pull_request.title }}"
+          echo "PR Title: $PR_TITLE"
           # Check for conventional commit format
-          if ! echo "${{ github.event.pull_request.title }}" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
+          if ! echo "$PR_TITLE" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
             echo "⚠️ Warning: PR title doesn't follow conventional commit format"
             echo "Recommended format: type(scope): description"
             echo "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
@@ -284,8 +286,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: build-${{ matrix.os }}
-          path: |
-            app/out/make/**/*
+          path: app/out/make/
           retention-days: 7
 
   # Bundle size analysis
