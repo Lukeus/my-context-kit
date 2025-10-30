@@ -119,21 +119,13 @@ jobs:
         run: |
           Get-ChildItem -Path app\out\make -Recurse -File
       
-      - name: Find Windows artifacts
-        id: find_windows
-        shell: pwsh
-        run: |
-          $files = Get-ChildItem -Path app\out\make\squirrel.windows -Include *.exe,*.nupkg -Recurse | Select-Object -ExpandProperty FullName
-          $fileList = $files -join "`n"
-          echo "files=$fileList" >> $env:GITHUB_OUTPUT
-          echo "Found files:"
-          echo $fileList
-      
       - name: Upload Windows Squirrel installer
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: ${{ steps.find_windows.outputs.files }}
+          files: |
+            app/out/make/squirrel.windows/x64/*.exe
+            app/out/make/squirrel.windows/x64/*.nupkg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
