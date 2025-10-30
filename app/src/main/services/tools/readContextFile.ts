@@ -42,15 +42,18 @@ export async function readContextFile(options: ReadContextFileOptions): Promise<
   }
 
   // Resolve symlinks to prevent TOCTOU vulnerability
+  // Resolve both the file path and repo root to their canonical paths for consistent comparison
   let realPath: string;
+  let realRepoRoot: string;
   try {
     realPath = await fs.realpath(resolvedPath);
+    realRepoRoot = await fs.realpath(repoRoot);
   } catch (error) {
     throw new Error(`Unable to resolve file path: ${error instanceof Error ? error.message : 'unknown error'}`);
   }
 
   // Verify the real path is still within the repository after resolving symlinks
-  if (!realPath.startsWith(repoRoot)) {
+  if (!realPath.startsWith(realRepoRoot)) {
     throw new Error('Requested file is outside the context repository.');
   }
 
@@ -76,7 +79,7 @@ export async function readContextFile(options: ReadContextFileOptions): Promise<
 
   return {
     absolutePath: realPath,
-    repoRelativePath: path.relative(repoRoot, realPath).replace(/\\/g, '/'),
+    repoRelativePath: path.relative(realRepoRoot, realPath).replace(/\\/g, '/'),
     content,
     encoding,
     size: stats.size,
