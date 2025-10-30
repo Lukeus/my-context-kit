@@ -74,7 +74,7 @@ async function copyPath(path: string): Promise<void> {
 <template>
   <div class="rounded-m3-md border border-surface-variant bg-surface-1 p-4 text-sm text-secondary-800">
     <div v-if="isRunning" class="mb-3 flex items-center gap-2 text-secondary-600">
-      <span class="inline-flex h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <span class="inline-flex h-3 w-3 animate-spin rounded-m3-md-full border-2 border-primary border-t-transparent" />
       <span>Running Spec Kit pipelines…</span>
     </div>
 
@@ -92,7 +92,7 @@ async function copyPath(path: string): Promise<void> {
             <span class="text-xs font-semibold uppercase tracking-wide text-secondary-500">
               {{ entry.label }}
             </span>
-            <span :class="['px-2 py-0.5 text-xs rounded-m3-full', statusClasses(entry.status)]">
+            <span :class="['px-2 py-0.5 text-xs rounded-m3-md', statusClasses(entry.status)]">
               {{ entry.status }}
             </span>
           </div>
@@ -118,7 +118,7 @@ async function copyPath(path: string): Promise<void> {
           >
             <div class="flex flex-wrap items-center gap-2">
               <span class="text-sm font-medium text-secondary-900">{{ entity.id }}</span>
-              <span class="rounded-m3-full bg-surface-2 px-2 py-0.5 text-[11px] uppercase tracking-wide text-secondary-500">
+              <span class="rounded-m3-md bg-surface-2 px-2 py-0.5 text-[11px] uppercase tracking-wide text-secondary-500">
                 {{ entity.type }}
               </span>
               <span :class="['text-xs font-semibold uppercase tracking-wide', entity.status === 'succeeded' ? 'text-emerald-600' : 'text-error-600']">
@@ -130,7 +130,7 @@ async function copyPath(path: string): Promise<void> {
               <span class="truncate">{{ entity.path }}</span>
               <button
                 type="button"
-                class="rounded-m3-full border border-surface-variant px-2 py-0.5 text-[11px] text-secondary-600 hover:bg-surface-2"
+                class="rounded-m3-md border border-surface-variant px-2 py-0.5 text-[11px] text-secondary-600 hover:bg-surface-2"
                 @click="copyPath(entity.path ?? '')"
               >
                 Copy path
@@ -158,7 +158,7 @@ async function copyPath(path: string): Promise<void> {
             <span class="truncate">{{ file }}</span>
             <button
               type="button"
-              class="rounded-m3-full border border-surface-variant px-2 py-0.5 text-[11px] text-secondary-600 hover:bg-surface-2"
+              class="rounded-m3-md border border-surface-variant px-2 py-0.5 text-[11px] text-secondary-600 hover:bg-surface-2"
               @click="copyPath(file)"
             >
               Copy path
@@ -175,7 +175,7 @@ async function copyPath(path: string): Promise<void> {
             <span class="truncate">{{ preview }}</span>
             <button
               type="button"
-              class="rounded-m3-full border border-surface-variant px-2 py-0.5 text-[11px] text-secondary-600 hover:bg-surface-2"
+              class="rounded-m3-md border border-surface-variant px-2 py-0.5 text-[11px] text-secondary-600 hover:bg-surface-2"
               @click="copyPath(preview)"
             >
               Copy path

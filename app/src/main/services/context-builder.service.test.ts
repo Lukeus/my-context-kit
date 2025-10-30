@@ -3,9 +3,27 @@ import * as fsPromises from 'node:fs/promises';
 import { execa } from 'execa';
 import { parse as parseYAML } from 'yaml';
 
-vi.mock('node:fs/promises');
-vi.mock('execa');
-vi.mock('yaml');
+vi.mock('node:fs/promises', () => {
+  const mocks = {
+    readdir: vi.fn(),
+    readFile: vi.fn(),
+    writeFile: vi.fn(),
+    mkdir: vi.fn(),
+    access: vi.fn(),
+    cp: vi.fn(),
+  };
+  return {
+    ...mocks,
+    default: mocks,
+  };
+});
+vi.mock('execa', () => ({
+  execa: vi.fn(),
+}));
+vi.mock('yaml', () => ({
+  parse: vi.fn(),
+  stringify: vi.fn((obj: any) => JSON.stringify(obj)),
+}));
 vi.mock('electron', () => ({
   app: {
     getPath: vi.fn(() => `/mock/user/data`),

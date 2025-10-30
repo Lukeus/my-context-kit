@@ -142,7 +142,7 @@ function closeDropdown() {
       <Transition name="dropdown">
         <div
           v-if="showDropdown"
-          class="fixed z-50 bg-white border border-surface-variant rounded-m3-lg shadow-elevation-2 max-h-[400px] overflow-hidden flex flex-col"
+          class="fixed z-50 bg-white border border-surface-variant rounded-m3-md shadow-elevation-2 max-h-[400px] overflow-hidden flex flex-col"
           :style="{ top: dropdownStyle.top, left: dropdownStyle.left, width: dropdownStyle.width }"
         >
         <!-- Search -->
@@ -182,7 +182,7 @@ function closeDropdown() {
                   </span>
                   <span
                     v-if="agent.metadata.complexity"
-                    class="px-1.5 py-0.5 text-[10px] font-medium rounded-m3-full bg-secondary-100 text-secondary-700"
+                    class="px-1.5 py-0.5 text-[10px] font-medium rounded-m3-md bg-secondary-100 text-secondary-700"
                   >
                     {{ agent.metadata.complexity }}
                   </span>
@@ -194,7 +194,7 @@ function closeDropdown() {
                   <span
                     v-for="tag in agent.metadata.tags.slice(0, 3)"
                     :key="tag"
-                    class="px-1.5 py-0.5 text-[10px] bg-secondary-50 text-secondary-600 rounded-m3-full"
+                    class="px-1.5 py-0.5 text-[10px] bg-secondary-50 text-secondary-600 rounded-m3-md"
                   >
                     {{ tag }}
                   </span>
@@ -233,7 +233,7 @@ function closeDropdown() {
                   <span class="font-medium text-sm text-secondary-900">
                     {{ agent.metadata.name }}
                   </span>
-                  <span class="px-1.5 py-0.5 text-[10px] font-medium rounded-m3-full bg-tertiary-100 text-tertiary-700">
+                  <span class="px-1.5 py-0.5 text-[10px] font-medium rounded-m3-md bg-tertiary-100 text-tertiary-700">
                     Custom
                   </span>
                 </div>
@@ -244,7 +244,7 @@ function closeDropdown() {
                   <span
                     v-for="tag in agent.metadata.tags.slice(0, 3)"
                     :key="tag"
-                    class="px-1.5 py-0.5 text-[10px] bg-secondary-50 text-secondary-600 rounded-m3-full"
+                    class="px-1.5 py-0.5 text-[10px] bg-secondary-50 text-secondary-600 rounded-m3-md"
                   >
                     {{ tag }}
                   </span>

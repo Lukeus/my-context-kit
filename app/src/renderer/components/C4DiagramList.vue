@@ -178,10 +178,10 @@ onMounted(() => {
                 {{ diagram.title }}
               </h3>
               <div class="flex flex-wrap gap-1 mt-1">
-                <span v-if="diagram.system" class="text-[10px] px-1.5 py-0.5 rounded-m3-sm bg-surface-3 text-secondary-600">
+                <span v-if="diagram.system" class="text-[10px] px-1.5 py-0.5 rounded-m3-md bg-surface-3 text-secondary-600">
                   {{ diagram.system }}
                 </span>
-                <span v-if="diagram.level" class="text-[10px] px-1.5 py-0.5 rounded-m3-sm bg-primary-100 text-primary-700 font-medium">
+                <span v-if="diagram.level" class="text-[10px] px-1.5 py-0.5 rounded-m3-md bg-primary-100 text-primary-700 font-medium">
                   {{ diagram.level }}
                 </span>
               </div>
@@ -197,7 +197,7 @@ onMounted(() => {
         v-if="!showNewDiagramForm"
         @click="createNewDiagram"
         :disabled="!hasRepo"
-        class="w-full px-4 py-2.5 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium flex items-center justify-center gap-2"
+        class="w-full px-4 py-2.5 text-sm bg-primary text-white rounded-m3-md hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium flex items-center justify-center gap-2"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -236,7 +236,7 @@ onMounted(() => {
       <button
         @click="loadDiagrams"
         :disabled="!hasRepo || isLoading"
-        class="w-full px-4 py-2.5 text-sm bg-surface-3 text-secondary-900 rounded-m3-lg hover:bg-surface-4 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium"
+        class="w-full px-4 py-2.5 text-sm bg-surface-3 text-secondary-900 rounded-m3-md hover:bg-surface-4 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium"
       >
         {{ isLoading ? 'Loading...' : 'Refresh' }}
       </button>

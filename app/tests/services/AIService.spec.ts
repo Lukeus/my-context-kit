@@ -4,16 +4,42 @@ import { safeStorage } from 'electron';
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { execa } from 'execa';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+vi.mock('electron', () => ({
+  app: {
+    getPath: vi.fn(() => path.join(tmpdir(), 'context-kit-tests')),
+  },
+  safeStorage: {
+    isEncryptionAvailable: vi.fn(() => true),
+    encryptString: vi.fn((text: string) => Buffer.from(`encrypted:${text}`)),
+    decryptString: vi.fn((buffer: Buffer) => buffer.toString().replace('encrypted:', '')),
+  },
+}));
 
 // Mock file system
-vi.mock('node:fs/promises', () => ({
-  readFile: vi.fn(),
-  writeFile: vi.fn(),
-}));
+vi.mock('node:fs/promises', () => {
+  const mocks = {
+    readFile: vi.fn(),
+    writeFile: vi.fn(),
+    mkdir: vi.fn(),
+  };
+  return {
+    ...mocks,
+    default: mocks,
+  };
+});
 
-vi.mock('node:fs', () => ({
-  existsSync: vi.fn(),
-}));
+vi.mock('node:fs', () => {
+  const mocks = {
+    existsSync: vi.fn(),
+  };
+  return {
+    ...mocks,
+    default: mocks,
+  };
+});
 
 // Mock execa
 vi.mock('execa', () => ({
@@ -38,6 +64,9 @@ describe('AIService', () => {
   beforeEach(() => {
     aiService = new AIService();
     vi.clearAllMocks();
+    // Set default mock behavior
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValue(true);
   });
 
   afterEach(() => {

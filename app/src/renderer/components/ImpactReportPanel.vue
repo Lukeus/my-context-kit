@@ -99,7 +99,7 @@ async function refreshAnalysis() {
         <h3 class="text-sm font-semibold text-primary-700">Impact Analysis</h3>
         <div class="text-xs text-secondary-600">
           <template v-if="activeEntity">
-            <span class="px-2 py-0.5 rounded-m3-full bg-primary-100 text-primary-800 font-medium mr-2">{{ activeEntity._type }}</span>
+            <span class="px-2 py-0.5 rounded-m3-md bg-primary-100 text-primary-800 font-medium mr-2">{{ activeEntity._type }}</span>
             <span class="font-mono">{{ activeEntity.id }}</span>
           </template>
           <template v-else>
@@ -110,7 +110,7 @@ async function refreshAnalysis() {
       <button
         @click="refreshAnalysis"
         :disabled="!contextStore.activeEntityId || impactStore.isAnalyzing"
-        class="p-1.5 rounded-m3-full hover:bg-surface-3 transition-colors disabled:opacity-50"
+        class="p-1.5 rounded-m3-md hover:bg-surface-3 transition-colors disabled:opacity-50"
         title="Refresh analysis"
       >
         <svg class="w-4 h-4" :class="impactStore.isAnalyzing ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,7 +138,7 @@ async function refreshAnalysis() {
     <!-- Loading state -->
     <div v-if="impactStore.isAnalyzing" class="flex-1 flex items-center justify-center">
       <div class="text-center">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary-200 border-t-primary-600 mb-3"></div>
+        <div class="inline-block animate-spin rounded-m3-md-full h-8 w-8 border-4 border-primary-200 border-t-primary-600 mb-3"></div>
         <p class="text-sm text-secondary-600">Analyzing dependencies...</p>
       </div>
     </div>
@@ -159,7 +159,7 @@ async function refreshAnalysis() {
       <!-- No issues found -->
       <div v-if="unresolvedRelevantIssues.length === 0" class="flex-1 flex items-center justify-center p-6">
         <div class="text-center">
-          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-m3-md-full bg-green-100 mb-3">
             <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
@@ -217,7 +217,7 @@ async function refreshAnalysis() {
               >
                 <!-- Status -->
                 <td class="px-4 py-3">
-                  <div class="flex items-center justify-center w-8 h-8 rounded-full"
+                  <div class="flex items-center justify-center w-8 h-8 rounded-m3-md-full"
                     :class="isIssueResolved(issue) ? 'bg-green-100 text-green-700' : 'bg-tertiary-100 text-tertiary-700'"
                   >
                     <span class="text-sm font-medium">{{ isIssueResolved(issue) ? '✓' : '!' }}</span>
@@ -226,7 +226,7 @@ async function refreshAnalysis() {
 
                 <!-- Severity -->
                 <td class="px-4 py-3">
-                  <span class="inline-flex items-center px-2 py-1 rounded-m3-full text-xs font-medium border"
+                  <span class="inline-flex items-center px-2 py-1 rounded-m3-md text-xs font-medium border"
                     :class="getSeverityBadge(issue.severity)"
                   >
                     {{ getSeverityLabel(issue.severity) }}

@@ -128,7 +128,7 @@ function resetFilters() {
       <span class="text-secondary-500 uppercase tracking-[0.2em]">Filter</span>
       <button
         type="button"
-        class="px-3 py-1.5 rounded-m3-full border border-primary-200 text-primary-700 bg-primary-50 hover:bg-primary-100 font-semibold"
+        class="px-3 py-1.5 rounded-m3-md border border-primary-200 text-primary-700 bg-primary-50 hover:bg-primary-100 font-semibold"
         @click="resetFilters"
       >
         Show All
@@ -138,7 +138,7 @@ function resetFilters() {
           v-for="option in typeFilterOptions"
           :key="option.id"
           type="button"
-          class="px-3 py-1.5 rounded-m3-full border text-xs font-semibold transition-colors"
+          class="px-3 py-1.5 rounded-m3-md border text-xs font-semibold transition-colors"
           :class="typeFilters[option.id] ? 'bg-primary-100 border-primary-200 text-primary-800 shadow-elevation-1' : 'bg-surface border-surface-variant text-secondary-500 hover:bg-surface-2'"
           @click="toggleFilter(option.id)"
         >
@@ -151,7 +151,7 @@ function resetFilters() {
       <section
         v-for="column in boardColumns"
         :key="column.id"
-        class="rounded-m3-xl border border-surface-variant bg-surface shadow-elevation-1 flex flex-col overflow-hidden"
+        class="rounded-m3-md border border-surface-variant bg-surface shadow-elevation-1 flex flex-col overflow-hidden"
       >
         <header class="px-4 py-3 border-b border-primary-100 bg-primary-50 flex items-center justify-between">
           <h3 class="text-sm font-semibold text-primary-800 uppercase tracking-[0.12em]">{{ column.label }}</h3>
@@ -161,7 +161,7 @@ function resetFilters() {
           <article
             v-for="card in cardsByColumn[column.id]"
             :key="`${column.id}-${card.id}`"
-            class="rounded-m3-lg border border-surface-variant bg-surface-2 px-3 py-3 shadow-sm hover:shadow-elevation-1 transition-shadow"
+            class="rounded-m3-md border border-surface-variant bg-surface-2 px-3 py-3 shadow-elevation-1 hover:shadow-elevation-1 transition-shadow"
           >
             <header class="flex items-center justify-between gap-2">
               <span class="text-xs font-semibold uppercase tracking-wide text-secondary-500">{{ card.typeLabel }}</span>
@@ -182,7 +182,7 @@ function resetFilters() {
       No work items match the current filters.
     </p>
 
-    <section v-if="unassignedCards.length" class="rounded-m3-xl border border-warning-200 bg-warning-50 px-4 py-3">
+    <section v-if="unassignedCards.length" class="rounded-m3-md border border-warning-200 bg-warning-50 px-4 py-3">
       <h3 class="text-sm font-semibold text-warning-900 mb-2">Items without a mapped status</h3>
       <ul class="space-y-2">
         <li

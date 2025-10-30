@@ -120,7 +120,7 @@ watch(() => activeEntity.value, async () => {
           <span class="text-xs text-secondary-600">Linked to:</span>
           <button
             @click="openRelatedEntity(diagramFeature)"
-            class="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded-m3-full hover:bg-primary-200 transition-colors"
+            class="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded-m3-md hover:bg-primary-200 transition-colors"
           >
             {{ diagramFeature }}
           </button>
@@ -152,7 +152,7 @@ watch(() => activeEntity.value, async () => {
             <span class="ml-1 font-medium text-secondary-900">{{ projectionStats.relationships }}</span>
           </div>
           <div v-for="(count, kind) in projectionStats.nodesByKind" :key="kind" class="flex items-center gap-1">
-            <span class="px-2 py-0.5 bg-surface-3 rounded-m3-full text-xs text-secondary-700">{{ kind }}</span>
+            <span class="px-2 py-0.5 bg-surface-3 rounded-m3-md text-xs text-secondary-700">{{ kind }}</span>
             <span class="text-secondary-700">{{ count }}</span>
           </div>
         </div>

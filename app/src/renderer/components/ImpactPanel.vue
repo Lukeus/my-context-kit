@@ -153,7 +153,7 @@ function isIssueResolved(issue: any): boolean {
         <button
           @click="analyzeImpact"
           :disabled="!contextStore.activeEntityId || impactStore.isAnalyzing"
-          class="w-full px-4 py-2.5 text-sm bg-primary text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium"
+          class="w-full px-4 py-2.5 text-sm bg-primary text-white rounded-m3-md hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium"
         >
           {{ impactStore.isAnalyzing ? 'Analyzing...' : 'Analyze Impact' }}
         </button>
@@ -162,7 +162,7 @@ function isIssueResolved(issue: any): boolean {
           @click="generatePrompt"
           :disabled="!contextStore.activeEntityId || !canGeneratePrompt"
           :title="!canGeneratePrompt ? 'Prompts are available for features, user stories, and specs.' : undefined"
-          class="w-full px-4 py-2.5 text-sm bg-secondary text-white rounded-m3-lg hover:bg-secondary-700 active:bg-secondary-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium"
+          class="w-full px-4 py-2.5 text-sm bg-secondary text-white rounded-m3-md hover:bg-secondary-700 active:bg-secondary-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-elevation-1 hover:shadow-elevation-2 transition-all font-medium"
         >
           Generate Prompt
         </button>
@@ -211,7 +211,7 @@ function isIssueResolved(issue: any): boolean {
           <span>Issues</span>
           <span 
             v-if="impactStore.unresolvedCount > 0"
-            class="px-2 py-0.5 text-xs font-bold rounded-full"
+            class="px-2 py-0.5 text-xs font-bold rounded-m3-md-full"
             :class="activeTab === 'issues' ? 'bg-primary text-white' : 'bg-tertiary-500 text-white'"
           >
             {{ impactStore.unresolvedCount }}
@@ -233,19 +233,19 @@ function isIssueResolved(issue: any): boolean {
         <div v-if="activeTab === 'overview'" class="space-y-4">
           <!-- Summary stats -->
           <div class="grid grid-cols-2 gap-3">
-            <div class="p-3 bg-blue-50 rounded-lg">
+            <div class="p-3 bg-blue-50 rounded-m3-md-lg">
               <div class="text-2xl font-bold text-blue-900">{{ impactedCount }}</div>
               <div class="text-xs text-blue-700">Entities Impacted</div>
             </div>
-            <div class="p-3 bg-orange-50 rounded-lg">
+            <div class="p-3 bg-orange-50 rounded-m3-md-lg">
               <div class="text-2xl font-bold text-orange-900">{{ staleCount }}</div>
               <div class="text-xs text-orange-700">Stale Items</div>
             </div>
-            <div class="p-3 bg-red-50 rounded-lg">
+            <div class="p-3 bg-red-50 rounded-m3-md-lg">
               <div class="text-2xl font-bold text-red-900">{{ impactStore.issuesCount }}</div>
               <div class="text-xs text-red-700">Issues Found</div>
             </div>
-            <div class="p-3 bg-purple-50 rounded-lg">
+            <div class="p-3 bg-purple-50 rounded-m3-md-lg">
               <div class="text-2xl font-bold text-purple-900">{{ impactStore.needsReviewCount }}</div>
               <div class="text-xs text-purple-700">Needs Review</div>
             </div>
@@ -258,7 +258,7 @@ function isIssueResolved(issue: any): boolean {
               <div
                 v-for="id in impactStore.impactReport.changedIds"
                 :key="id"
-                class="p-2 bg-blue-50 border border-blue-200 rounded text-sm"
+                class="p-2 bg-blue-50 border border-blue-200 rounded-m3-md text-sm"
               >
                 <div class="font-medium text-blue-900">{{ id }}</div>
               </div>
@@ -272,7 +272,7 @@ function isIssueResolved(issue: any): boolean {
               <div
                 v-for="issue in impactStore.impactReport.issues.slice(0, 3)"
                 :key="issue.id"
-                class="p-2 bg-orange-50 border border-orange-200 rounded text-xs"
+                class="p-2 bg-orange-50 border border-orange-200 rounded-m3-md text-xs"
               >
                 <div class="font-medium text-orange-900">{{ issue.id }}</div>
                 <div class="text-orange-700 mt-1">{{ issue.message }}</div>
@@ -317,7 +317,7 @@ function isIssueResolved(issue: any): boolean {
             v-for="(issue, index) in impactStore.impactReport.issues"
             :key="`${issue.id}-${issue.ruleId || issue.type}-${index}`"
             v-show="showResolvedIssues || !isIssueResolved(issue)"
-            class="p-5 border-2 rounded-m3-lg transition-all duration-200"
+            class="p-5 border-2 rounded-m3-md transition-all duration-200"
             :class="[
               isIssueResolved(issue) 
                 ? 'bg-surface-2 border-surface-variant opacity-60' 
@@ -331,7 +331,7 @@ function isIssueResolved(issue: any): boolean {
                 class="group font-bold hover:underline text-left flex items-center gap-3 text-lg"
                 :class="isIssueResolved(issue) ? 'text-gray-500' : getSeverityBadgeColor(issue.severity).split(' ')[1]"
               >
-                <div class="w-10 h-10 rounded-full flex items-center justify-center text-xl transition-transform group-hover:scale-110"
+                <div class="w-10 h-10 rounded-m3-md-full flex items-center justify-center text-xl transition-transform group-hover:scale-110"
                   :class="isIssueResolved(issue) ? 'bg-gray-200' : getSeverityBadgeColor(issue.severity)"
                 >
                   {{ isIssueResolved(issue) ? '✓' : getSeverityIcon(issue.severity) }}
@@ -340,13 +340,13 @@ function isIssueResolved(issue: any): boolean {
               </button>
               <div class="flex gap-2 items-center">
                 <span
-                  class="px-3 py-1.5 text-xs font-bold rounded-full uppercase tracking-wider shadow-sm"
+                  class="px-3 py-1.5 text-xs font-bold rounded-m3-md-full uppercase tracking-wider shadow-elevation-1"
                   :class="isIssueResolved(issue) ? 'bg-gray-200 text-gray-600' : getSeverityBadgeColor(issue.severity)"
                 >
                   {{ issue.severity || 'warning' }}
                 </span>
                 <span
-                  class="px-3 py-1.5 text-xs font-bold rounded-full border-2 shadow-sm"
+                  class="px-3 py-1.5 text-xs font-bold rounded-m3-md-full border-2 shadow-elevation-1"
                   :class="getIssueTypeBadgeColor(issue.type)"
                 >
                   {{ issue.type }}
@@ -356,7 +356,7 @@ function isIssueResolved(issue: any): boolean {
             <!-- Source entity header (always show if available) -->
             <div v-if="issue.sourceEntity && !isIssueResolved(issue)" class="mb-3 p-4 bg-primary-50 border-l-4 border-primary rounded-m3-md shadow-elevation-1">
               <div class="flex items-center gap-2 mb-3">
-                <div class="w-8 h-8 bg-primary-500 rounded-m3-full flex items-center justify-center text-white font-bold text-sm">
+                <div class="w-8 h-8 bg-primary-500 rounded-m3-md flex items-center justify-center text-white font-bold text-sm">
                   {{ issue.sourceEntity.type.charAt(0).toUpperCase() }}
                 </div>
                 <div class="flex-1">
@@ -369,7 +369,7 @@ function isIssueResolved(issue: any): boolean {
                     <span v-if="issue.sourceEntity.title !== issue.sourceEntity.id" class="font-normal text-primary-700">{{ issue.sourceEntity.title }}</span>
                   </button>
                 </div>
-                <span class="px-2 py-1 bg-primary-200 text-primary-800 rounded-m3-full text-[10px] font-bold uppercase">{{ issue.sourceEntity.type }}</span>
+                <span class="px-2 py-1 bg-primary-200 text-primary-800 rounded-m3-md text-[10px] font-bold uppercase">{{ issue.sourceEntity.type }}</span>
               </div>
               
               <!-- Change details if available -->
@@ -399,13 +399,13 @@ function isIssueResolved(issue: any): boolean {
                     <div class="grid grid-cols-2 gap-3">
                       <div>
                         <div class="text-[10px] font-semibold text-secondary-600 mb-1.5 uppercase tracking-wide">Before</div>
-                        <div class="text-xs font-mono text-error-800 bg-error-50 px-3 py-2 rounded-m3-sm border border-error-200 break-words min-h-[2rem] flex items-center">
+                        <div class="text-xs font-mono text-error-800 bg-error-50 px-3 py-2 rounded-m3-md border border-error-200 break-words min-h-[2rem] flex items-center">
                           {{ change.oldValue }}
                         </div>
                       </div>
                       <div>
                         <div class="text-[10px] font-semibold text-secondary-600 mb-1.5 uppercase tracking-wide">After</div>
-                        <div class="text-xs font-mono text-primary-800 bg-primary-50 px-3 py-2 rounded-m3-sm border border-primary-200 break-words min-h-[2rem] flex items-center">
+                        <div class="text-xs font-mono text-primary-800 bg-primary-50 px-3 py-2 rounded-m3-md border border-primary-200 break-words min-h-[2rem] flex items-center">
                           {{ change.newValue }}
                         </div>
                       </div>
@@ -416,7 +416,7 @@ function isIssueResolved(issue: any): boolean {
               
               <!-- No git diff available -->
               <div v-else-if="!issue.hasGitDiff" class="mt-2">
-                <div class="text-xs text-tertiary-800 bg-tertiary-50 px-3 py-2 rounded-m3-sm border border-tertiary-300 flex items-start gap-2">
+                <div class="text-xs text-tertiary-800 bg-tertiary-50 px-3 py-2 rounded-m3-md border border-tertiary-300 flex items-start gap-2">
                   <span>⚠️</span>
                   <div>
                     <div class="font-semibold mb-1">No git changes detected</div>
@@ -426,7 +426,7 @@ function isIssueResolved(issue: any): boolean {
               </div>
               <!-- Rule matched but no specific field changes -->
               <div v-else class="mt-2">
-                <div class="text-xs text-primary-700 bg-primary-100 px-3 py-2 rounded-m3-sm border border-primary-200">
+                <div class="text-xs text-primary-700 bg-primary-100 px-3 py-2 rounded-m3-md border border-primary-200">
                   <span class="font-semibold">🔍</span> Entity changed but specific fields not identified. Review the entity for updates.
                 </div>
               </div>
@@ -441,7 +441,7 @@ function isIssueResolved(issue: any): boolean {
             </div>
             <div v-if="issue.suggestedAction && !isIssueResolved(issue)" class="mt-4 p-4 bg-secondary-50 border-l-4 border-secondary rounded-m3-md shadow-elevation-1">
               <div class="font-bold text-secondary-900 mb-2 flex items-center gap-2 text-sm">
-                <div class="w-6 h-6 bg-secondary-500 rounded-m3-full flex items-center justify-center text-white">💡</div>
+                <div class="w-6 h-6 bg-secondary-500 rounded-m3-md flex items-center justify-center text-white">💡</div>
                 <span class="uppercase tracking-wide">Suggested Action</span>
               </div>
               <div class="text-secondary-900 text-sm leading-relaxed">{{ issue.suggestedAction }}</div>
@@ -451,14 +451,14 @@ function isIssueResolved(issue: any): boolean {
             <div v-if="!isIssueResolved(issue)" class="mt-4 pt-4 border-t-2 border-surface-variant">
               <button
                 @click="resolveIssue(issue)"
-                class="w-full px-4 py-3 text-sm font-bold text-white bg-primary hover:bg-primary-600 rounded-m3-lg transition-all shadow-elevation-2 hover:shadow-elevation-3 flex items-center justify-center gap-2 group"
+                class="w-full px-4 py-3 text-sm font-bold text-white bg-primary hover:bg-primary-600 rounded-m3-md transition-all shadow-elevation-2 hover:shadow-elevation-3 flex items-center justify-center gap-2 group"
               >
                 <span class="text-lg group-hover:scale-125 transition-transform">✓</span>
                 <span>Mark as Resolved</span>
               </button>
             </div>
             <div v-else class="mt-4 pt-4 border-t-2 border-surface-variant text-center">
-              <div class="inline-flex items-center gap-2 px-4 py-2 bg-primary-100 text-primary-800 rounded-m3-full text-sm font-bold">
+              <div class="inline-flex items-center gap-2 px-4 py-2 bg-primary-100 text-primary-800 rounded-m3-md text-sm font-bold">
                 <span>✓</span>
                 <span>Resolved</span>
               </div>
@@ -475,15 +475,15 @@ function isIssueResolved(issue: any): boolean {
             v-for="entity in staleEntities"
             :key="entity.id"
             @click="selectEntity(entity.id)"
-            class="w-full p-3 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors text-left"
+            class="w-full p-3 bg-orange-50 border border-orange-200 rounded-m3-md-lg hover:bg-orange-100 transition-colors text-left"
           >
             <div class="flex items-center gap-2 mb-1">
               <span
-                class="w-2 h-2 rounded-full flex-shrink-0"
+                class="w-2 h-2 rounded-m3-md-full flex-shrink-0"
                 :class="getStatusColor(entity.status)"
               ></span>
               <span class="font-medium text-orange-900">{{ entity.id }}</span>
-              <span class="px-2 py-0.5 text-xs bg-orange-200 text-orange-800 rounded">
+              <span class="px-2 py-0.5 text-xs bg-orange-200 text-orange-800 rounded-m3-md">
                 {{ entity.type }}
               </span>
             </div>

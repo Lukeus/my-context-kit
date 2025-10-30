@@ -14,9 +14,9 @@ const type = computed(() => entity.value?._type || '');
     <div v-else class="space-y-4">
       <div class="text-lg font-semibold">{{ entity.title || entity.name || entity.id }}</div>
       <div class="flex flex-wrap items-center gap-2 text-[11px]">
-        <span class="px-2 py-0.5 rounded-m3-full bg-surface-3 border border-surface-variant">{{ type }}</span>
-        <span v-if="entity.status" class="px-2 py-0.5 rounded-m3-full bg-surface-3 border border-surface-variant">status: {{ entity.status }}</span>
-        <span v-if="entity.domain" class="px-2 py-0.5 rounded-m3-full bg-surface-3 border border-surface-variant">domain: {{ entity.domain }}</span>
+        <span class="px-2 py-0.5 rounded-m3-md bg-surface-3 border border-surface-variant">{{ type }}</span>
+        <span v-if="entity.status" class="px-2 py-0.5 rounded-m3-md bg-surface-3 border border-surface-variant">status: {{ entity.status }}</span>
+        <span v-if="entity.domain" class="px-2 py-0.5 rounded-m3-md bg-surface-3 border border-surface-variant">domain: {{ entity.domain }}</span>
       </div>
 
       <div v-if="type === 'feature'" class="space-y-2">

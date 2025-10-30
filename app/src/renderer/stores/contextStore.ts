@@ -110,8 +110,8 @@ export const useContextStore = defineStore('context', () => {
     }
 
     watchedRepoPath = normalized;
-    disposeFileWatcher = window.api.repos.onFileChanged(async (payload: any) => {
-      if (!repoPath.value || payload?.dir !== watchedRepoPath) {
+    disposeFileWatcher = window.api.repos.onFileChanged((payload: unknown) => {
+      if (!repoPath.value || (payload as { dir?: string })?.dir !== watchedRepoPath) {
         return;
       }
 
@@ -119,8 +119,8 @@ export const useContextStore = defineStore('context', () => {
         clearTimeout(fileChangeDebounce);
       }
 
-      fileChangeDebounce = setTimeout(async () => {
-        await loadGraph();
+      fileChangeDebounce = setTimeout(() => {
+        void loadGraph();
         fileChangeDebounce = null;
       }, FILE_WATCH_DEBOUNCE_MS);
     });
@@ -181,7 +181,7 @@ export const useContextStore = defineStore('context', () => {
   }
 
   // Initialize on first access
-  initializeStore();
+  void initializeStore();
 
   // Computed
   const activeEntity = computed(() => {
@@ -245,13 +245,16 @@ export const useContextStore = defineStore('context', () => {
   async function loadGraph() {
     isLoading.value = true;
     error.value = null;
+    const startTime = performance.now();
 
     try {
       if (!repoPath.value) {
         error.value = 'Repository path is not configured';
+        console.warn('[contextStore.loadGraph] No repository path configured');
         return false;
       }
 
+      console.debug('[contextStore.loadGraph] Starting graph build', { repoPath: repoPath.value });
       const result = await window.api.context.buildGraph(repoPath.value);
       
       if (result.error) {
@@ -275,9 +278,21 @@ export const useContextStore = defineStore('context', () => {
 
       entities.value = newEntities;
 
+      const duration = performance.now() - startTime;
+      console.info('[contextStore.loadGraph] Graph loaded successfully', { 
+        duration: `${duration.toFixed(2)}ms`, 
+        entityCount: Object.keys(newEntities).length,
+        nodeCount: result.nodes?.length || 0,
+        edgeCount: result.edges?.length || 0
+      });
       return true;
     } catch (err: any) {
       error.value = err.message || 'Failed to load graph';
+      const duration = performance.now() - startTime;
+      console.error('[contextStore.loadGraph] Failed to load graph', { 
+        duration: `${duration.toFixed(2)}ms`, 
+        error: err.message 
+      });
       return false;
     } finally {
       isLoading.value = false;
@@ -287,23 +302,41 @@ export const useContextStore = defineStore('context', () => {
   async function validateRepo() {
     isLoading.value = true;
     error.value = null;
+    const startTime = performance.now();
 
     try {
       if (!repoPath.value) {
         error.value = 'Repository path is not configured';
+        console.warn('[contextStore.validateRepo] No repository path configured');
         return { ok: false, error: error.value };
       }
 
+      console.debug('[contextStore.validateRepo] Starting validation', { repoPath: repoPath.value });
       const result = await window.api.context.validate(repoPath.value);
       
       if (!result.ok) {
         error.value = result.error || 'Validation failed';
+        const duration = performance.now() - startTime;
+        console.warn('[contextStore.validateRepo] Validation failed', { 
+          duration: `${duration.toFixed(2)}ms`, 
+          error: result.error 
+        });
         return result;
       }
 
+      const duration = performance.now() - startTime;
+      console.info('[contextStore.validateRepo] Validation succeeded', { 
+        duration: `${duration.toFixed(2)}ms`,
+        errors: result.errors?.length || 0
+      });
       return result;
     } catch (err: any) {
       error.value = err.message || 'Failed to validate repository';
+      const duration = performance.now() - startTime;
+      console.error('[contextStore.validateRepo] Validation error', { 
+        duration: `${duration.toFixed(2)}ms`, 
+        error: err.message 
+      });
       return { ok: false, error: error.value };
     } finally {
       isLoading.value = false;
@@ -315,7 +348,7 @@ function setActiveEntity(entityId: string | null) {
 
   // Update recents list in settings (best-effort, non-blocking)
   if (entityId) {
-    (async () => {
+    void (async () => {
       try {
         const res = await window.api.settings.get('recentEntities');
         const list: string[] = Array.isArray(res?.value) ? res.value : [];
@@ -465,7 +498,7 @@ function setActiveEntity(entityId: string | null) {
    * Stops file watching and clears any pending timeouts to prevent memory leaks
    */
   function cleanup() {
-    stopRepoWatch();
+    void stopRepoWatch();
     // Any other cleanup can be added here
   }
 

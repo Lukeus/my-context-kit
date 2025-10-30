@@ -93,7 +93,7 @@ function entryTimestamp(entry: ConversationTurn): string {
       <span v-if="isBusy" class="text-[11px] text-secondary-600">Updating…</span>
     </header>
 
-    <div v-if="entries.length === 0" class="border border-dashed border-surface-variant rounded-m3-lg px-3 py-4 text-xs text-secondary-500">
+    <div v-if="entries.length === 0" class="border border-dashed border-surface-variant rounded-m3-md px-3 py-4 text-xs text-secondary-500">
       {{ emptyMessage || 'No transcript available yet.' }}
     </div>
 
@@ -101,7 +101,7 @@ function entryTimestamp(entry: ConversationTurn): string {
       <li
         v-for="(entry, index) in entries"
         :key="`${entry.timestamp}-${index}`"
-        class="border border-surface-variant rounded-m3-lg bg-white shadow-elevation-1 divide-y divide-surface-variant"
+        class="border border-surface-variant rounded-m3-md bg-white shadow-elevation-1 divide-y divide-surface-variant"
       >
         <div class="px-4 py-2 flex items-center justify-between bg-surface-2">
           <span class="text-[11px] font-semibold text-secondary-700">{{ roleLabel(entry.role) }}</span>

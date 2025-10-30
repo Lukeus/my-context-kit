@@ -99,7 +99,7 @@ async function refreshAnalysis() {
     <div class="px-4 py-2 border-b border-surface-variant bg-surface-2 flex items-center justify-between gap-2">
       <div class="text-xs text-secondary-600">
         <template v-if="activeEntity">
-          <span class="px-2 py-0.5 rounded-m3-full bg-primary-100 text-primary-800 font-medium mr-2">{{ activeEntity._type }}</span>
+          <span class="px-2 py-0.5 rounded-m3-md bg-primary-100 text-primary-800 font-medium mr-2">{{ activeEntity._type }}</span>
           <span class="font-mono">{{ activeEntity.id }}</span>
         </template>
         <template v-else>
@@ -109,7 +109,7 @@ async function refreshAnalysis() {
       <button
         @click="refreshAnalysis"
         :disabled="!contextStore.activeEntityId || impactStore.isAnalyzing"
-        class="p-1.5 rounded-m3-full hover:bg-surface-3 transition-colors disabled:opacity-50"
+        class="p-1.5 rounded-m3-md hover:bg-surface-3 transition-colors disabled:opacity-50"
         title="Refresh analysis"
       >
         <svg class="w-4 h-4" :class="impactStore.isAnalyzing ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,7 +137,7 @@ async function refreshAnalysis() {
     <!-- Loading state -->
     <div v-if="impactStore.isAnalyzing" class="flex-1 flex items-center justify-center">
       <div class="text-center">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary-200 border-t-primary-600 mb-3"></div>
+        <div class="inline-block animate-spin rounded-m3-md-full h-8 w-8 border-4 border-primary-200 border-t-primary-600 mb-3"></div>
         <p class="text-sm text-secondary-600">Analyzing dependencies...</p>
       </div>
     </div>
@@ -157,7 +157,7 @@ async function refreshAnalysis() {
     <div v-else-if="!impactStore.isAnalyzing && impactStore.impactReport" class="flex-1 overflow-y-auto">
       <!-- No issues found -->
       <div v-if="unresolvedRelevantIssues.length === 0" class="p-6 text-center">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-m3-md-full bg-green-100 mb-3">
           <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
@@ -195,7 +195,7 @@ async function refreshAnalysis() {
           v-for="(issue, index) in relevantIssues"
           :key="`${issue.id}-${issue.ruleId || issue.type}-${index}`"
           v-show="showResolvedIssues || !isIssueResolved(issue)"
-          class="border-2 rounded-m3-lg overflow-hidden transition-all"
+          class="border-2 rounded-m3-md overflow-hidden transition-all"
           :class="[
             isIssueResolved(issue) 
               ? 'bg-surface-2 border-surface-variant opacity-60' 
@@ -208,7 +208,7 @@ async function refreshAnalysis() {
               v-if="issue.type === 'not-found'"
               class="flex items-center gap-2 w-full"
             >
-              <div class="w-8 h-8 rounded-full flex items-center justify-center text-lg bg-white/50">
+              <div class="w-8 h-8 rounded-m3-md-full flex items-center justify-center text-lg bg-white/50">
                 {{ getSeverityIcon(issue.severity) }}
               </div>
               <div class="flex-1 min-w-0">
@@ -221,7 +221,7 @@ async function refreshAnalysis() {
               @click="selectEntity(issue.id)"
               class="flex items-center gap-2 w-full text-left hover:underline group"
             >
-              <div class="w-8 h-8 rounded-full flex items-center justify-center text-lg"
+              <div class="w-8 h-8 rounded-m3-md-full flex items-center justify-center text-lg"
                 :class="isIssueResolved(issue) ? 'bg-surface-3' : 'bg-white/50'"
               >
                 {{ isIssueResolved(issue) ? '✓' : getSeverityIcon(issue.severity) }}
@@ -242,7 +242,7 @@ async function refreshAnalysis() {
             <div
               v-for="change in issue.changes"
               :key="change.field"
-              class="bg-surface rounded-m3-sm p-2 border border-surface-variant"
+              class="bg-surface rounded-m3-md p-2 border border-surface-variant"
             >
               <div class="font-semibold text-xs mb-1">{{ change.field }}</div>
               <div class="grid grid-cols-2 gap-2 text-xs">
@@ -289,7 +289,7 @@ async function refreshAnalysis() {
             <button
               v-if="!isIssueResolved(issue)"
               @click="resolveIssue(issue)"
-              class="px-3 py-1.5 text-xs font-semibold rounded-m3-full bg-primary-600 text-white hover:bg-primary-700 transition-colors shadow-elevation-1"
+              class="px-3 py-1.5 text-xs font-semibold rounded-m3-md bg-primary-600 text-white hover:bg-primary-700 transition-colors shadow-elevation-1"
             >
               ✓ Mark Resolved
             </button>

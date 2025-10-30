@@ -108,7 +108,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="fixed inset-0 z-[100] flex items-start justify-center p-4" style="background-color: rgba(0,0,0,0.4);" @click.self="close">
-    <div class="w-full max-w-xl rounded-m3-xl bg-surface shadow-elevation-5 border border-surface-variant overflow-hidden">
+    <div class="w-full max-w-xl rounded-m3-md bg-surface shadow-elevation-5 border border-surface-variant overflow-hidden">
       <div class="px-4 py-3 bg-surface-2 border-b border-surface-variant">
         <input
           v-model="query"

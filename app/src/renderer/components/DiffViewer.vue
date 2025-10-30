@@ -73,7 +73,7 @@ const stats = computed(() => {
 </script>
 
 <template>
-  <div class="diff-viewer bg-surface-1 border border-surface-variant rounded-m3-lg overflow-hidden shadow-elevation-2">
+  <div class="diff-viewer bg-surface-1 border border-surface-variant rounded-m3-md overflow-hidden shadow-elevation-2">
     <!-- Header -->
     <div class="px-4 py-3 bg-surface-2 border-b border-surface-variant flex items-center justify-between">
       <div class="flex items-center gap-2">
@@ -83,10 +83,10 @@ const stats = computed(() => {
         <span class="text-sm font-medium text-secondary-900">{{ filePath }}</span>
       </div>
       <div class="flex items-center gap-3 text-xs">
-        <span class="px-2 py-1 rounded-m3-full bg-green-100 text-green-800 font-medium">
+        <span class="px-2 py-1 rounded-m3-md bg-green-100 text-green-800 font-medium">
           +{{ stats.additions }}
         </span>
-        <span class="px-2 py-1 rounded-m3-full bg-red-100 text-red-800 font-medium">
+        <span class="px-2 py-1 rounded-m3-md bg-red-100 text-red-800 font-medium">
           -{{ stats.deletions }}
         </span>
         <span class="text-secondary-600">

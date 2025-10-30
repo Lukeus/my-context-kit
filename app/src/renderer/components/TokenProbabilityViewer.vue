@@ -46,7 +46,7 @@ function formatPercentage(prob: number): string {
           v-for="(lp, i) in logprobs"
           :key="i"
           :class="getConfidenceColor(lp.prob)"
-          class="px-2 py-1 rounded-m3-sm text-xs font-mono border"
+          class="px-2 py-1 rounded-m3-md text-xs font-mono border"
           :title="`Probability: ${(lp.prob * 100).toFixed(2)}%\nLog probability: ${lp.logprob.toFixed(4)}`"
         >
           {{ lp.token }}
@@ -57,10 +57,10 @@ function formatPercentage(prob: number): string {
       <div class="mt-3 pt-3 border-t border-surface-variant">
         <p class="text-xs font-semibold text-secondary-700 mb-2">Confidence Legend:</p>
         <div class="flex flex-wrap items-center gap-2 text-xs">
-          <span class="px-2 py-1 rounded-m3-sm bg-green-50 text-green-700 border border-green-200">High (90%+)</span>
-          <span class="px-2 py-1 rounded-m3-sm bg-blue-50 text-blue-700 border border-blue-200">Good (70-90%)</span>
-          <span class="px-2 py-1 rounded-m3-sm bg-yellow-50 text-yellow-700 border border-yellow-200">Medium (50-70%)</span>
-          <span class="px-2 py-1 rounded-m3-sm bg-orange-50 text-orange-700 border border-orange-200">Low (&lt;50%)</span>
+          <span class="px-2 py-1 rounded-m3-md bg-green-50 text-green-700 border border-green-200">High (90%+)</span>
+          <span class="px-2 py-1 rounded-m3-md bg-blue-50 text-blue-700 border border-blue-200">Good (70-90%)</span>
+          <span class="px-2 py-1 rounded-m3-md bg-yellow-50 text-yellow-700 border border-yellow-200">Medium (50-70%)</span>
+          <span class="px-2 py-1 rounded-m3-md bg-orange-50 text-orange-700 border border-orange-200">Low (&lt;50%)</span>
         </div>
       </div>
     </div>
