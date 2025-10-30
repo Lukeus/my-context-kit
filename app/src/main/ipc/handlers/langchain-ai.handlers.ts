@@ -1,6 +1,7 @@
 import { ipcMain, app } from 'electron';
 import { toErrorMessage } from '../../utils/errorHandler';
 import { LangChainAIService } from '../../services/LangChainAIService';
+import { AICredentialResolver } from '../../services/AICredentialResolver';
 import { getSchemaForEntityType } from '../../schemas/entitySchemas';
 import type { TestConnectionOptions } from '../../services/LangChainAIService';
 import { successWith, error } from '../types';
@@ -10,6 +11,7 @@ import path from 'node:path';
 import { logger } from '../../utils/logger';
 
 const langchainService = new LangChainAIService();
+const credentialResolver = new AICredentialResolver();
 
 // Track active streams for cancellation
 const activeStreams = new Map<string, boolean>();
@@ -53,7 +55,7 @@ export function registerLangChainAIHandlers(): void {
       let prefEnabled = false;
       try {
         const parsed = await loadOrRepairSettings(settingsPath);
-        if (parsed && parsed['langchain.enabled'] === true) prefEnabled = true;
+        if (parsed !== null && parsed['langchain.enabled'] === true) prefEnabled = true;
       } catch (err) {
         // loader logs its own diagnostics; assume false
         logger.debug({ service: 'langchain.handlers', method: 'isEnabled' }, `Could not load/repair app settings: ${err instanceof Error ? err.message : String(err)}`);
@@ -71,15 +73,15 @@ export function registerLangChainAIHandlers(): void {
    */
   ipcMain.handle('langchain:testConnection', async (_event, payload: TestConnectionOptions) => {
     try {
-      // If no apiKey supplied, attempt to use stored credentials for Azure provider
-      if (payload.provider === 'azure-openai' && !payload.apiKey) {
-        const { AIService } = await import('../../services/AIService');
-        const legacyService = new AIService();
-        try {
-          const apiKey = await legacyService.getStoredCredentials(payload.provider);
-          if (apiKey) payload.apiKey = apiKey;
-        } catch (err) {
-          console.warn('Could not load stored credentials for testConnection:', err instanceof Error ? err.message : String(err));
+      // Resolve API key using unified resolver if not provided
+      if (!payload.apiKey) {
+        const resolvedKey = await credentialResolver.resolveApiKey({
+          provider: payload.provider,
+          useStoredCredentials: true,
+          useEnvironmentVars: true
+        });
+        if (resolvedKey) {
+          payload.apiKey = resolvedKey;
         }
       }
 
@@ -148,7 +150,7 @@ export function registerLangChainAIHandlers(): void {
    * Handles conversation history automatically.
    */
   ipcMain.handle('langchain:assistStreamStart', async (event, { dir, question, conversationHistory, contextSnapshot }:
-    { dir: string; question: string; conversationHistory?: Array<{ role: string; content: string }>; contextSnapshot?: any }) => {
+    { dir: string; question: string; conversationHistory?: Array<{ role: string; content: string }>; contextSnapshot?: unknown }) => {
     try {
       // Get AI config
       const { AIService } = await import('../../services/AIService');
@@ -159,24 +161,23 @@ export function registerLangChainAIHandlers(): void {
         return error('AI assistance is disabled in configuration');
       }
 
-      // Get credentials if needed and inject into config so LangChain receives it
+      // Resolve credentials using unified resolver and inject into config
       if (config.provider === 'azure-openai') {
-        try {
-          const apiKey = await legacyService.getStoredCredentials(config.provider);
-          if (apiKey) {
-            (config as any).apiKey = apiKey;
-          }
-        } catch (err) {
-          console.warn('Could not load stored credentials for assistStreamStart:', err instanceof Error ? err.message : String(err));
-        }
+        const apiKey = await credentialResolver.resolveApiKey({
+          provider: config.provider,
+          explicitKey: config.apiKey as string | undefined,
+          useStoredCredentials: true,
+          useEnvironmentVars: true
+        });
 
-        // If provider requires an API key and we still don't have one, return
-        // an explicit error so the renderer can prompt the user to add credentials
-        if (!((config as any).apiKey || process.env.OPENAI_API_KEY || process.env.AZURE_OPENAI_KEY)) {
+        if (!apiKey) {
           const msg = 'No API key found for provider azure-openai. Please save credentials in Settings or set OPENAI_API_KEY/AZURE_OPENAI_KEY.';
           console.warn('LangChain stream start blocked:', msg);
           return error(msg);
         }
+
+        // Inject resolved key into config
+        (config as any).apiKey = apiKey;
       }
 
       const streamId = randomUUID();
@@ -272,13 +273,13 @@ export function isLangChainEnabled(): boolean {
  *   best-effort repair by extracting top-level key-value pairs using a tolerant regexp.
  *   If repair succeeds, writes repaired JSON back to settingsPath and returns it.
  */
-async function loadOrRepairSettings(settingsPath: string): Promise<Record<string, any>> {
+async function loadOrRepairSettings(settingsPath: string): Promise<Record<string, unknown>> {
   try {
     const content = await readFile(settingsPath, 'utf-8');
     try {
-      return JSON.parse(content);
-    } catch (parseErr) {
-      // Backup the broken file
+      return JSON.parse(content) as Record<string, unknown>;
+    } catch {
+      // Backup the broken file (parseErr unused)
       try {
         const bakPath = `${settingsPath}.broken.${Date.now()}`;
         await rename(settingsPath, bakPath);
@@ -288,14 +289,14 @@ async function loadOrRepairSettings(settingsPath: string): Promise<Record<string
       }
 
       // Attempt a simple repair: find top-level key: value pairs and rebuild JSON
-      const repaired: Record<string, any> = {};
+      const repaired: Record<string, unknown> = {};
       try {
         // Match lines like "key": <value>, allowing trailing commas and unescaped paths
         const kvRegex = /"([^"]+)"\s*:\s*("(?:[^"\\]|\\.)*"|true|false|null|\[.*?\]|\{.*?\}|-?\d+(?:\.\d+)?)/gs;
         let match;
         while ((match = kvRegex.exec(content)) !== null) {
           const k = match[1];
-          let raw = match[2];
+          const raw = match[2];
           // If raw is a quoted string, unquote and unescape backslashes
           if (raw.startsWith('"') && raw.endsWith('"')) {
             try { repaired[k] = JSON.parse(raw); } catch { repaired[k] = raw.slice(1, -1).replace(/\\\\/g, "\\"); }
@@ -326,8 +327,8 @@ async function loadOrRepairSettings(settingsPath: string): Promise<Record<string
       // If repair failed, return empty object
       return {};
     }
-  } catch (err) {
-    // File doesn't exist or unreadable
+  } catch {
+    // File doesn't exist or unreadable (err unused)
     return {};
   }
 }
