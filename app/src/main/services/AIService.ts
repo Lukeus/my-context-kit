@@ -6,6 +6,7 @@ import { execa } from 'execa';
 import { randomUUID } from 'node:crypto';
 import { parse as parseYAML } from 'yaml';
 import { logger } from '../utils/logger';
+import { AICredentialResolver } from './AICredentialResolver';
 
 const AI_CONFIG_FILE = 'ai-config.json';
 const CREDENTIALS_FILE = 'credentials.enc';
@@ -67,6 +68,7 @@ export interface AIStreamProcess {
 export class AIService {
   private streamProcesses = new Map<string, ReturnType<typeof execa>>();
   private streamTimeouts = new Map<string, NodeJS.Timeout>();
+  private credentialResolver = new AICredentialResolver();
 
   /**
    * Get AI configuration for a repository
@@ -344,7 +346,12 @@ export class AIService {
 
         let apiKey = '';
         if (config.provider === 'azure-openai') {
-          apiKey = await this.getCredentials(config.provider);
+          apiKey = await this.credentialResolver.resolveApiKey({
+            provider: config.provider,
+            explicitKey: config.apiKey as string | undefined,
+            useStoredCredentials: true,
+            useEnvironmentVars: true
+          }) || '';
         }
 
         const args = [
@@ -411,7 +418,12 @@ export class AIService {
 
     let apiKey = '';
     if (config.provider === 'azure-openai') {
-      apiKey = await this.getCredentials(config.provider);
+      apiKey = await this.credentialResolver.resolveApiKey({
+        provider: config.provider,
+        explicitKey: config.apiKey as string | undefined,
+        useStoredCredentials: true,
+        useEnvironmentVars: true
+      }) || '';
     }
 
     const encodedQuestion = Buffer.from(question, 'utf-8').toString('base64');
@@ -484,7 +496,12 @@ export class AIService {
 
     let apiKey = '';
     if (config.provider === 'azure-openai') {
-      apiKey = await this.getCredentials(config.provider);
+      apiKey = await this.credentialResolver.resolveApiKey({
+        provider: config.provider,
+        explicitKey: config.apiKey as string | undefined,
+        useStoredCredentials: true,
+        useEnvironmentVars: true
+      }) || '';
     }
 
     const streamId = randomUUID();
