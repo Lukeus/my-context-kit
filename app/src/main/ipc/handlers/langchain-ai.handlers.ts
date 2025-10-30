@@ -2,6 +2,7 @@ import { ipcMain, app } from 'electron';
 import { toErrorMessage } from '../../utils/errorHandler';
 import { LangChainAIService } from '../../services/LangChainAIService';
 import { AICredentialResolver } from '../../services/AICredentialResolver';
+import { EnhancedLangChainService } from '../../services/EnhancedLangChainService';
 import { getSchemaForEntityType } from '../../schemas/entitySchemas';
 import type { TestConnectionOptions } from '../../services/LangChainAIService';
 import { successWith, error } from '../types';
@@ -11,6 +12,7 @@ import path from 'node:path';
 import { logger } from '../../utils/logger';
 
 const langchainService = new LangChainAIService();
+const enhancedService = new EnhancedLangChainService();
 const credentialResolver = new AICredentialResolver();
 
 // Track active streams for cancellation
@@ -262,9 +264,267 @@ export function registerLangChainAIHandlers(): void {
   ipcMain.handle('langchain:clearCache', async () => {
     try {
       langchainService.clearCache();
+      enhancedService.clearCache();
       return successWith({ cleared: true });
     } catch (err: unknown) {
       return error(toErrorMessage(err));
+    }
+  });
+
+  // ============================================================================
+  // Enhanced LangChain Features
+  // ============================================================================
+
+  /**
+   * 1. Context-Aware Entity Generation
+   * Generate entities with full awareness of the context repository
+   */
+  ipcMain.handle('langchain:generateContextAware', async (_event, payload: {
+    dir: string;
+    entityType: 'feature' | 'userstory' | 'spec' | 'task';
+    userPrompt: string;
+    linkedFeatureId?: string;
+  }) => {
+    try {
+      const config = await langchainService.getConfig(payload.dir);
+
+      if (!config.enabled) {
+        return error('AI assistance is disabled in configuration');
+      }
+
+      // Resolve credentials
+      if (config.provider === 'azure-openai') {
+        const apiKey = await credentialResolver.resolveApiKey({
+          provider: config.provider,
+          explicitKey: config.apiKey as string | undefined,
+          useStoredCredentials: true,
+          useEnvironmentVars: true
+        });
+
+        if (!apiKey) {
+          return error('No API key found for Azure OpenAI');
+        }
+
+        (config as any).apiKey = apiKey;
+      }
+
+      const entity = await enhancedService.generateContextAwareEntity({
+        config,
+        entityType: payload.entityType,
+        userPrompt: payload.userPrompt,
+        linkedFeatureId: payload.linkedFeatureId,
+        repoPath: payload.dir
+      });
+
+      return successWith({ entity });
+    } catch (err: unknown) {
+      logger.error(
+        { service: 'langchain.handlers', method: 'generateContextAware' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      return error(toErrorMessage(err, 'Context-aware generation failed'));
+    }
+  });
+
+  /**
+   * 2. Intelligent Impact Analysis
+   * Analyze the impact of proposed changes with AI explanation
+   */
+  ipcMain.handle('langchain:analyzeImpact', async (_event, payload: {
+    dir: string;
+    entityId: string;
+    proposedChange: string;
+  }) => {
+    try {
+      const config = await langchainService.getConfig(payload.dir);
+
+      if (!config.enabled) {
+        return error('AI assistance is disabled in configuration');
+      }
+
+      // Resolve credentials
+      if (config.provider === 'azure-openai') {
+        const apiKey = await credentialResolver.resolveApiKey({
+          provider: config.provider,
+          explicitKey: config.apiKey as string | undefined,
+          useStoredCredentials: true,
+          useEnvironmentVars: true
+        });
+
+        if (!apiKey) {
+          return error('No API key found for Azure OpenAI');
+        }
+
+        (config as any).apiKey = apiKey;
+      }
+
+      const analysis = await enhancedService.analyzeImpact({
+        config,
+        entityId: payload.entityId,
+        proposedChange: payload.proposedChange,
+        repoPath: payload.dir
+      });
+
+      return successWith({ analysis });
+    } catch (err: unknown) {
+      logger.error(
+        { service: 'langchain.handlers', method: 'analyzeImpact' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      return error(toErrorMessage(err, 'Impact analysis failed'));
+    }
+  });
+
+  /**
+   * 3. Conversational Validation
+   * Refine invalid YAML through conversational iteration
+   */
+  ipcMain.handle('langchain:refineYaml', async (_event, payload: {
+    dir: string;
+    yamlContent: string;
+    entityType: string;
+    schemaErrors: Array<{ path: string; message: string }>;
+    conversationHistory: Array<{ role: string; content: string }>;
+  }) => {
+    try {
+      const config = await langchainService.getConfig(payload.dir);
+
+      if (!config.enabled) {
+        return error('AI assistance is disabled in configuration');
+      }
+
+      // Resolve credentials
+      if (config.provider === 'azure-openai') {
+        const apiKey = await credentialResolver.resolveApiKey({
+          provider: config.provider,
+          explicitKey: config.apiKey as string | undefined,
+          useStoredCredentials: true,
+          useEnvironmentVars: true
+        });
+
+        if (!apiKey) {
+          return error('No API key found for Azure OpenAI');
+        }
+
+        (config as any).apiKey = apiKey;
+      }
+
+      const refinement = await enhancedService.refineEntityConversationally({
+        config,
+        yamlContent: payload.yamlContent,
+        entityType: payload.entityType,
+        schemaErrors: payload.schemaErrors,
+        conversationHistory: payload.conversationHistory,
+        repoPath: payload.dir
+      });
+
+      return successWith({ refinement });
+    } catch (err: unknown) {
+      logger.error(
+        { service: 'langchain.handlers', method: 'refineYaml' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      return error(toErrorMessage(err, 'YAML refinement failed'));
+    }
+  });
+
+  /**
+   * 4. Semantic Search
+   * Search entities semantically using vector embeddings
+   */
+  ipcMain.handle('langchain:semanticSearch', async (_event, payload: {
+    dir: string;
+    query: string;
+    entityTypes?: string[];
+    limit?: number;
+  }) => {
+    try {
+      const config = await langchainService.getConfig(payload.dir);
+
+      if (!config.enabled) {
+        return error('AI assistance is disabled in configuration');
+      }
+
+      // Resolve credentials
+      if (config.provider === 'azure-openai') {
+        const apiKey = await credentialResolver.resolveApiKey({
+          provider: config.provider,
+          explicitKey: config.apiKey as string | undefined,
+          useStoredCredentials: true,
+          useEnvironmentVars: true
+        });
+
+        if (!apiKey) {
+          return error('No API key found for Azure OpenAI');
+        }
+
+        (config as any).apiKey = apiKey;
+      }
+
+      const searchResults = await enhancedService.semanticSearch({
+        config,
+        query: payload.query,
+        entityTypes: payload.entityTypes,
+        limit: payload.limit,
+        repoPath: payload.dir
+      });
+
+      return successWith({ results: searchResults.results });
+    } catch (err: unknown) {
+      logger.error(
+        { service: 'langchain.handlers', method: 'semanticSearch' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      return error(toErrorMessage(err, 'Semantic search failed'));
+    }
+  });
+
+  /**
+   * 5. Multi-Agent Orchestration
+   * Execute complex workflows with agent-based planning
+   */
+  ipcMain.handle('langchain:executeWorkflow', async (_event, payload: {
+    dir: string;
+    instruction: string;
+    conversationHistory?: Array<{ role: string; content: string }>;
+  }) => {
+    try {
+      const config = await langchainService.getConfig(payload.dir);
+
+      if (!config.enabled) {
+        return error('AI assistance is disabled in configuration');
+      }
+
+      // Resolve credentials
+      if (config.provider === 'azure-openai') {
+        const apiKey = await credentialResolver.resolveApiKey({
+          provider: config.provider,
+          explicitKey: config.apiKey as string | undefined,
+          useStoredCredentials: true,
+          useEnvironmentVars: true
+        });
+
+        if (!apiKey) {
+          return error('No API key found for Azure OpenAI');
+        }
+
+        (config as any).apiKey = apiKey;
+      }
+
+      const workflowResult = await enhancedService.executeMultiAgentWorkflow({
+        config,
+        instruction: payload.instruction,
+        repoPath: payload.dir,
+        conversationHistory: payload.conversationHistory
+      });
+
+      return successWith({ workflow: workflowResult });
+    } catch (err: unknown) {
+      logger.error(
+        { service: 'langchain.handlers', method: 'executeWorkflow' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      return error(toErrorMessage(err, 'Workflow execution failed'));
     }
   });
 }
