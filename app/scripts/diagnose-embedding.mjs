@@ -1,4 +1,3 @@
-import { OpenAIEmbeddings } from '@langchain/openai';
 import fetch from 'node-fetch';
 import process from 'node:process';
 
