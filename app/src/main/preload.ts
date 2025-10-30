@@ -108,6 +108,10 @@ contextBridge.exposeInMainWorld('api', {
     },
     applyEdit: (dir: string, filePath: string, updatedContent: string, summary?: string) =>
       ipcRenderer.invoke('ai:applyEdit', { dir, filePath, updatedContent, summary }),
+    // Per-provider configuration
+    getProviderConfigs: (dir: string) => ipcRenderer.invoke('ai:getProviderConfigs', { dir }),
+    saveProviderConfig: (dir: string, provider: string, config: { endpoint: string; model: string }) =>
+      ipcRenderer.invoke('ai:saveProviderConfig', { dir, provider, config }),
   },
   // LangChain AI API (feature-flagged implementation)
   langchain: {
