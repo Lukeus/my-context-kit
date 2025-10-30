@@ -163,6 +163,11 @@ export function registerLangChainAIHandlers(): void {
 
       // Resolve credentials using unified resolver and inject into config
       if (config.provider === 'azure-openai') {
+        logger.debug(
+          { service: 'langchain.handlers', method: 'assistStreamStart' },
+          `Resolving credentials - has config.apiKey: ${!!config.apiKey}`
+        );
+        
         const apiKey = await credentialResolver.resolveApiKey({
           provider: config.provider,
           explicitKey: config.apiKey as string | undefined,
@@ -170,14 +175,23 @@ export function registerLangChainAIHandlers(): void {
           useEnvironmentVars: true
         });
 
+        logger.debug(
+          { service: 'langchain.handlers', method: 'assistStreamStart' },
+          `Credential resolution result: ${apiKey ? 'Found (length: ' + apiKey.length + ')' : 'Not found'}`
+        );
+
         if (!apiKey) {
           const msg = 'No API key found for provider azure-openai. Please save credentials in Settings or set OPENAI_API_KEY/AZURE_OPENAI_KEY.';
-          console.warn('LangChain stream start blocked:', msg);
+          logger.warn({ service: 'langchain.handlers', method: 'assistStreamStart' }, msg);
           return error(msg);
         }
 
         // Inject resolved key into config
         (config as any).apiKey = apiKey;
+        logger.debug(
+          { service: 'langchain.handlers', method: 'assistStreamStart' },
+          `Injected API key into config - now has config.apiKey: ${!!config.apiKey}`
+        );
       }
 
       const streamId = randomUUID();
