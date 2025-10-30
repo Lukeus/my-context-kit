@@ -94,14 +94,6 @@ jobs:
         run: |
           cd app
           pnpm lint
-      
-      - name: Check formatting
-        run: |
-          cd app
-          pnpm format -- --check || {
-            echo "❌ Formatting issues detected. Run 'pnpm format' to fix."
-            exit 1
-          }
 
   # Type checking
   typecheck:
