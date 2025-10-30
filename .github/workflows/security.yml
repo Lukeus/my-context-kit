@@ -134,9 +134,7 @@ jobs:
 
   sast-codeql:
     name: SAST - CodeQL Analysis
-    # Note: Disable this job if GitHub's default CodeQL setup is enabled
-    # Or disable default setup in Settings > Code security > Code scanning
-    if: false  # Disabled to avoid conflict with GitHub default CodeQL setup
+    # Note: This runs in addition to GitHub's default CodeQL for comprehensive coverage
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
