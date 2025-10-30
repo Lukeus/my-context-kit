@@ -92,7 +92,7 @@ function cancelStream() {
 
     <div
       v-if="hasResult && result"
-      class="border border-surface-variant bg-white rounded-m3-lg shadow-elevation-1 divide-y divide-surface-variant"
+      class="border border-surface-variant bg-white rounded-m3-md shadow-elevation-1 divide-y divide-surface-variant"
     >
       <div class="px-4 py-3 space-y-1">
         <p class="text-xs font-semibold text-secondary-900 flex items-center gap-2">
@@ -118,7 +118,7 @@ function cancelStream() {
       </div>
     </div>
 
-    <div v-else class="border border-dashed border-surface-variant rounded-m3-lg px-3 py-4 text-xs text-secondary-500">
+    <div v-else class="border border-dashed border-surface-variant rounded-m3-md px-3 py-4 text-xs text-secondary-500">
       No context artifact loaded yet. Request a file to preview its contents here.
     </div>
   </section>

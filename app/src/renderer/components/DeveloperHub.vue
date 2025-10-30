@@ -95,19 +95,19 @@ function setActiveTab(tab: 'overview' | 'kanban') {
     <div class="max-w-7xl mx-auto px-8 py-6 space-y-6">
       <div class="flex flex-wrap items-center gap-2 justify-between">
         <div class="flex items-center gap-2">
-          <button type="button" class="px-4 py-2 text-sm font-semibold rounded-m3-full border transition-all"
+          <button type="button" class="px-4 py-2 text-sm font-semibold rounded-m3-md border transition-all"
             :class="activeTab === 'overview' ? 'bg-primary-100 text-primary-800 border-primary-200 shadow-elevation-1' : 'bg-surface text-secondary-700 border-surface-variant hover:bg-surface-2'"
             @click="setActiveTab('overview')">
             Overview
           </button>
-          <button type="button" class="px-4 py-2 text-sm font-semibold rounded-m3-full border transition-all"
+          <button type="button" class="px-4 py-2 text-sm font-semibold rounded-m3-md border transition-all"
             :class="activeTab === 'kanban' ? 'bg-primary-100 text-primary-800 border-primary-200 shadow-elevation-1' : 'bg-surface text-secondary-700 border-surface-variant hover:bg-surface-2'"
             @click="setActiveTab('kanban')">
             Planning Board
           </button>
         </div>
         <button type="button"
-          class="px-4 py-2 rounded-m3-full bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white text-sm font-semibold shadow-elevation-2 hover:shadow-elevation-3 transition-all flex items-center justify-center gap-2"
+          class="px-4 py-2 rounded-m3-md bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white text-sm font-semibold shadow-elevation-2 hover:shadow-elevation-3 transition-all flex items-center justify-center gap-2"
           @click="emit('create-repo')">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -116,7 +116,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
         </button>
       </div>
 
-      <section class="rounded-m3-xl border border-surface-variant shadow-elevation-3 bg-surface-1 overflow-hidden">
+      <section class="rounded-m3-md border border-surface-variant shadow-elevation-3 bg-surface-1 overflow-hidden">
         <div
           class="bg-primary-700/90 px-6 py-5 text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -126,12 +126,12 @@ function setActiveTab(tab: 'overview' | 'kanban') {
           </div>
           <div class="flex items-center gap-3">
             <button
-              class="px-4 py-2 rounded-m3-full bg-white text-primary-700 text-sm font-semibold shadow-elevation-2 hover:shadow-elevation-3 transition-all"
+              class="px-4 py-2 rounded-m3-md bg-white text-primary-700 text-sm font-semibold shadow-elevation-2 hover:shadow-elevation-3 transition-all"
               @click="emit('run-validation')">
               Run Validation
             </button>
             <button
-              class="px-4 py-2 rounded-m3-full bg-white/10 text-white text-sm font-semibold border border-white/30 hover:bg-white/20 transition-colors"
+              class="px-4 py-2 rounded-m3-md bg-white/10 text-white text-sm font-semibold border border-white/30 hover:bg-white/20 transition-colors"
               @click="emit('open-git')">
               Open Git
             </button>
@@ -139,16 +139,16 @@ function setActiveTab(tab: 'overview' | 'kanban') {
           </div>
         </div>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-6 py-5 backdrop-blur">
-          <div class="rounded-m3-xl bg-surface-2 border border-surface-variant px-4 py-3">
+          <div class="rounded-m3-md bg-surface-2 border border-surface-variant px-4 py-3">
             <p class="text-xs text-secondary-600">Validation cadence</p>
             <p class="text-lg font-semibold text-secondary-900 mt-1">{{ formatTimestamp(lastValidationAt) }}</p>
-            <span class="inline-flex items-center gap-2 text-[11px] font-semibold px-2.5 py-1 rounded-m3-full mt-3"
+            <span class="inline-flex items-center gap-2 text-[11px] font-semibold px-2.5 py-1 rounded-m3-md mt-3"
               :class="validationBadge.tone">
-              <span class="inline-flex h-2 w-2 rounded-full bg-current"></span>
+              <span class="inline-flex h-2 w-2 rounded-m3-md-full bg-current"></span>
               {{ validationBadge.label }}
             </span>
           </div>
-          <div class="rounded-m3-xl bg-surface-2 border border-surface-variant px-4 py-3">
+          <div class="rounded-m3-md bg-surface-2 border border-surface-variant px-4 py-3">
             <p class="text-xs text-secondary-600">Graph freshness</p>
             <p class="text-lg font-semibold text-secondary-900 mt-1">{{ formatTimestamp(lastGraphRefresh) }}</p>
             <button class="mt-3 text-xs font-semibold text-primary-700 hover:text-primary-900"
@@ -156,7 +156,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
               Refresh graph
             </button>
           </div>
-          <div class="rounded-m3-xl bg-surface-2 border border-surface-variant px-4 py-3">
+          <div class="rounded-m3-md bg-surface-2 border border-surface-variant px-4 py-3">
             <p class="text-xs text-secondary-600">Changed entities</p>
             <p class="text-lg font-semibold text-secondary-900 mt-1">{{ impactSummary.totalChanged }}</p>
             <button class="mt-3 text-xs font-semibold text-primary-700 hover:text-primary-900"
@@ -164,16 +164,16 @@ function setActiveTab(tab: 'overview' | 'kanban') {
               Review impact
             </button>
           </div>
-          <div class="rounded-m3-xl bg-surface-2 border border-surface-variant px-4 py-3">
+          <div class="rounded-m3-md bg-surface-2 border border-surface-variant px-4 py-3">
             <p class="text-xs text-secondary-600">Git delta</p>
             <p class="text-lg font-semibold text-secondary-900 mt-1">
               <span class="mr-3">↑ {{ gitDelta.ahead }}</span>
               <span>↓ {{ gitDelta.behind }}</span>
             </p>
             <p class="text-xs text-secondary-500 mt-1">Working tree changes: {{ gitWorkingChanges }}</p>
-            <span class="inline-flex items-center gap-2 text-[11px] font-semibold px-2.5 py-1 rounded-m3-full mt-3"
+            <span class="inline-flex items-center gap-2 text-[11px] font-semibold px-2.5 py-1 rounded-m3-md mt-3"
               :class="gitDelta.dirty ? 'bg-error-100 text-error-700' : 'bg-secondary-100 text-secondary-700'">
-              <span class="inline-flex h-2 w-2 rounded-full bg-current"></span>
+              <span class="inline-flex h-2 w-2 rounded-m3-md-full bg-current"></span>
               {{ gitDelta.dirty ? `${gitWorkingChanges} files modified` : 'Working tree clean' }}
             </span>
           </div>
@@ -182,21 +182,21 @@ function setActiveTab(tab: 'overview' | 'kanban') {
 
       <section v-if="activeTab === 'overview'" class="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div class="space-y-6">
-          <div class="rounded-m3-xl border border-surface-variant bg-surface shadow-elevation-2">
+          <div class="rounded-m3-md border border-surface-variant bg-surface shadow-elevation-2">
             <div class="px-6 py-4 border-b border-surface-variant flex items-center justify-between">
               <div>
                 <h2 class="text-lg font-semibold text-secondary-900">Workstream</h2>
                 <p class="text-xs text-secondary-500">Keep delivery on track with pipeline and impact insights.</p>
               </div>
               <button
-                class="px-3 py-1.5 rounded-m3-full text-xs font-semibold border border-primary-200 text-primary-700 hover:bg-primary-50"
+                class="px-3 py-1.5 rounded-m3-md text-xs font-semibold border border-primary-200 text-primary-700 hover:bg-primary-50"
                 @click="emit('open-prompts')">
                 Generate prompts
               </button>
             </div>
             <div class="p-6 space-y-4">
               <div class="grid gap-4 md:grid-cols-2">
-                <div class="rounded-m3-xl border border-surface-variant bg-surface-1 px-4 py-4">
+                <div class="rounded-m3-md border border-surface-variant bg-surface-1 px-4 py-4">
                   <p class="text-xs text-secondary-600 uppercase tracking-[0.15em]">Entity coverage</p>
                   <ul class="mt-3 space-y-2">
                     <li v-for="entry in entityTypeBreakdown" :key="entry.type"
@@ -208,7 +208,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                   <p v-if="!entityTypeBreakdown.length" class="text-sm text-secondary-500 mt-3">No entities detected
                     yet.</p>
                 </div>
-                <div class="rounded-m3-xl border border-surface-variant bg-surface-1 px-4 py-4">
+                <div class="rounded-m3-md border border-surface-variant bg-surface-1 px-4 py-4">
                   <p class="text-xs text-secondary-600 uppercase tracking-[0.15em]">Impact focus</p>
                   <p class="text-2xl font-semibold text-secondary-900 mt-2">{{ impactSummary.unresolved }}</p>
                   <p class="text-sm text-secondary-600">Unresolved issues flagged by the last impact analysis.</p>
@@ -216,7 +216,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                   </p>
                   <ul class="mt-3 space-y-2">
                     <li v-for="issue in impactIssues" :key="issue.id + issue.message"
-                      class="text-xs text-secondary-600 border border-surface-variant rounded-m3-lg px-3 py-2">
+                      class="text-xs text-secondary-600 border border-surface-variant rounded-m3-md px-3 py-2">
                       <span class="font-semibold text-secondary-800">{{ issue.id }}</span> — {{ issue.message }}
                     </li>
                   </ul>
@@ -224,21 +224,21 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                     this list.</p>
                 </div>
               </div>
-              <div class="rounded-m3-xl border border-surface-variant bg-surface-1 px-4 py-4">
+              <div class="rounded-m3-md border border-surface-variant bg-surface-1 px-4 py-4">
                 <p class="text-xs text-secondary-600 uppercase tracking-[0.15em]">Quick actions</p>
                 <div class="mt-3 grid gap-3 md:grid-cols-3">
                   <button
-                    class="rounded-m3-lg border border-primary-200 bg-primary-50 text-primary-800 px-3 py-3 text-sm font-semibold hover:bg-primary-100 transition-colors"
+                    class="rounded-m3-md border border-primary-200 bg-primary-50 text-primary-800 px-3 py-3 text-sm font-semibold hover:bg-primary-100 transition-colors"
                     @click="emit('run-validation')">
                     Validate schema
                   </button>
                   <button
-                    class="rounded-m3-lg border border-secondary-200 bg-secondary-50 text-secondary-800 px-3 py-3 text-sm font-semibold hover:bg-secondary-100 transition-colors"
+                    class="rounded-m3-md border border-secondary-200 bg-secondary-50 text-secondary-800 px-3 py-3 text-sm font-semibold hover:bg-secondary-100 transition-colors"
                     @click="emit('open-impact')">
                     Review impact
                   </button>
                   <button
-                    class="rounded-m3-lg border border-surface-variant bg-surface px-3 py-3 text-sm font-semibold text-secondary-800 hover:bg-surface-2 transition-colors"
+                    class="rounded-m3-md border border-surface-variant bg-surface px-3 py-3 text-sm font-semibold text-secondary-800 hover:bg-surface-2 transition-colors"
                     @click="emit('open-git')">
                     Open git panel
                   </button>
@@ -249,13 +249,13 @@ function setActiveTab(tab: 'overview' | 'kanban') {
         </div>
 
         <div class="space-y-6">
-          <div class="rounded-m3-xl border border-surface-variant bg-surface shadow-elevation-2">
+          <div class="rounded-m3-md border border-surface-variant bg-surface shadow-elevation-2">
             <div class="px-6 py-4 border-b border-surface-variant">
               <h2 class="text-lg font-semibold text-secondary-900">Insights</h2>
               <p class="text-xs text-secondary-500">Surface next-best actions and automated assistive flows.</p>
             </div>
             <div class="p-6 space-y-4">
-              <div class="rounded-m3-xl border border-surface-variant bg-surface-1 px-4 py-4">
+              <div class="rounded-m3-md border border-surface-variant bg-surface-1 px-4 py-4">
                 <div class="flex items-center justify-between">
                   <div>
                     <p class="text-xs text-secondary-600 uppercase tracking-[0.15em]">AI assistant</p>
@@ -264,7 +264,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                     </p>
                   </div>
                   <button
-                    class="px-3 py-1.5 rounded-m3-full text-xs font-semibold border border-primary-200 text-primary-700 hover:bg-primary-50"
+                    class="px-3 py-1.5 rounded-m3-md text-xs font-semibold border border-primary-200 text-primary-700 hover:bg-primary-50"
                     @click="emit('open-assistant')">
                     Summon AI
                   </button>
@@ -273,7 +273,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                   panel.</p>
               </div>
 
-              <div class="rounded-m3-xl border border-surface-variant bg-surface-1 px-4 py-4">
+              <div class="rounded-m3-md border border-surface-variant bg-surface-1 px-4 py-4">
                 <p class="text-xs text-secondary-600 uppercase tracking-[0.15em]">Checklist health</p>
                 <p class="text-2xl font-semibold text-secondary-900 mt-2">{{ checklistSummary.reviewed }} / {{
                   checklistSummary.total }}</p>
@@ -281,11 +281,11 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                 <p class="text-xs text-secondary-500 mt-2">Note: Checklist metrics will be available once parsing pipeline is integrated.</p>
               </div>
 
-              <div class="rounded-m3-xl border border-surface-variant bg-surface-1 px-4 py-4">
+              <div class="rounded-m3-md border border-surface-variant bg-surface-1 px-4 py-4">
                 <p class="text-xs text-secondary-600 uppercase tracking-[0.15em]">Diff focus</p>
                 <p class="text-sm text-secondary-600">Inspect the latest changes before committing.</p>
                 <button
-                  class="mt-3 px-3 py-1.5 rounded-m3-full text-xs font-semibold border border-secondary-200 text-secondary-700 hover:bg-secondary-50"
+                  class="mt-3 px-3 py-1.5 rounded-m3-md text-xs font-semibold border border-secondary-200 text-secondary-700 hover:bg-secondary-50"
                   @click="emit('open-diff')">
                   Open diff viewer
                 </button>

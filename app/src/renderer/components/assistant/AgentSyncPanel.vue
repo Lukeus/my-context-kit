@@ -345,7 +345,7 @@ function toggleExpanded() {
                 class="flex items-center gap-2 text-xs text-secondary-600"
               >
                 <span
-                  class="flex-shrink-0 w-12 text-[10px] px-1.5 py-0.5 rounded font-medium"
+                  class="flex-shrink-0 w-12 text-[10px] px-1.5 py-0.5 rounded-m3-md font-medium"
                   :class="{
                     'bg-blue-100 text-blue-700': item.type === 'pull',
                     'bg-green-100 text-green-700': item.type === 'push',

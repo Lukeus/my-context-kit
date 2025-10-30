@@ -63,17 +63,17 @@ onMounted(() => {
           <div class="flex items-center gap-2 flex-shrink-0">
             <button 
               @click="$emit('palette')" 
-              class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-lg bg-primary-600 text-white hover:bg-primary-700 shadow-elevation-1 hover:shadow-elevation-2 transition-all"
+              class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-md bg-primary-600 text-white hover:bg-primary-700 shadow-elevation-1 hover:shadow-elevation-2 transition-all"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <span class="hidden sm:inline">Command Palette</span>
-              <kbd class="hidden lg:inline-block px-1.5 py-0.5 text-xs bg-white/20 rounded border border-white/30">Ctrl+K</kbd>
+              <kbd class="hidden lg:inline-block px-1.5 py-0.5 text-xs bg-white/20 rounded-m3-md border border-white/30">Ctrl+K</kbd>
             </button>
             <button 
               @click="showNewRepoModal = true" 
-              class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-lg bg-secondary-600 text-white hover:bg-secondary-700 shadow-elevation-1 hover:shadow-elevation-2 transition-all"
+              class="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-m3-md bg-secondary-600 text-white hover:bg-secondary-700 shadow-elevation-1 hover:shadow-elevation-2 transition-all"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -89,10 +89,10 @@ onMounted(() => {
     <div class="px-8 py-6">
       <div class="max-w-7xl mx-auto">
         <!-- Constitution Summary -->
-        <div v-if="constitution" class="mb-6 bg-primary-900 rounded-m3-xl shadow-elevation-3 overflow-hidden">
+        <div v-if="constitution" class="mb-6 bg-primary-900 rounded-m3-md shadow-elevation-3 overflow-hidden">
           <div class="px-6 py-8 text-white">
             <div class="flex items-start gap-4">
-              <div class="p-3 bg-white/20 rounded-m3-xl backdrop-blur-sm flex-shrink-0">
+              <div class="p-3 bg-white/20 rounded-m3-md backdrop-blur-sm flex-shrink-0">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -100,7 +100,7 @@ onMounted(() => {
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-3 mb-2">
                   <h2 class="text-2xl font-bold">{{ constitution.name || constitution.title || constitution.id }}</h2>
-                  <span v-if="constitution.status" class="px-3 py-1 text-xs font-semibold rounded-m3-full bg-white/20 uppercase tracking-wide">{{ constitution.status }}</span>
+                  <span v-if="constitution.status" class="px-3 py-1 text-xs font-semibold rounded-m3-md bg-white/20 uppercase tracking-wide">{{ constitution.status }}</span>
                 </div>
                 <p v-if="constitution.summary" class="text-base text-primary-50 leading-relaxed mb-4">{{ constitution.summary }}</p>
                 <div class="flex items-center gap-4 text-sm text-primary-100">
@@ -118,7 +118,7 @@ onMounted(() => {
                   </div>
                   <button 
                     @click="openEntity(constitution.id)" 
-                    class="ml-auto flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-m3-lg bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 transition-all"
+                    class="ml-auto flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-m3-md bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 transition-all"
                   >
                     View Full Constitution
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,9 +136,9 @@ onMounted(() => {
           <ProgressCompletionCard />
 
           <!-- New Repo Quick Action -->
-          <div class="bg-surface rounded-m3-xl border border-primary-200 shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden flex flex-col">
+          <div class="bg-surface rounded-m3-md border border-primary-200 shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden flex flex-col">
             <div class="bg-primary-600 px-5 py-4 flex items-center gap-3">
-              <div class="p-2 bg-white/20 rounded-m3-lg">
+              <div class="p-2 bg-white/20 rounded-m3-md">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
@@ -154,7 +154,7 @@ onMounted(() => {
               </p>
               <button
                 type="button"
-                class="mt-auto px-4 py-2.5 text-sm font-semibold rounded-m3-lg bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white shadow-elevation-2 hover:shadow-elevation-3 transition-all flex items-center justify-center gap-2"
+                class="mt-auto px-4 py-2.5 text-sm font-semibold rounded-m3-md bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white shadow-elevation-2 hover:shadow-elevation-3 transition-all flex items-center justify-center gap-2"
                 @click="showNewRepoModal = true"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,9 +166,9 @@ onMounted(() => {
           </div>
 
           <!-- Pinned Items Card -->
-          <div class="bg-surface rounded-m3-xl border border-surface-variant shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden">
+          <div class="bg-surface rounded-m3-md border border-surface-variant shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden">
             <div class="bg-primary-600 px-5 py-4 flex items-center gap-3">
-              <div class="p-2 bg-white/20 rounded-m3-lg">
+              <div class="p-2 bg-white/20 rounded-m3-md">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                 </svg>
@@ -193,14 +193,14 @@ onMounted(() => {
                   class="flex items-center gap-2"
                 >
                   <button 
-                    class="group flex-1 text-left px-4 py-3 rounded-m3-lg hover:bg-primary-50 border border-transparent hover:border-primary-200 flex items-center gap-3 transition-all"
+                    class="group flex-1 text-left px-4 py-3 rounded-m3-md hover:bg-primary-50 border border-transparent hover:border-primary-200 flex items-center gap-3 transition-all"
                     @click="openEntity(id)"
                   >
-                    <div class="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0"></div>
+                    <div class="w-2 h-2 rounded-m3-md-full bg-primary-500 flex-shrink-0"></div>
                     <span class="text-sm font-medium text-secondary-900 truncate">{{ id }}</span>
                   </button>
                   <button 
-                    class="text-xs px-2.5 py-1 rounded-m3-full bg-surface-2 hover:bg-error-50 hover:text-error-700 border border-surface-variant hover:border-error-200 transition-colors flex-shrink-0" 
+                    class="text-xs px-2.5 py-1 rounded-m3-md bg-surface-2 hover:bg-error-50 hover:text-error-700 border border-surface-variant hover:border-error-200 transition-colors flex-shrink-0" 
                     @click="togglePin(id)"
                   >
                     <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -213,9 +213,9 @@ onMounted(() => {
           </div>
 
           <!-- Recent Activity Card -->
-          <div class="bg-surface rounded-m3-xl border border-surface-variant shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden">
+          <div class="bg-surface rounded-m3-md border border-surface-variant shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden">
             <div class="bg-secondary-700 px-5 py-4 flex items-center gap-3">
-              <div class="p-2 bg-white/20 rounded-m3-lg">
+              <div class="p-2 bg-white/20 rounded-m3-md">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -240,14 +240,14 @@ onMounted(() => {
                   class="flex items-center gap-2"
                 >
                   <button 
-                    class="group flex-1 text-left px-4 py-3 rounded-m3-lg hover:bg-secondary-50 border border-transparent hover:border-secondary-200 flex items-center gap-3 transition-all"
+                    class="group flex-1 text-left px-4 py-3 rounded-m3-md hover:bg-secondary-50 border border-transparent hover:border-secondary-200 flex items-center gap-3 transition-all"
                     @click="openEntity(id)"
                   >
-                    <div class="w-2 h-2 rounded-full bg-secondary-500 flex-shrink-0"></div>
+                    <div class="w-2 h-2 rounded-m3-md-full bg-secondary-500 flex-shrink-0"></div>
                     <span class="text-sm font-medium text-secondary-900 truncate">{{ id }}</span>
                   </button>
                   <button 
-                    class="text-xs px-2.5 py-1.5 rounded-m3-full border transition-all flex-shrink-0"
+                    class="text-xs px-2.5 py-1.5 rounded-m3-md border transition-all flex-shrink-0"
                     :class="isPinned(id) ? 'bg-primary-50 text-primary-700 border-primary-200 hover:bg-primary-100' : 'bg-surface-2 text-secondary-700 border-surface-variant hover:bg-surface-3'"
                     @click="togglePin(id)"
                   >
@@ -261,9 +261,9 @@ onMounted(() => {
           </div>
 
           <!-- Needs Review Card -->
-          <div class="bg-surface rounded-m3-xl border border-surface-variant shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden">
+          <div class="bg-surface rounded-m3-md border border-surface-variant shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden">
             <div class="bg-orange-600 px-5 py-4 flex items-center gap-3">
-              <div class="p-2 bg-white/20 rounded-m3-lg">
+              <div class="p-2 bg-white/20 rounded-m3-md">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -272,7 +272,7 @@ onMounted(() => {
                 <div class="flex items-center gap-2">
                   <h3 class="text-base font-semibold text-white">Needs Review</h3>
                   <button 
-                    class="p-1 hover:bg-white/10 rounded-full transition-colors group relative"
+                    class="p-1 hover:bg-white/10 rounded-m3-md-full transition-colors group relative"
                     title="Items are marked for review when they're connected to changed entities or have validation issues"
                   >
                     <svg class="w-4 h-4 text-white/80 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -295,7 +295,7 @@ onMounted(() => {
                 <button 
                   v-for="id in stale.slice(0, 10)" 
                   :key="id" 
-                  class="group w-full text-left px-4 py-3 rounded-m3-lg hover:bg-yellow-50 border border-transparent hover:border-yellow-200 flex items-center gap-3 transition-all"
+                  class="group w-full text-left px-4 py-3 rounded-m3-md hover:bg-yellow-50 border border-transparent hover:border-yellow-200 flex items-center gap-3 transition-all"
                   @click="openEntity(id)"
                 >
                   <svg class="w-4 h-4 text-yellow-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">

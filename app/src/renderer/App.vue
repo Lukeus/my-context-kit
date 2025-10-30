@@ -554,18 +554,12 @@ function openNewRepoModal() {
 
 function toggleRightPanel() {
   rightPanelOpen.value = !rightPanelOpen.value;
-  if (rightPanelOpen.value) {
-    activeNavId.value = 'ai';
-  } else if (activeEntity.value) {
-    activeNavId.value = 'entities';
-  } else if (!['c4', 'docs', 'hub'].includes(activeNavId.value)) {
-    activeNavId.value = 'hub';
-  }
+  // Don't change navigation state - just toggle assistant panel
 }
 
 function openAssistantPanel() {
   rightPanelOpen.value = true;
-  activeNavId.value = 'ai';
+  // Don't change activeNavId - preserve current view/panel state
 }
 
 const aiStore = useAIStore();

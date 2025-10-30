@@ -157,9 +157,9 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
 <template>
   <div class="h-full flex flex-col bg-surface-1 text-secondary-900">
     <!-- Material Design Header -->
-    <div class="px-3 py-2 border-b border-surface-variant bg-white shadow-sm flex items-center gap-2">
+    <div class="px-3 py-2 border-b border-surface-variant bg-white shadow-elevation-1 flex items-center gap-2">
       <div class="flex items-center gap-2 flex-1 min-w-0">
-        <div class="p-1.5 bg-primary-600 rounded-m3-lg shadow-sm flex-shrink-0">
+        <div class="p-1.5 bg-primary-600 rounded-m3-md shadow-elevation-1 flex-shrink-0">
           <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
@@ -170,7 +170,7 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
         </div>
       </div>
       <button
-        class="p-1.5 rounded-m3-full text-secondary-600 hover:text-secondary-900 hover:bg-surface-2 transition-colors flex-shrink-0"
+        class="p-1.5 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-2 transition-colors flex-shrink-0"
         title="AI Settings"
         @click="openSettings"
       >
@@ -193,7 +193,7 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
     </div>
 
     <div class="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
-      <div v-if="!aiStore.hasConversation && !aiStore.isLoading" class="text-xs text-secondary-600 bg-surface-2 border border-dashed border-surface-variant rounded-m3-lg p-4">
+      <div v-if="!aiStore.hasConversation && !aiStore.isLoading" class="text-xs text-secondary-600 bg-surface-2 border border-dashed border-surface-variant rounded-m3-md p-4">
         <p class="font-semibold text-secondary-800 mb-2">Try asking:</p>
         <ul class="list-disc list-inside space-y-1">
           <li v-for="(q, i) in aiStore.prompts.exampleQuestions" :key="i">{{ q }}</li>
@@ -207,7 +207,7 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
         class="space-y-3"
       >
         <div v-if="message.role === 'user'" class="flex justify-end">
-          <div class="max-w-[85%] bg-primary-600 text-white rounded-m3-xl px-4 py-3 shadow-elevation-2">
+          <div class="max-w-[85%] bg-primary-600 text-white rounded-m3-md px-4 py-3 shadow-elevation-2">
             <div class="flex items-center gap-2 mb-1.5">
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
@@ -221,17 +221,17 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
 
         <!-- Assistant Message -->
         <div v-else class="flex justify-start">
-          <div class="max-w-[95%] bg-white rounded-m3-xl shadow-elevation-2 border border-surface-variant overflow-hidden">
+          <div class="max-w-[95%] bg-white rounded-m3-md shadow-elevation-2 border border-surface-variant overflow-hidden">
             <!-- Message Header -->
             <div class="bg-primary-50 px-4 py-2.5 border-b border-primary-100 flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <div class="p-1.5 bg-primary-600 rounded-m3-lg">
+                <div class="p-1.5 bg-primary-600 rounded-m3-md">
                   <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
                 <span class="text-xs font-semibold text-primary-900">AI Assistant</span>
-                <span v-if="message.mode" class="text-[10px] px-2 py-0.5 bg-primary-100 text-primary-700 rounded-m3-full">{{ message.mode }}</span>
+                <span v-if="message.mode" class="text-[10px] px-2 py-0.5 bg-primary-100 text-primary-700 rounded-m3-md">{{ message.mode }}</span>
                 <span v-if="message.focusId" class="text-[10px] text-primary-600">· {{ message.focusId }}</span>
               </div>
               <span class="text-[10px] text-primary-600">{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
@@ -246,7 +246,7 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
 
             <!-- Suggestions with Action Buttons -->
             <div v-if="message.suggestions && message.suggestions.length" class="px-4 pb-3">
-              <div class="bg-primary-50 rounded-m3-lg border border-primary-200 p-3 space-y-2">
+              <div class="bg-primary-50 rounded-m3-md border border-primary-200 p-3 space-y-2">
                 <div class="flex items-center gap-2 mb-2">
                   <svg class="w-4 h-4 text-primary-700" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
@@ -262,7 +262,7 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
                     <div class="flex items-start justify-between gap-2">
                       <div class="flex-1">
                         <div class="flex items-center gap-2 mb-1">
-                          <span class="font-mono text-xs font-semibold bg-primary-100 text-primary-800 px-2 py-0.5 rounded">{{ suggestion.target }}</span>
+                          <span class="font-mono text-xs font-semibold bg-primary-100 text-primary-800 px-2 py-0.5 rounded-m3-md">{{ suggestion.target }}</span>
                         </div>
                         <p class="text-sm text-secondary-900 leading-snug">{{ suggestion.suggestion }}</p>
                         <p v-if="suggestion.impact" class="text-xs text-secondary-600 mt-1">
@@ -273,12 +273,12 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
                     <div class="flex items-center gap-2 pt-2 border-t border-primary-100">
                       <button
                         @click="requestEditForSuggestion(suggestion)"
-                        class="flex-1 px-3 py-2 text-xs font-semibold bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 transition-all shadow-sm"
+                        class="flex-1 px-3 py-2 text-xs font-semibold bg-primary-600 text-white rounded-m3-md hover:bg-primary-700 transition-all shadow-elevation-1"
                       >
                         Request Edit
                       </button>
                       <button
-                        class="px-3 py-2 text-xs font-medium text-secondary-700 hover:bg-surface-2 rounded-m3-lg transition-all border border-surface-variant"
+                        class="px-3 py-2 text-xs font-medium text-secondary-700 hover:bg-surface-2 rounded-m3-md transition-all border border-surface-variant"
                       >
                         Skip
                       </button>
@@ -290,7 +290,7 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
 
             <!-- Clarifications -->
             <div v-if="message.clarifications && message.clarifications.length" class="px-4 pb-3">
-              <div class="bg-yellow-50 rounded-m3-lg border border-yellow-200 p-3 space-y-2">
+              <div class="bg-yellow-50 rounded-m3-md border border-yellow-200 p-3 space-y-2">
                 <div class="flex items-center gap-2 mb-2">
                   <svg class="w-4 h-4 text-yellow-700" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
@@ -311,7 +311,7 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
 
             <!-- Follow-ups -->
             <div v-if="message.followUps && message.followUps.length" class="px-4 pb-3">
-              <div class="bg-secondary-50 rounded-m3-lg border border-secondary-200 p-3">
+              <div class="bg-secondary-50 rounded-m3-md border border-secondary-200 p-3">
                 <div class="flex items-center gap-2 mb-2">
                   <svg class="w-4 h-4 text-secondary-700" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
@@ -364,13 +364,13 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
             class="space-y-2"
             @vue:mounted="loadOriginalContent(edit.filePath, message.id, editIndex)"
           >
-            <div class="flex items-center justify-between gap-2 px-3 py-2 bg-surface-2 border border-surface-variant rounded-t-m3-md">
+            <div class="flex items-center justify-between gap-2 px-3 py-2 bg-surface-2 border border-surface-variant rounded-m3-md-t-m3-md">
               <div class="flex flex-col">
                 <span class="text-[11px] font-semibold text-secondary-800">{{ edit.filePath }}</span>
                 <span v-if="edit.summary" class="text-[11px] text-secondary-600">{{ edit.summary }}</span>
               </div>
               <span
-                class="text-[10px] uppercase tracking-wide rounded-m3-full px-2 py-0.5"
+                class="text-[10px] uppercase tracking-wide rounded-m3-md px-2 py-0.5"
                 :class="{
                   'bg-primary-100 text-primary-700': edit.status === 'applied',
                   'bg-error-100 text-error-700': edit.status === 'failed',
@@ -389,11 +389,11 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
             <div v-else class="bg-surface-1 border border-surface-variant rounded-m3-md p-3 text-xs text-secondary-600">
               Loading original file...
             </div>
-            <div class="flex items-center justify-between gap-2 px-3 py-2 bg-surface-2 border border-surface-variant rounded-b-m3-md">
+            <div class="flex items-center justify-between gap-2 px-3 py-2 bg-surface-2 border border-surface-variant rounded-m3-md-b-m3-md">
               <span v-if="edit.error" class="text-[10px] text-error-600">{{ edit.error }}</span>
               <div class="flex-1"></div>
               <button
-                class="px-3 py-1.5 text-[11px] font-medium rounded-m3-full"
+                class="px-3 py-1.5 text-[11px] font-medium rounded-m3-md"
                 :class="edit.status === 'applied'
                   ? 'bg-primary-100 text-primary-700 border border-primary-200'
                   : 'bg-primary-600 text-white hover:bg-primary-700 shadow-elevation-1'
@@ -416,18 +416,18 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
       </div>
 
       <div v-if="aiStore.isLoading" class="flex items-center gap-2 text-xs text-secondary-600">
-        <span class="inline-block animate-spin rounded-full h-4 w-4 border-2 border-secondary-300 border-t-secondary-600"></span>
+        <span class="inline-block animate-spin rounded-m3-md-full h-4 w-4 border-2 border-secondary-300 border-t-secondary-600"></span>
         Streaming response…
       </div>
     </div>
 
     <div class="border-t border-surface-variant bg-surface-2 px-4 py-4 space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center gap-2 bg-surface-3 border border-surface-variant rounded-m3-full px-2 py-1">
+        <div class="flex items-center gap-2 bg-surface-3 border border-surface-variant rounded-m3-md px-2 py-1">
           <button
             v-for="option in ['general', 'improvement', 'clarification']"
             :key="option"
-            class="px-3 py-1 text-[11px] font-medium rounded-m3-full transition-colors"
+            class="px-3 py-1 text-[11px] font-medium rounded-m3-md transition-colors"
             :class="mode === option ? 'bg-primary-600 text-white shadow-elevation-1' : 'text-secondary-700 hover:bg-surface-4'"
             @click="mode = option as AssistantMode"
           >{{ option }}</button>
@@ -435,7 +435,7 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
         <label class="flex items-center gap-2 text-[11px] text-secondary-700">
           <input
             type="checkbox"
-            class="h-4 w-4 rounded border-surface-variant text-primary-600 focus:ring-primary-400"
+            class="h-4 w-4 rounded-m3-md border-surface-variant text-primary-600 focus:ring-primary-400"
             v-model="focusActive"
             :disabled="!canFocusActive"
           />
@@ -448,7 +448,7 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
       <textarea
         v-model="question"
         rows="4"
-        class="w-full px-3.5 py-3 bg-surface-1 border border-surface-variant rounded-m3-lg text-sm text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-elevation-1"
+        class="w-full px-3.5 py-3 bg-surface-1 border border-surface-variant rounded-m3-md text-sm text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-elevation-1"
         placeholder="Ask for improvements or clarifications across the context repository..."
         @keydown="handleKeydown"
       ></textarea>
@@ -456,21 +456,21 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2 text-[11px] text-secondary-600">
           <button
-            class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-full border border-surface-variant transition-colors"
+            class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-md border border-surface-variant transition-colors"
             @click="quickPrompt('improvement')"
           >Suggest improvements</button>
           <button
-            class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-full border border-surface-variant transition-colors"
+            class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-md border border-surface-variant transition-colors"
             @click="quickPrompt('clarification')"
           >Ask for clarifications</button>
         </div>
         <div class="flex items-center gap-2">
           <button
-            class="px-3 py-2 text-[11px] text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-lg"
+            class="px-3 py-2 text-[11px] text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-md"
             @click="aiStore.clearConversation()"
           >Clear conversation</button>
           <button
-            class="px-4 py-2 text-sm font-medium bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white rounded-m3-lg transition-all shadow-elevation-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-2 text-sm font-medium bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white rounded-m3-md transition-all shadow-elevation-2 disabled:opacity-50 disabled:cursor-not-allowed"
             :disabled="isSendDisabled"
             @click="sendQuestion"
           >

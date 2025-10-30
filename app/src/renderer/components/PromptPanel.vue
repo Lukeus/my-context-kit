@@ -120,17 +120,17 @@ watch(
     <div class="flex-1 overflow-y-auto p-6">
       <!-- Loading State -->
       <div v-if="isGeneratingPrompt" class="flex flex-col items-center justify-center py-12">
-        <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-surface-variant border-t-primary-600 mb-4"></div>
+        <div class="inline-block animate-spin rounded-m3-md-full h-10 w-10 border-4 border-surface-variant border-t-primary-600 mb-4"></div>
         <p class="text-sm text-secondary-700 font-medium">Generating prompt...</p>
       </div>
       
       <!-- Error State -->
-      <div v-else-if="promptError" class="p-4 bg-error-50 border border-error-200 rounded-m3-lg">
+      <div v-else-if="promptError" class="p-4 bg-error-50 border border-error-200 rounded-m3-md">
         <p class="text-sm text-error-900 font-semibold">Error generating prompt:</p>
         <p class="text-sm text-error-700 mt-1">{{ promptError }}</p>
         <button
           @click="generatePrompt"
-          class="mt-3 px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 transition-all"
+          class="mt-3 px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-m3-md hover:bg-primary-700 transition-all"
         >
           Retry
         </button>
@@ -145,7 +145,7 @@ watch(
         <button
           @click="generatePrompt"
           :disabled="!contextStore.activeEntity"
-          class="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-2 hover:shadow-elevation-3"
+          class="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-m3-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-2 hover:shadow-elevation-3"
         >
           Generate Prompt
         </button>
@@ -157,11 +157,11 @@ watch(
           <h3 class="text-sm font-semibold text-secondary-900">Generated Prompt for {{ contextStore.activeEntity?.id }}</h3>
           <div class="flex items-center gap-2">
             <!-- Markdown Preview Toggle -->
-            <div class="flex items-center bg-surface-2 rounded-m3-full p-0.5 border border-surface-variant">
+            <div class="flex items-center bg-surface-2 rounded-m3-md p-0.5 border border-surface-variant">
               <button
                 @click="showMarkdownPreview = false"
                 :class="!showMarkdownPreview ? 'bg-primary-600 text-white shadow-elevation-1' : 'text-secondary-700 hover:bg-surface-3'"
-                class="px-2.5 py-1 text-xs font-medium rounded-m3-full transition-all"
+                class="px-2.5 py-1 text-xs font-medium rounded-m3-md transition-all"
               >
                 <svg class="w-3 h-3 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -171,7 +171,7 @@ watch(
               <button
                 @click="showMarkdownPreview = true"
                 :class="showMarkdownPreview ? 'bg-primary-600 text-white shadow-elevation-1' : 'text-secondary-700 hover:bg-surface-3'"
-                class="px-2.5 py-1 text-xs font-medium rounded-m3-full transition-all"
+                class="px-2.5 py-1 text-xs font-medium rounded-m3-md transition-all"
               >
                 <svg class="w-3 h-3 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -207,12 +207,12 @@ watch(
         </div>
         
         <!-- Raw Text View -->
-        <div v-if="!showMarkdownPreview" class="bg-surface-2 rounded-m3-lg border border-surface-variant p-4">
+        <div v-if="!showMarkdownPreview" class="bg-surface-2 rounded-m3-md border border-surface-variant p-4">
           <pre class="text-sm font-mono text-secondary-900 whitespace-pre-wrap break-words leading-relaxed">{{ generatedPrompt }}</pre>
         </div>
         
         <!-- Markdown Preview -->
-        <div v-else class="bg-surface-2 rounded-m3-lg border border-surface-variant p-6 prose prose-sm max-w-none">
+        <div v-else class="bg-surface-2 rounded-m3-md border border-surface-variant p-6 prose prose-sm max-w-none">
           <div class="markdown-preview" v-html="renderedMarkdown"></div>
         </div>
         

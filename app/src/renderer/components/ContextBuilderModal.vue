@@ -161,7 +161,7 @@ watch(() => builderStore.partialEntity.feature, async () => {
           <h2 class="text-xl font-semibold text-secondary-900">Create New {{ entityTypeLabel }}</h2>
           <p class="text-sm text-secondary-600 mt-1">Step {{ builderStore.currentStep }} of {{ builderStore.totalSteps }}</p>
         </div>
-        <button @click="close" class="text-secondary-500 hover:text-secondary-900 transition-colors p-1 rounded-m3-sm hover:bg-surface-3">
+        <button @click="close" class="text-secondary-500 hover:text-secondary-900 transition-colors p-1 rounded-m3-md hover:bg-surface-3">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -176,8 +176,8 @@ watch(() => builderStore.partialEntity.feature, async () => {
           <span :class="builderStore.currentStep >= 3 ? 'text-primary-600 font-semibold' : ''">Details</span>
           <span :class="builderStore.currentStep >= 4 ? 'text-primary-600 font-semibold' : ''">Review</span>
         </div>
-        <div class="w-full bg-surface-4 rounded-m3-full h-2 shadow-inner">
-          <div class="bg-primary-600 h-2 rounded-m3-full transition-all duration-300 shadow-elevation-1" 
+        <div class="w-full bg-surface-4 rounded-m3-md h-2 shadow-inner">
+          <div class="bg-primary-600 h-2 rounded-m3-md transition-all duration-300 shadow-elevation-1" 
                :style="{ width: `${(builderStore.currentStep / builderStore.totalSteps) * 100}%` }"></div>
         </div>
       </div>
@@ -193,7 +193,7 @@ watch(() => builderStore.partialEntity.feature, async () => {
         <div v-if="builderStore.isBusy"
              class="absolute inset-0 bg-surface bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-10">
           <div class="text-center">
-            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-surface-variant border-t-primary-600"></div>
+            <div class="inline-block animate-spin rounded-m3-md-full h-10 w-10 border-4 border-surface-variant border-t-primary-600"></div>
             <p class="text-sm text-secondary-700 font-medium mt-3">{{ builderStore.busyMessage }}</p>
           </div>
         </div>
@@ -201,7 +201,7 @@ watch(() => builderStore.partialEntity.feature, async () => {
         <!-- Step 1: Basic Info -->
         <div v-if="builderStore.currentStep === 1" class="space-y-5">
           <!-- AI Assist Panel -->
-          <div class="p-4 bg-gradient-to-r from-purple-50 to-primary-50 rounded-m3-lg border-2 border-purple-200 shadow-elevation-2">
+          <div class="p-4 bg-gradient-to-r from-purple-50 to-primary-50 rounded-m3-md border-2 border-purple-200 shadow-elevation-2">
             <div class="flex items-center gap-2 mb-3">
               <svg class="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -227,9 +227,9 @@ watch(() => builderStore.partialEntity.feature, async () => {
               <button 
                 @click="generateWithAI"
                 :disabled="!aiPrompt.trim() || isGenerating"
-                class="px-4 py-2 text-xs font-medium bg-purple-600 hover:bg-purple-700 active:bg-purple-800 disabled:bg-surface-3 disabled:text-secondary-400 text-white rounded-m3-lg transition-all shadow-elevation-1 hover:shadow-elevation-2 flex items-center gap-2"
+                class="px-4 py-2 text-xs font-medium bg-purple-600 hover:bg-purple-700 active:bg-purple-800 disabled:bg-surface-3 disabled:text-secondary-400 text-white rounded-m3-md transition-all shadow-elevation-1 hover:shadow-elevation-2 flex items-center gap-2"
               >
-                <span v-if="isGenerating" class="inline-block animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
+                <span v-if="isGenerating" class="inline-block animate-spin rounded-m3-md-full h-3 w-3 border-2 border-white border-t-transparent"></span>
                 {{ isGenerating ? 'Generating...' : 'Generate with AI' }}
               </button>
             </div>
@@ -237,13 +237,13 @@ watch(() => builderStore.partialEntity.feature, async () => {
           </div>
 
           <!-- Template Selection -->
-          <div v-if="builderStore.availableTemplates.length > 0" class="p-4 bg-surface-2 rounded-m3-lg border border-surface-variant shadow-elevation-1">
+          <div v-if="builderStore.availableTemplates.length > 0" class="p-4 bg-surface-2 rounded-m3-md border border-surface-variant shadow-elevation-1">
             <div class="flex items-center justify-between mb-3">
               <h3 class="text-sm font-semibold text-secondary-900">📋 Quick Start Templates</h3>
               <button 
                 v-if="builderStore.selectedTemplate"
                 @click="builderStore.clearTemplate()"
-                class="text-xs font-medium text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 px-2 py-1 rounded-m3-sm transition-all"
+                class="text-xs font-medium text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 px-2 py-1 rounded-m3-md transition-all"
               >
                 Clear template
               </button>
@@ -317,7 +317,7 @@ watch(() => builderStore.partialEntity.feature, async () => {
                   v-for="suggestion in builderStore.suggestions.domains.slice(0, 5)"
                   :key="suggestion.domain"
                   @click.prevent="selectSuggestedDomain(suggestion.domain)"
-                  class="px-3 py-1.5 text-xs font-medium rounded-m3-full transition-all shadow-elevation-1 hover:shadow-elevation-2"
+                  class="px-3 py-1.5 text-xs font-medium rounded-m3-md transition-all shadow-elevation-1 hover:shadow-elevation-2"
                   :class="{
                     'bg-primary-600 text-white hover:bg-primary-700': suggestion.confidence === 'high',
                     'bg-primary-500 text-white hover:bg-primary-600': suggestion.confidence === 'medium',
@@ -413,10 +413,10 @@ watch(() => builderStore.partialEntity.feature, async () => {
           <div v-if="builderStore.entityType === 'feature'">
             <label class="block text-sm font-medium text-secondary-800 mb-2">Required Services</label>
             <div class="space-y-2 max-h-40 overflow-y-auto">
-              <label v-for="service in availableServices" :key="service.id" class="flex items-center text-sm text-secondary-800 hover:text-secondary-900 cursor-pointer hover:bg-surface-2 px-2 py-1 rounded-m3-sm transition-colors">
+              <label v-for="service in availableServices" :key="service.id" class="flex items-center text-sm text-secondary-800 hover:text-secondary-900 cursor-pointer hover:bg-surface-2 px-2 py-1 rounded-m3-md transition-colors">
                 <input type="checkbox" :value="service.id" 
                        v-model="builderStore.partialEntity.requires"
-                       class="mr-3 h-5 w-5 rounded-m3-xs bg-surface-2 border-surface-variant text-primary-600 focus:ring-2 focus:ring-primary-400">
+                       class="mr-3 h-5 w-5 rounded-m3-md bg-surface-2 border-surface-variant text-primary-600 focus:ring-2 focus:ring-primary-400">
                 {{ service.id }} - {{ service.name }}
               </label>
             </div>
@@ -494,7 +494,7 @@ watch(() => builderStore.partialEntity.feature, async () => {
         <div v-if="builderStore.currentStep === 4" class="space-y-5">
           <div>
             <h3 class="text-sm font-semibold text-secondary-900 mb-2">YAML Preview</h3>
-            <pre class="bg-surface-3 text-secondary-800 p-4 rounded-m3-md text-xs overflow-x-auto border border-surface-variant shadow-elevation-1">{{ builderStore.yamlPreview }}</pre>
+            <pre class="bg-surface-3 text-secondary-800 p-4 rounded-m3-xl text-xs overflow-x-auto border border-surface-variant shadow-elevation-1">{{ builderStore.yamlPreview }}</pre>
           </div>
 
           <!-- Validation Results -->
@@ -523,11 +523,11 @@ watch(() => builderStore.partialEntity.feature, async () => {
           <div class="space-y-3 mt-4 pt-5 border-t border-surface-variant">
             <h4 class="text-sm font-semibold text-secondary-900 mb-3">Git Options</h4>
             
-            <label class="flex items-center text-sm text-secondary-800 hover:text-secondary-900 cursor-pointer hover:bg-surface-2 px-2 py-2 rounded-m3-sm transition-colors">
+            <label class="flex items-center text-sm text-secondary-800 hover:text-secondary-900 cursor-pointer hover:bg-surface-2 px-2 py-2 rounded-m3-md transition-colors">
               <input 
                 type="checkbox" 
                 v-model="builderStore.autoCommit"
-                class="mr-3 h-5 w-5 rounded-m3-xs bg-surface-2 border-surface-variant text-primary-600 focus:ring-2 focus:ring-primary-400"
+                class="mr-3 h-5 w-5 rounded-m3-md bg-surface-2 border-surface-variant text-primary-600 focus:ring-2 focus:ring-primary-400"
               />
               <div>
                 <div class="font-medium">Auto-commit after creation</div>
@@ -537,12 +537,12 @@ watch(() => builderStore.partialEntity.feature, async () => {
 
             <label 
               v-if="builderStore.entityType === 'feature'"
-              class="flex items-center text-sm text-secondary-800 hover:text-secondary-900 cursor-pointer hover:bg-surface-2 px-2 py-2 rounded-m3-sm transition-colors"
+              class="flex items-center text-sm text-secondary-800 hover:text-secondary-900 cursor-pointer hover:bg-surface-2 px-2 py-2 rounded-m3-md transition-colors"
             >
               <input 
                 type="checkbox" 
                 v-model="builderStore.createBranch"
-                class="mr-3 h-5 w-5 rounded-m3-xs bg-surface-2 border-surface-variant text-primary-600 focus:ring-2 focus:ring-primary-400"
+                class="mr-3 h-5 w-5 rounded-m3-md bg-surface-2 border-surface-variant text-primary-600 focus:ring-2 focus:ring-primary-400"
               />
               <div>
                 <div class="font-medium">Create feature branch</div>
@@ -552,13 +552,13 @@ watch(() => builderStore.partialEntity.feature, async () => {
 
             <label 
               v-if="builderStore.entityType === 'feature'"
-              class="flex items-center text-sm text-secondary-800 hover:text-secondary-900 cursor-pointer hover:bg-surface-2 px-2 py-2 rounded-m3-sm transition-colors"
+              class="flex items-center text-sm text-secondary-800 hover:text-secondary-900 cursor-pointer hover:bg-surface-2 px-2 py-2 rounded-m3-md transition-colors"
             >
               <input 
                 type="checkbox" 
                 v-model="builderStore.createRelatedEntities"
                 @change="builderStore.relatedEntitiesToCreate = builderStore.createRelatedEntities ? [{ type: 'userstory', count: 1 }] : []"
-                class="mr-3 h-5 w-5 rounded-m3-xs bg-surface-2 border-surface-variant text-primary-600 focus:ring-2 focus:ring-primary-400"
+                class="mr-3 h-5 w-5 rounded-m3-md bg-surface-2 border-surface-variant text-primary-600 focus:ring-2 focus:ring-primary-400"
               />
               <div>
                 <div class="font-medium">Create related entities after this</div>
@@ -574,7 +574,7 @@ watch(() => builderStore.partialEntity.feature, async () => {
         <button 
           @click="builderStore.prevStep"
           v-if="builderStore.currentStep > 1"
-          class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-lg transition-all"
+          class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-md transition-all"
         >
           ← Back
         </button>
@@ -583,14 +583,14 @@ watch(() => builderStore.partialEntity.feature, async () => {
         <div class="flex items-center gap-3">
           <button 
             @click="close"
-            class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-lg transition-all"
+            class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-md transition-all"
           >
             Cancel
           </button>
           <button 
             @click="handleNext"
             :disabled="!builderStore.canProceed || builderStore.isGenerating"
-            class="px-5 py-2.5 text-sm font-medium bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:bg-surface-3 disabled:text-secondary-400 text-white rounded-m3-lg transition-all shadow-elevation-2 hover:shadow-elevation-3"
+            class="px-5 py-2.5 text-sm font-medium bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:bg-surface-3 disabled:text-secondary-400 text-white rounded-m3-md transition-all shadow-elevation-2 hover:shadow-elevation-3"
           >
             <span v-if="builderStore.isGenerating">Creating...</span>
             <span v-else-if="builderStore.currentStep < 4">Next →</span>

@@ -158,7 +158,7 @@ watch(() => selectedDiagram.value, async () => {
           <h2 class="text-lg font-semibold text-primary-700">C4 Diagrams</h2>
           <button
             @click="loadDiagrams"
-            class="p-2 hover:bg-surface-3 rounded-m3-full transition-colors"
+            class="p-2 hover:bg-surface-3 rounded-m3-md transition-colors"
             title="Refresh"
           >
             <svg class="w-5 h-5 text-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,7 +191,7 @@ watch(() => selectedDiagram.value, async () => {
         <div v-else-if="filteredDiagrams.length === 0" class="p-4 text-center text-secondary-600">
           <p v-if="searchQuery">No diagrams match your search.</p>
           <p v-else>No C4 diagrams found.</p>
-          <p class="text-xs mt-2">Add diagrams to <code class="px-1 py-0.5 bg-surface-3 rounded">context-repo/c4/</code></p>
+          <p class="text-xs mt-2">Add diagrams to <code class="px-1 py-0.5 bg-surface-3 rounded-m3-md">context-repo/c4/</code></p>
         </div>
         
         <div v-else class="space-y-2">
@@ -206,8 +206,8 @@ watch(() => selectedDiagram.value, async () => {
           >
             <div class="font-medium text-sm text-secondary-900">{{ diagram.title }}</div>
             <div class="flex items-center gap-2 mt-1 text-xs text-secondary-600">
-              <span v-if="diagram.system" class="px-2 py-0.5 bg-surface-3 rounded-m3-full">{{ diagram.system }}</span>
-              <span v-if="diagram.level" class="px-2 py-0.5 bg-primary-100 text-primary-700 rounded-m3-full">{{ diagram.level }}</span>
+              <span v-if="diagram.system" class="px-2 py-0.5 bg-surface-3 rounded-m3-md">{{ diagram.system }}</span>
+              <span v-if="diagram.level" class="px-2 py-0.5 bg-primary-100 text-primary-700 rounded-m3-md">{{ diagram.level }}</span>
             </div>
             <div v-if="diagram.feature" class="mt-1 text-xs text-primary-600">
               → {{ diagram.feature }}
@@ -249,7 +249,7 @@ watch(() => selectedDiagram.value, async () => {
             <span class="text-xs text-secondary-600">Linked to:</span>
             <button
               @click="openRelatedEntity(selectedDiagram.feature)"
-              class="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded-m3-full hover:bg-primary-200 transition-colors"
+              class="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded-m3-md hover:bg-primary-200 transition-colors"
             >
               {{ selectedDiagram.feature }}
             </button>
@@ -276,7 +276,7 @@ watch(() => selectedDiagram.value, async () => {
               <span class="ml-1 font-medium text-secondary-900">{{ projectionStats.relationships }}</span>
             </div>
             <div v-for="(count, kind) in projectionStats.nodesByKind" :key="kind" class="flex items-center gap-1">
-              <span class="px-2 py-0.5 bg-surface-3 rounded-m3-full text-xs text-secondary-700">{{ kind }}</span>
+              <span class="px-2 py-0.5 bg-surface-3 rounded-m3-md text-xs text-secondary-700">{{ kind }}</span>
               <span class="text-secondary-700">{{ count }}</span>
             </div>
           </div>

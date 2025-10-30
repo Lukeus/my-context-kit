@@ -22,7 +22,7 @@ const isStale = computed(() => props.summary?.status.stale ?? true);
 <template>
   <div class="space-y-3 rounded-m3-md border border-surface-variant bg-surface-1 p-4 text-sm text-secondary-800">
     <div v-if="isFetching" class="flex items-center gap-2 text-secondary-600">
-      <span class="inline-flex h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <span class="inline-flex h-3 w-3 animate-spin rounded-m3-md-full border-2 border-primary border-t-transparent" />
       <span>Fetching Spec Kit snapshot…</span>
     </div>
 
