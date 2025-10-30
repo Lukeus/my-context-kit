@@ -2,10 +2,57 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RepoService } from '~main/services/repo.service';
 import * as fsPromises from 'node:fs/promises';
 import * as fs from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-vi.mock('chokidar');
+// Use vi.hoisted to ensure mockWatchFn is available during vi.mock hoisting
+const { mockWatchFn, createMockWatcher } = vi.hoisted(() => {
+  const createMockWatcher = () => ({
+    on: vi.fn(),
+    close: vi.fn(),
+  });
+  
+  const mockWatchFn = vi.fn(createMockWatcher);
+  
+  return { mockWatchFn, createMockWatcher };
+});
+
+vi.mock('electron', () => ({
+  app: {
+    getPath: vi.fn(() => path.join(tmpdir(), 'context-kit-tests')),
+    getAppPath: vi.fn(() => path.join(tmpdir(), 'context-kit-app')),
+  },
+}));
+
+vi.mock('node:fs', () => {
+  const mocks = {
+    existsSync: vi.fn(),
+  };
+  return {
+    ...mocks,
+    default: mocks,
+  };
+});
+
+vi.mock('node:fs/promises', () => {
+  const mocks = {
+    readFile: vi.fn(),
+    writeFile: vi.fn(),
+    rename: vi.fn(),
+    mkdir: vi.fn(),
+  };
+  return {
+    ...mocks,
+    default: mocks,
+  };
+});
+
+vi.mock('chokidar', () => ({
+  default: {
+    watch: mockWatchFn,
+  },
+  watch: mockWatchFn,
+}));
 
 describe('RepoService', () => {
   let service: RepoService;
@@ -13,6 +60,8 @@ describe('RepoService', () => {
   beforeEach(() => {
     service = new RepoService();
     vi.clearAllMocks();
+    // Setup default mock watcher behavior
+    mockWatchFn.mockImplementation(createMockWatcher);
   });
 
   describe('loadRepoRegistry', () => {
@@ -522,44 +571,41 @@ describe('RepoService', () => {
 
   describe('watchRepo', () => {
     it('should set up file watcher', async () => {
-      const mockChokidar = await import('chokidar');
       const mockWatcher = {
         on: vi.fn(),
         close: vi.fn(),
       };
-      vi.mocked(mockChokidar.watch as any).mockReturnValue(mockWatcher);
+      mockWatchFn.mockReturnValueOnce(mockWatcher);
 
       const onFileChange = vi.fn();
       await service.watchRepo('/test/repo', onFileChange);
 
-      expect(mockChokidar.watch).toHaveBeenCalled();
+      expect(mockWatchFn).toHaveBeenCalled();
       expect(mockWatcher.on).toHaveBeenCalledWith('all', expect.any(Function));
     });
 
     it('should not create duplicate watchers', async () => {
-      const mockChokidar = await import('chokidar');
       const mockWatcher = {
         on: vi.fn(),
         close: vi.fn(),
       };
-      vi.mocked(mockChokidar.watch as any).mockReturnValue(mockWatcher);
+      mockWatchFn.mockReturnValue(mockWatcher);
 
       const onFileChange = vi.fn();
       await service.watchRepo('/test/repo', onFileChange);
       await service.watchRepo('/test/repo', onFileChange);
 
-      expect(mockChokidar.watch).toHaveBeenCalledTimes(1);
+      expect(mockWatchFn).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('unwatchRepo', () => {
     it('should close and remove watcher', async () => {
-      const mockChokidar = await import('chokidar');
       const mockWatcher = {
         on: vi.fn(),
         close: vi.fn().mockResolvedValue(undefined),
       };
-      vi.mocked(mockChokidar.watch as any).mockReturnValue(mockWatcher);
+      mockWatchFn.mockReturnValue(mockWatcher);
 
       const onFileChange = vi.fn();
       await service.watchRepo('/test/repo', onFileChange);
@@ -575,7 +621,6 @@ describe('RepoService', () => {
 
   describe('cleanup', () => {
     it('should close all watchers', async () => {
-      const mockChokidar = await import('chokidar');
       const mockWatcher1 = {
         on: vi.fn(),
         close: vi.fn().mockResolvedValue(undefined),
@@ -584,7 +629,7 @@ describe('RepoService', () => {
         on: vi.fn(),
         close: vi.fn().mockResolvedValue(undefined),
       };
-      vi.mocked(mockChokidar.watch as any)
+      mockWatchFn
         .mockReturnValueOnce(mockWatcher1)
         .mockReturnValueOnce(mockWatcher2);
 
