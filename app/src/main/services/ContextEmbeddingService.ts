@@ -39,8 +39,14 @@ export interface IndexingProgress {
   currentEntity?: string;
 }
 
-function mapChatModelToEmbeddingModel(chatModel?: string): string | undefined {
+function mapChatModelToEmbeddingModel(chatModel?: string, provider?: string): string | undefined {
   if (!chatModel) return undefined;
+  
+  // For Ollama, use a common embedding model
+  if (provider === 'ollama') {
+    return 'nomic-embed-text';
+  }
+  
   const m = chatModel.toLowerCase();
   if (m.startsWith('gpt-4') || m.startsWith('gpt4') || m.startsWith('gpt-')) return 'text-embedding-3-small';
   if (m.startsWith('gpt-3.5') || m.includes('turbo')) return 'text-embedding-3-small';
@@ -84,16 +90,24 @@ export class ContextEmbeddingService {
 
   constructor(private config: AIConfig) {
     // Embedding model: prefer explicit embeddingModel, else map chat model -> embedding, else default
+    const defaultEmbeddingModel = config.provider === 'ollama' ? 'nomic-embed-text' : 'text-embedding-3-small';
     this.embeddingModelName = (config.embeddingModel as string)
-      || mapChatModelToEmbeddingModel(config.model as string)
-      || 'text-embedding-3-small';
+      || mapChatModelToEmbeddingModel(config.model as string, config.provider)
+      || defaultEmbeddingModel;
+
+    // For Ollama, provide a dummy API key since it doesn't need one
+    const apiKey = config.provider === 'ollama' 
+      ? 'ollama-does-not-need-a-key' 
+      : config.apiKey;
 
     this.embeddings = new OpenAIEmbeddings({
-      openAIApiKey: config.apiKey,
+      apiKey: apiKey,
       configuration: config.provider === 'azure-openai' ? {
         baseURL: `${config.endpoint}/openai/deployments/${encodeURIComponent(this.embeddingModelName)}`,
         defaultQuery: { 'api-version': '2024-12-01-preview' },
         defaultHeaders: { 'api-key': config.apiKey || '' }
+      } : config.provider === 'ollama' ? {
+        baseURL: config.endpoint.endsWith('/v1') ? config.endpoint : `${config.endpoint.replace(/\/$/, '')}/v1`,
       } : undefined,
       modelName: this.embeddingModelName,
     });
