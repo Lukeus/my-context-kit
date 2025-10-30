@@ -69,7 +69,7 @@ watch(
 </script>
 
 <template>
-  <div class="flex h-full flex-col rounded-m3-lg border border-surface-variant bg-surface-1">
+  <div class="flex h-full flex-col rounded-m3-md border border-surface-variant bg-surface-1">
     <div class="flex items-center justify-between gap-2 border-b border-surface-variant px-4 py-3">
       <div class="space-y-1 text-xs text-secondary-600" v-if="metadata">
         <div class="font-semibold text-secondary-900">{{ preview?.displayName }}</div>

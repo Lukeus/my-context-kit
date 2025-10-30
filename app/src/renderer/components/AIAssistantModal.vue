@@ -140,7 +140,7 @@ function openSettings() {
 
           <!-- Conversation -->
           <div class="flex-1 overflow-y-auto px-6 py-5 space-y-4 bg-surface">
-            <div v-if="!aiStore.hasConversation && !aiStore.isLoading" class="text-sm text-secondary-600 bg-surface-2 border border-dashed border-surface-variant rounded-m3-lg p-5">
+            <div v-if="!aiStore.hasConversation && !aiStore.isLoading" class="text-sm text-secondary-600 bg-surface-2 border border-dashed border-surface-variant rounded-m3-md p-5">
               <p class="font-semibold text-secondary-800 mb-2">Try asking:</p>
               <ul class="list-disc list-inside space-y-1">
                 <li>"Summarize the current feature landscape and any gaps."</li>
@@ -152,13 +152,13 @@ function openSettings() {
             <div
               v-for="message in aiStore.conversation"
               :key="message.id"
-              class="rounded-m3-lg border px-4 py-3 shadow-elevation-1"
+              class="rounded-m3-md border px-4 py-3 shadow-elevation-1"
               :class="message.role === 'assistant' ? 'bg-primary-50 border-primary-100' : 'bg-surface-1 border-surface-variant'"
             >
               <div class="flex items-start justify-between mb-2">
                 <div class="flex items-center gap-2">
                   <span
-                    class="px-2 py-0.5 text-xs font-semibold rounded-m3-full"
+                    class="px-2 py-0.5 text-xs font-semibold rounded-m3-md"
                     :class="message.role === 'assistant' ? 'bg-primary-100 text-primary-700' : 'bg-secondary-200 text-secondary-700'"
                   >
                     {{ message.role === 'assistant' ? 'Assistant' : 'You' }}
@@ -180,7 +180,7 @@ function openSettings() {
                     class="text-sm bg-primary-50 border border-primary-100 rounded-m3-md px-3 py-2"
                   >
                     <div class="font-semibold text-primary-800 flex items-center gap-2">
-                      <span class="font-mono text-xs bg-primary-200 text-primary-800 px-2 py-0.5 rounded-m3-full">{{ suggestion.target }}</span>
+                      <span class="font-mono text-xs bg-primary-200 text-primary-800 px-2 py-0.5 rounded-m3-md">{{ suggestion.target }}</span>
                       <span>{{ suggestion.suggestion }}</span>
                     </div>
                     <p v-if="suggestion.impact" class="text-xs text-primary-700 mt-1">Impact: {{ suggestion.impact }}</p>
@@ -214,14 +214,14 @@ function openSettings() {
                 <span
                   v-for="(reference, index) in message.references"
                   :key="`${message.id}-ref-${index}`"
-                  class="px-3 py-1 text-xs bg-secondary-100 text-secondary-800 rounded-m3-full border border-secondary-200"
+                  class="px-3 py-1 text-xs bg-secondary-100 text-secondary-800 rounded-m3-md border border-secondary-200"
                   :title="reference.note || ''"
                 >{{ reference.type }} · {{ reference.id }}</span>
               </div>
             </div>
 
             <div v-if="aiStore.isLoading" class="flex items-center gap-2 text-sm text-secondary-600">
-              <span class="inline-block animate-spin rounded-full h-4 w-4 border-2 border-secondary-300 border-t-secondary-600"></span>
+              <span class="inline-block animate-spin rounded-m3-md-full h-4 w-4 border-2 border-secondary-300 border-t-secondary-600"></span>
               Thinking through the repository snapshot...
             </div>
           </div>
@@ -229,11 +229,11 @@ function openSettings() {
           <!-- Composer -->
           <div class="border-t border-surface-variant bg-surface-2 px-6 py-5 space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <div class="flex items-center gap-2 bg-surface-3 border border-surface-variant rounded-m3-full px-2 py-1">
+              <div class="flex items-center gap-2 bg-surface-3 border border-surface-variant rounded-m3-md px-2 py-1">
                 <button
                   v-for="option in ['general', 'improvement', 'clarification']"
                   :key="option"
-                  class="px-3 py-1 text-xs font-medium rounded-m3-full transition-colors"
+                  class="px-3 py-1 text-xs font-medium rounded-m3-md transition-colors"
                   :class="mode === option ? 'bg-primary-600 text-white shadow-elevation-1' : 'text-secondary-700 hover:bg-surface-4'"
                   @click="mode = option as AssistantMode"
                 >{{ option }}</button>
@@ -241,7 +241,7 @@ function openSettings() {
               <label class="flex items-center gap-2 text-xs text-secondary-700">
                 <input
                   type="checkbox"
-                  class="h-4 w-4 rounded border-surface-variant text-primary-600 focus:ring-primary-400"
+                  class="h-4 w-4 rounded-m3-md border-surface-variant text-primary-600 focus:ring-primary-400"
                   v-model="focusActive"
                   :disabled="!canFocusActive"
                 />
@@ -254,7 +254,7 @@ function openSettings() {
             <textarea
               v-model="question"
               rows="3"
-              class="w-full px-4 py-3 bg-surface-1 border border-surface-variant rounded-m3-lg text-sm text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-elevation-1"
+              class="w-full px-4 py-3 bg-surface-1 border border-surface-variant rounded-m3-md text-sm text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-elevation-1"
               placeholder="Ask for improvements or clarifications across the context repository..."
               @keydown="handleKeydown"
             ></textarea>
@@ -262,21 +262,21 @@ function openSettings() {
             <div class="flex items-center justify-between gap-3 flex-wrap">
               <div class="flex items-center gap-2 text-xs text-secondary-600">
                 <button
-                  class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-full border border-surface-variant transition-colors"
+                  class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-md border border-surface-variant transition-colors"
                   @click="quickPrompt('improvement')"
                 >Suggest improvements</button>
                 <button
-                  class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-full border border-surface-variant transition-colors"
+                  class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-md border border-surface-variant transition-colors"
                   @click="quickPrompt('clarification')"
                 >Ask for clarifications</button>
               </div>
               <div class="flex items-center gap-2">
                 <button
-                  class="px-3 py-2 text-xs text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-lg"
+                  class="px-3 py-2 text-xs text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-md"
                   @click="aiStore.clearConversation()"
                 >Clear conversation</button>
                 <button
-                  class="px-5 py-2.5 text-sm font-medium bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white rounded-m3-lg transition-all shadow-elevation-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-5 py-2.5 text-sm font-medium bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white rounded-m3-md transition-all shadow-elevation-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   :disabled="isSendDisabled"
                   @click="sendQuestion"
                 >

@@ -207,7 +207,7 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
               <!-- Local Version -->
               <div class="p-4 space-y-4 bg-blue-50/30">
                 <div class="flex items-center gap-2 mb-2">
-                  <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <div class="w-3 h-3 bg-blue-500 rounded-m3-md-full"></div>
                   <h3 class="text-sm font-semibold text-secondary-900">Local Version</h3>
                 </div>
 
@@ -226,7 +226,7 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
                     <div
                       v-for="tool in selectedConflict.localAgent.tools"
                       :key="tool.toolId"
-                      class="text-xs px-2 py-1 bg-white rounded border border-blue-200 flex items-center justify-between"
+                      class="text-xs px-2 py-1 bg-white rounded-m3-md border border-blue-200 flex items-center justify-between"
                     >
                       <span>{{ tool.toolId }}</span>
                       <span v-if="tool.required" class="text-[10px] text-blue-700">required</span>
@@ -258,7 +258,7 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
               <!-- Remote Version -->
               <div class="p-4 space-y-4 bg-green-50/30">
                 <div class="flex items-center gap-2 mb-2">
-                  <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <div class="w-3 h-3 bg-green-500 rounded-m3-md-full"></div>
                   <h3 class="text-sm font-semibold text-secondary-900">Remote Version</h3>
                 </div>
 
@@ -277,7 +277,7 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
                     <div
                       v-for="tool in selectedConflict.remoteAgent.tools"
                       :key="tool.toolId"
-                      class="text-xs px-2 py-1 bg-white rounded border border-green-200 flex items-center justify-between"
+                      class="text-xs px-2 py-1 bg-white rounded-m3-md border border-green-200 flex items-center justify-between"
                     >
                       <span>{{ tool.toolId }}</span>
                       <span v-if="tool.required" class="text-[10px] text-green-700">required</span>
@@ -328,7 +328,7 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
             Cancel
           </button>
           <button
-            class="px-4 py-2 text-sm font-medium rounded-m3-lg transition-all"
+            class="px-4 py-2 text-sm font-medium rounded-m3-md transition-all"
             :class="hasUnresolvedConflicts
               ? 'bg-secondary-200 text-secondary-500 cursor-not-allowed'
               : 'bg-primary-600 text-white hover:bg-primary-700 shadow-elevation-1'"

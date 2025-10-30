@@ -181,14 +181,14 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
 <template>
   <div class="flex flex-col h-full bg-surface-1">
     <!-- Header -->
-    <header class="flex items-center justify-between px-6 py-4 border-b border-surface-variant bg-white shadow-sm">
+    <header class="flex items-center justify-between px-6 py-4 border-b border-surface-variant bg-white shadow-elevation-1">
       <div>
         <h2 class="text-lg font-semibold text-secondary-900">Agent Library</h2>
         <p class="text-xs text-secondary-600">Create, edit, and select agent profiles • Click a card to set as active</p>
       </div>
       <div class="flex items-center gap-2">
         <button
-          class="p-2 text-secondary-600 hover:bg-surface-2 rounded-m3-full transition-colors relative"
+          class="p-2 text-secondary-600 hover:bg-surface-2 rounded-m3-md transition-colors relative"
           @click="refreshAgents"
           :disabled="isLoading || isRefreshing"
           title="Refresh agents"
@@ -203,7 +203,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
           </svg>
         </button>
         <button
-          class="p-2 text-secondary-600 hover:bg-surface-2 rounded-m3-full transition-colors"
+          class="p-2 text-secondary-600 hover:bg-surface-2 rounded-m3-md transition-colors"
           @click="showSettings = true"
           title="Sync settings"
           aria-label="Sync settings"
@@ -214,7 +214,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
           </svg>
         </button>
         <button
-          class="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 active:bg-primary-800 transition-all shadow-sm hover:shadow-md flex items-center gap-2"
+          class="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-m3-md hover:bg-primary-700 active:bg-primary-800 transition-all shadow-elevation-1 hover:shadow-elevation-2 flex items-center gap-2"
           @click="createNewAgent"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -226,7 +226,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
     </header>
 
     <!-- Error Message -->
-    <div v-if="error" class="mx-6 mt-4 text-sm text-error-700 bg-error-50 border border-error-200 rounded-m3-lg px-4 py-3 flex items-start gap-2">
+    <div v-if="error" class="mx-6 mt-4 text-sm text-error-700 bg-error-50 border border-error-200 rounded-m3-md px-4 py-3 flex items-start gap-2">
       <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
       </svg>
@@ -243,7 +243,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
         <input
           v-model="searchQuery"
           type="text"
-          class="w-full pl-10 pr-4 py-2.5 text-sm border border-surface-variant rounded-m3-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          class="w-full pl-10 pr-4 py-2.5 text-sm border border-surface-variant rounded-m3-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           placeholder="Search agents by name, description, or tags..."
         />
       </div>
@@ -254,7 +254,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
         <div class="flex-1 min-w-[200px]">
           <select
             v-model="selectedTag"
-            class="w-full px-3 py-2.5 text-sm border border-surface-variant rounded-m3-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
+            class="w-full px-3 py-2.5 text-sm border border-surface-variant rounded-m3-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
           >
             <option value="all">All Tags</option>
             <option v-for="tag in allTags" :key="tag" :value="tag">
@@ -267,7 +267,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
         <div class="flex-1 min-w-[150px]">
           <select
             v-model="selectedComplexity"
-            class="w-full px-3 py-2.5 text-sm border border-surface-variant rounded-m3-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
+            class="w-full px-3 py-2.5 text-sm border border-surface-variant rounded-m3-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
           >
             <option value="all">All Levels</option>
             <option v-for="level in complexityLevels" :key="level" :value="level">
@@ -277,7 +277,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
         </div>
 
         <!-- View Mode Toggle -->
-        <div class="flex items-center border border-surface-variant rounded-m3-lg bg-white overflow-hidden">
+        <div class="flex items-center border border-surface-variant rounded-m3-md bg-white overflow-hidden">
           <button
             class="px-3 py-2 transition-all"
             :class="viewMode === 'grid' ? 'bg-primary-600 text-white' : 'text-secondary-600 hover:bg-surface-2'"
@@ -310,7 +310,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
           <h3 class="text-sm font-semibold text-secondary-700 uppercase tracking-wide">
             Built-in Agents
           </h3>
-          <span class="px-2 py-0.5 text-xs font-medium bg-secondary-100 text-secondary-700 rounded-m3-full">
+          <span class="px-2 py-0.5 text-xs font-medium bg-secondary-100 text-secondary-700 rounded-m3-md">
             {{ filteredBuiltIn.length }}
           </span>
         </div>
@@ -361,7 +361,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
           Try adjusting your filters or create a new agent
         </p>
         <button
-          class="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 transition-colors"
+          class="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-m3-md hover:bg-primary-700 transition-colors"
           @click="createNewAgent"
         >
           Create New Agent
@@ -376,7 +376,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
         @click.self="closeEditor"
       >
-        <div class="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-m3-xl shadow-elevation-3">
+        <div class="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-m3-md shadow-elevation-3">
           <AgentProfileEditor
             :agent="editingAgent"
             @close="closeEditor"
@@ -393,7 +393,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
         @click.self="cancelDelete"
       >
-        <div class="w-full max-w-md bg-white rounded-m3-xl shadow-elevation-3 p-6">
+        <div class="w-full max-w-md bg-white rounded-m3-md shadow-elevation-3 p-6">
           <h3 class="text-lg font-semibold text-secondary-900 mb-2">Delete Agent</h3>
           <p class="text-sm text-secondary-600 mb-6">
             Are you sure you want to delete this agent? This action cannot be undone.
@@ -406,7 +406,7 @@ function handleSettingsSaved(settings: AgentSyncSettingsType) {
               Cancel
             </button>
             <button
-              class="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-error-600 text-white rounded-m3-lg hover:bg-error-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              class="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-error-600 text-white rounded-m3-md hover:bg-error-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="isDeleting"
               @click="deleteAgent"
             >

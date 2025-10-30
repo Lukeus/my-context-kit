@@ -64,7 +64,7 @@ const icon = computed(() => {
   <Transition name="snackbar">
     <div
       v-if="show"
-      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-4 py-3 rounded-m3-xl border-2 shadow-elevation-3 min-w-[320px] max-w-[560px]"
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-4 py-3 rounded-m3-md border-2 shadow-elevation-3 min-w-[320px] max-w-[560px]"
       :class="colorClasses"
       role="alert"
       aria-live="polite"
@@ -92,7 +92,7 @@ const icon = computed(() => {
       <button
         v-if="action"
         @click="emit('action')"
-        class="px-3 py-1 text-xs font-semibold rounded-m3-full transition-colors"
+        class="px-3 py-1 text-xs font-semibold rounded-m3-md transition-colors"
         :class="type === 'info' ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-white bg-opacity-20 hover:bg-opacity-30'"
       >
         {{ action }}
@@ -101,7 +101,7 @@ const icon = computed(() => {
       <!-- Close Button -->
       <button
         @click="emit('close')"
-        class="p-1 rounded-m3-full hover:bg-white hover:bg-opacity-20 transition-colors"
+        class="p-1 rounded-m3-md hover:bg-white hover:bg-opacity-20 transition-colors"
         aria-label="Close"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

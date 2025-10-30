@@ -53,7 +53,7 @@ function handleCancel() {
 
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-    <div class="w-full max-w-2xl bg-white rounded-m3-xl shadow-elevation-3 flex flex-col">
+    <div class="w-full max-w-2xl bg-white rounded-m3-md shadow-elevation-3 flex flex-col">
       <!-- Header -->
       <header class="flex items-center justify-between px-6 py-4 border-b border-surface-variant">
         <div>
@@ -78,7 +78,7 @@ function handleCancel() {
             <input
               v-model="settings.autoPullOnStart"
               type="checkbox"
-              class="w-4 h-4 rounded border-surface-variant text-primary-600 focus:ring-primary-500"
+              class="w-4 h-4 rounded-m3-md border-surface-variant text-primary-600 focus:ring-primary-500"
             />
             <div>
               <div class="text-sm font-medium text-secondary-900">
@@ -97,7 +97,7 @@ function handleCancel() {
             <input
               v-model="settings.autoPushOnSave"
               type="checkbox"
-              class="w-4 h-4 rounded border-surface-variant text-primary-600 focus:ring-primary-500"
+              class="w-4 h-4 rounded-m3-md border-surface-variant text-primary-600 focus:ring-primary-500"
             />
             <div>
               <div class="text-sm font-medium text-secondary-900">
@@ -180,9 +180,9 @@ function handleCancel() {
         </div>
 
         <!-- Info Box -->
-        <div class="p-4 bg-surface-1 border border-surface-variant rounded-m3-lg">
+        <div class="p-4 bg-surface-1 border border-surface-variant rounded-m3-md">
           <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+            <div class="w-8 h-8 rounded-m3-md-full bg-primary-100 flex items-center justify-center flex-shrink-0">
               <svg class="w-4 h-4 text-primary-700" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
               </svg>
@@ -209,7 +209,7 @@ function handleCancel() {
           Cancel
         </button>
         <button
-          class="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-m3-lg hover:bg-primary-700 transition-colors shadow-elevation-1"
+          class="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-m3-md hover:bg-primary-700 transition-colors shadow-elevation-1"
           @click="handleSave"
         >
           Save Settings

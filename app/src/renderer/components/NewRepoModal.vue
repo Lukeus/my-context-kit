@@ -132,7 +132,7 @@ function close() {
         <button 
           @click="close" 
           :disabled="isCreating"
-          class="p-2 hover:bg-surface-3 rounded-m3-full transition-colors disabled:opacity-50 text-secondary-600 hover:text-secondary-900"
+          class="p-2 hover:bg-surface-3 rounded-m3-md transition-colors disabled:opacity-50 text-secondary-600 hover:text-secondary-900"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -145,7 +145,7 @@ function close() {
         <!-- Success Message -->
         <div 
           v-if="success" 
-          class="p-4 bg-green-50 border border-green-200 rounded-m3-lg flex items-start gap-3"
+          class="p-4 bg-green-50 border border-green-200 rounded-m3-md flex items-start gap-3"
         >
           <svg class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
@@ -162,7 +162,7 @@ function close() {
         <!-- Error Message -->
         <div 
           v-if="error" 
-          class="p-4 bg-error-50 border border-error-200 rounded-m3-lg flex items-start gap-3"
+          class="p-4 bg-error-50 border border-error-200 rounded-m3-md flex items-start gap-3"
         >
           <svg class="w-5 h-5 text-error-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
@@ -184,7 +184,7 @@ function close() {
             type="text"
             placeholder="my-project-context"
             :disabled="isCreating || success"
-            class="w-full px-4 py-2.5 text-sm border border-surface-variant rounded-m3-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-surface-2 disabled:cursor-not-allowed"
+            class="w-full px-4 py-2.5 text-sm border border-surface-variant rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-surface-2 disabled:cursor-not-allowed"
           />
           <p class="text-xs text-secondary-600 mt-1.5">
             This will be the folder name for your context repository
@@ -203,13 +203,13 @@ function close() {
               type="text"
               placeholder="Select where to create the repository..."
               :disabled="isCreating || success"
-              class="flex-1 px-4 py-2.5 text-sm border border-surface-variant rounded-m3-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-surface-2 disabled:cursor-not-allowed"
+              class="flex-1 px-4 py-2.5 text-sm border border-surface-variant rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-surface-2 disabled:cursor-not-allowed"
               readonly
             />
             <button
               @click="browseFolderLocation"
               :disabled="isCreating || success"
-              class="px-4 py-2.5 text-sm font-semibold rounded-m3-lg bg-secondary-100 hover:bg-secondary-200 text-secondary-900 border border-surface-variant transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              class="px-4 py-2.5 text-sm font-semibold rounded-m3-md bg-secondary-100 hover:bg-secondary-200 text-secondary-900 border border-surface-variant transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -218,7 +218,7 @@ function close() {
             </button>
           </div>
           <p class="text-xs text-secondary-600 mt-1.5">
-            The repository will be created at: <code class="text-xs bg-surface-2 px-1.5 py-0.5 rounded">{{ parentDirectory || '...' }}/{{ repoName || '...' }}</code>
+            The repository will be created at: <code class="text-xs bg-surface-2 px-1.5 py-0.5 rounded-m3-md">{{ parentDirectory || '...' }}/{{ repoName || '...' }}</code>
           </p>
         </div>
 
@@ -233,7 +233,7 @@ function close() {
             rows="3"
             placeholder="Describe what system/application you're building context for..."
             :disabled="isCreating || success"
-            class="w-full px-4 py-2.5 text-sm border border-surface-variant rounded-m3-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-surface-2 disabled:cursor-not-allowed resize-none"
+            class="w-full px-4 py-2.5 text-sm border border-surface-variant rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-surface-2 disabled:cursor-not-allowed resize-none"
           ></textarea>
           <p class="text-xs text-secondary-600 mt-1.5">
             Describe your project to help AI generate a constitution summary
@@ -248,7 +248,7 @@ function close() {
               v-if="projectPurpose.trim()"
               @click="generateSummary"
               :disabled="isGeneratingSummary || isCreating || success"
-              class="text-xs px-3 py-1.5 font-semibold rounded-m3-lg bg-primary-600 hover:bg-primary-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              class="text-xs px-3 py-1.5 font-semibold rounded-m3-md bg-primary-600 hover:bg-primary-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
               <svg v-if="isGeneratingSummary" class="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -266,7 +266,7 @@ function close() {
             rows="3"
             placeholder="A brief summary of the project's governing principles and purpose..."
             :disabled="isCreating || success || isGeneratingSummary"
-            class="w-full px-4 py-2.5 text-sm border border-surface-variant rounded-m3-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-surface-2 disabled:cursor-not-allowed resize-none"
+            class="w-full px-4 py-2.5 text-sm border border-surface-variant rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-surface-2 disabled:cursor-not-allowed resize-none"
           ></textarea>
           <p class="text-xs text-secondary-600 mt-1.5">
             This will be used in the auto-generated constitution file
@@ -274,7 +274,7 @@ function close() {
         </div>
 
         <!-- Info Box -->
-        <div class="p-4 bg-blue-50 border border-blue-200 rounded-m3-lg">
+        <div class="p-4 bg-blue-50 border border-blue-200 rounded-m3-md">
           <div class="flex items-start gap-3">
             <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -300,14 +300,14 @@ function close() {
         <button
           @click="close"
           :disabled="isCreating"
-          class="px-5 py-2.5 text-sm font-medium rounded-m3-lg text-secondary-700 hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-5 py-2.5 text-sm font-medium rounded-m3-md text-secondary-700 hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           @click="createRepository"
           :disabled="!isValid || isCreating || success"
-          class="px-5 py-2.5 text-sm font-medium rounded-m3-lg bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white shadow-elevation-2 hover:shadow-elevation-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          class="px-5 py-2.5 text-sm font-medium rounded-m3-md bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white shadow-elevation-2 hover:shadow-elevation-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <svg v-if="isCreating" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

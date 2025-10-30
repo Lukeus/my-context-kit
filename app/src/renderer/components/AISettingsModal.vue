@@ -137,7 +137,7 @@ function removeExampleQuestion(index: number) {
       <!-- Header -->
       <div class="px-6 py-5 border-b border-surface-variant flex items-center justify-between">
         <h2 class="text-xl font-semibold text-secondary-900">⚙️ AI Settings</h2>
-        <button @click="emit('close')" class="text-secondary-500 hover:text-secondary-900 transition-colors p-1 rounded-m3-sm hover:bg-surface-3">
+        <button @click="emit('close')" class="text-secondary-500 hover:text-secondary-900 transition-colors p-1 rounded-m3-md hover:bg-surface-3">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -168,7 +168,7 @@ function removeExampleQuestion(index: number) {
         <div v-if="activeTab === 'connection'" class="space-y-5">
           <!-- Enable AI -->
           <label class="flex items-center text-sm text-secondary-700 cursor-pointer hover:text-secondary-900 transition-colors">
-            <input type="checkbox" v-model="enabled" class="mr-3 h-5 w-5 rounded-m3-xs bg-surface-3 border-surface-variant text-primary-600 focus:ring-2 focus:ring-primary-400" />
+            <input type="checkbox" v-model="enabled" class="mr-3 h-5 w-5 rounded-m3-md bg-surface-3 border-surface-variant text-primary-600 focus:ring-2 focus:ring-primary-400" />
             <span class="font-medium">Enable AI Assistance</span>
           </label>
 
@@ -360,20 +360,20 @@ function removeExampleQuestion(index: number) {
         <button 
           @click="testConnection"
           :disabled="isTesting || !enabled"
-          class="px-5 py-2.5 text-sm font-medium bg-secondary-200 hover:bg-secondary-300 active:bg-secondary-400 disabled:bg-surface-3 disabled:text-secondary-400 text-secondary-900 rounded-m3-lg transition-all shadow-elevation-1 hover:shadow-elevation-2"
+          class="px-5 py-2.5 text-sm font-medium bg-secondary-200 hover:bg-secondary-300 active:bg-secondary-400 disabled:bg-surface-3 disabled:text-secondary-400 text-secondary-900 rounded-m3-md transition-all shadow-elevation-1 hover:shadow-elevation-2"
         >
           {{ isTesting ? 'Testing...' : 'Test Connection' }}
         </button>
         <button 
           @click="emit('close')"
-          class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-lg transition-all"
+          class="px-5 py-2.5 text-sm font-medium text-secondary-700 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-md transition-all"
         >
           Cancel
         </button>
         <button 
           @click="saveSettings"
           :disabled="isSaving"
-          class="px-5 py-2.5 text-sm font-medium bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:bg-surface-3 disabled:text-secondary-400 text-white rounded-m3-lg transition-all shadow-elevation-2 hover:shadow-elevation-3"
+          class="px-5 py-2.5 text-sm font-medium bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:bg-surface-3 disabled:text-secondary-400 text-white rounded-m3-md transition-all shadow-elevation-2 hover:shadow-elevation-3"
         >
           {{ isSaving ? 'Saving...' : 'Save Settings' }}
         </button>

@@ -205,7 +205,7 @@ onMounted(() => {
             </div>
             <button
               @click="loadDiagrams"
-              class="px-3 py-1.5 rounded-m3-full text-xs font-semibold border border-secondary-200 text-secondary-700 hover:bg-secondary-50">
+              class="px-3 py-1.5 rounded-m3-md text-xs font-semibold border border-secondary-200 text-secondary-700 hover:bg-secondary-50">
               Refresh
             </button>
           </div>
@@ -214,19 +214,19 @@ onMounted(() => {
           <div class="flex gap-2">
             <button
               @click="activeTab = 'preview'"
-              class="px-4 py-2 text-sm font-semibold rounded-m3-full transition-all"
+              class="px-4 py-2 text-sm font-semibold rounded-m3-md transition-all"
               :class="activeTab === 'preview' ? 'bg-primary-100 text-primary-800 shadow-elevation-1' : 'text-secondary-700 hover:bg-surface-2'">
               Preview
             </button>
             <button
               @click="openEditor"
-              class="px-4 py-2 text-sm font-semibold rounded-m3-full transition-all"
+              class="px-4 py-2 text-sm font-semibold rounded-m3-md transition-all"
               :class="activeTab === 'editor' ? 'bg-primary-100 text-primary-800 shadow-elevation-1' : 'text-secondary-700 hover:bg-surface-2'">
               Editor
             </button>
             <button
               @click="analyzeDiagram"
-              class="px-4 py-2 text-sm font-semibold rounded-m3-full transition-all"
+              class="px-4 py-2 text-sm font-semibold rounded-m3-md transition-all"
               :class="activeTab === 'analysis' ? 'bg-primary-100 text-primary-800 shadow-elevation-1' : 'text-secondary-700 hover:bg-surface-2'">
               Analysis
             </button>
@@ -252,18 +252,18 @@ onMounted(() => {
             <div class="flex-1 p-6">
               <textarea
                 v-model="editorContent"
-                class="w-full h-full p-4 font-mono text-sm border border-surface-variant rounded-m3-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-surface resize-none"
+                class="w-full h-full p-4 font-mono text-sm border border-surface-variant rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-surface resize-none"
                 placeholder="Enter Mermaid C4 diagram syntax..."></textarea>
             </div>
             <div class="p-4 border-t border-surface-variant bg-surface-2 flex gap-3 justify-end">
               <button
                 @click="cancelEdit"
-                class="px-4 py-2 rounded-m3-full text-sm font-semibold border border-surface-variant text-secondary-700 hover:bg-surface transition-colors">
+                class="px-4 py-2 rounded-m3-md text-sm font-semibold border border-surface-variant text-secondary-700 hover:bg-surface transition-colors">
                 Cancel
               </button>
               <button
                 @click="saveDiagram"
-                class="px-4 py-2 rounded-m3-full bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-elevation-2 transition-all">
+                class="px-4 py-2 rounded-m3-md bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-elevation-2 transition-all">
                 Save Changes
               </button>
             </div>
@@ -275,7 +275,7 @@ onMounted(() => {
               <h3 class="text-lg font-semibold text-secondary-900 mb-4">Diagram Analysis</h3>
               <p class="text-sm text-secondary-600">Analysis results will appear here. Use the C4 analyzer service to extract nodes, relationships, and validation insights.</p>
               
-              <div class="mt-6 p-4 rounded-m3-lg border border-surface-variant bg-surface-1">
+              <div class="mt-6 p-4 rounded-m3-md border border-surface-variant bg-surface-1">
                 <p class="text-xs text-secondary-500">The analysis feature uses the C4AnalyzerService to parse diagram metadata, nodes, relationships, and infer capabilities. Results include validation for scaffolding readiness.</p>
               </div>
             </div>
@@ -289,7 +289,7 @@ onMounted(() => {
       v-if="showNewDiagramForm"
       class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
       @click.self="cancelNewDiagram">
-      <div class="bg-surface rounded-m3-xl shadow-elevation-5 p-6 w-full max-w-md">
+      <div class="bg-surface rounded-m3-md shadow-elevation-5 p-6 w-full max-w-md">
         <h2 class="text-xl font-bold text-secondary-900 mb-4">Create New C4 Diagram</h2>
         
         <div class="mb-4">
@@ -303,19 +303,19 @@ onMounted(() => {
         </div>
 
         <p class="text-xs text-secondary-500 mb-4">
-          A new markdown file will be created in the <code class="px-1 py-0.5 bg-surface-2 rounded">c4/</code> directory with a Mermaid C4 diagram template.
+          A new markdown file will be created in the <code class="px-1 py-0.5 bg-surface-2 rounded-m3-md">c4/</code> directory with a Mermaid C4 diagram template.
         </p>
 
         <div class="flex gap-3 justify-end">
           <button
             @click="cancelNewDiagram"
-            class="px-4 py-2 rounded-m3-full text-sm font-semibold border border-surface-variant text-secondary-700 hover:bg-surface-2 transition-colors">
+            class="px-4 py-2 rounded-m3-md text-sm font-semibold border border-surface-variant text-secondary-700 hover:bg-surface-2 transition-colors">
             Cancel
           </button>
           <button
             @click="handleCreateDiagram"
             :disabled="!newDiagramTitle.trim()"
-            class="px-4 py-2 rounded-m3-full bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-elevation-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            class="px-4 py-2 rounded-m3-md bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-elevation-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
             Create Diagram
           </button>
         </div>

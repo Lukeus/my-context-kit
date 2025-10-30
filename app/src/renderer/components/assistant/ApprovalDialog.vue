@@ -33,7 +33,7 @@ function close() {
 
 <template>
   <div v-if="activePending && activePending.id" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-    <div class="w-full max-w-2xl bg-white rounded-m3-lg shadow-elevation-2 p-4">
+    <div class="w-full max-w-2xl bg-white rounded-m3-xl shadow-elevation-2 p-4">
       <header class="flex items-start justify-between">
         <div>
           <h3 class="text-sm font-semibold">Approval required</h3>

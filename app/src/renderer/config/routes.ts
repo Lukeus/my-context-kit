@@ -4,6 +4,11 @@ import { requiresRepo, requiresEntity, combineGuards, trackNavigation } from './
 /**
  * Application route configuration
  * Centralized definition of all routes with metadata and guards
+ * 
+ * Constitutional Compliance:
+ * - Static, analyzable route definitions (Principle II: Deterministic)
+ * - Observable navigation flow via trackNavigation guard
+ * - Type-safe route IDs for compile-time verification
  */
 export const routes: Route[] = [
   {

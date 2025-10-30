@@ -38,7 +38,7 @@ const iconDisplay = computed(() => props.agent.metadata.icon || (isBuiltIn.value
   <!-- Grid View -->
   <div
     v-if="viewMode === 'grid'"
-    class="group border border-surface-variant rounded-m3-xl p-5 bg-white hover:shadow-elevation-2 transition-all duration-200 cursor-pointer"
+    class="group border border-surface-variant rounded-m3-md p-5 bg-white hover:shadow-elevation-2 transition-all duration-200 cursor-pointer"
     :class="{ 'ring-2 ring-primary-600 shadow-elevation-2': isSelected }"
     @click="emit('select', agent.id)"
   >
@@ -50,7 +50,7 @@ const iconDisplay = computed(() => props.agent.metadata.icon || (isBuiltIn.value
             <h4 class="font-medium text-sm text-secondary-900">{{ agent.metadata.name }}</h4>
             <span
               v-if="isSelected"
-              class="text-[10px] px-2 py-0.5 rounded-m3-full font-semibold bg-primary-600 text-white"
+              class="text-[10px] px-2 py-0.5 rounded-m3-md font-semibold bg-primary-600 text-white"
             >
               ACTIVE
             </span>
@@ -58,14 +58,14 @@ const iconDisplay = computed(() => props.agent.metadata.icon || (isBuiltIn.value
           <div class="flex items-center gap-1 mt-0.5">
             <span
               v-if="agent.metadata.complexity"
-              class="text-[10px] px-1.5 py-0.5 rounded-m3-full font-medium"
+              class="text-[10px] px-1.5 py-0.5 rounded-m3-md font-medium"
               :class="getComplexityColor(agent.metadata.complexity)"
             >
               {{ agent.metadata.complexity }}
             </span>
             <span
               v-if="!isBuiltIn"
-              class="text-[10px] px-1.5 py-0.5 rounded-m3-full font-medium bg-tertiary-100 text-tertiary-700"
+              class="text-[10px] px-1.5 py-0.5 rounded-m3-md font-medium bg-tertiary-100 text-tertiary-700"
             >
               Custom
             </span>
@@ -80,7 +80,7 @@ const iconDisplay = computed(() => props.agent.metadata.icon || (isBuiltIn.value
       <span
         v-for="tag in agent.metadata.tags.slice(0, 3)"
         :key="tag"
-        class="px-1.5 py-0.5 text-[10px] bg-secondary-50 text-secondary-600 rounded-m3-full"
+        class="px-1.5 py-0.5 text-[10px] bg-secondary-50 text-secondary-600 rounded-m3-md"
       >
         {{ tag }}
       </span>
@@ -114,7 +114,7 @@ const iconDisplay = computed(() => props.agent.metadata.icon || (isBuiltIn.value
   <!-- List View -->
   <div
     v-else
-    class="flex items-center gap-3 border border-surface-variant rounded-m3-lg p-3 bg-white hover:bg-surface-1 transition-colors cursor-pointer"
+    class="flex items-center gap-3 border border-surface-variant rounded-m3-md p-3 bg-white hover:bg-surface-1 transition-colors cursor-pointer"
     :class="{ 'ring-2 ring-primary-500': isSelected }"
     @click="emit('select', agent.id)"
   >
@@ -124,20 +124,20 @@ const iconDisplay = computed(() => props.agent.metadata.icon || (isBuiltIn.value
         <h4 class="font-medium text-sm text-secondary-900">{{ agent.metadata.name }}</h4>
         <span
           v-if="isSelected"
-          class="text-[10px] px-2 py-0.5 rounded-m3-full font-semibold bg-primary-600 text-white"
+          class="text-[10px] px-2 py-0.5 rounded-m3-md font-semibold bg-primary-600 text-white"
         >
           ACTIVE
         </span>
         <span
           v-if="agent.metadata.complexity"
-          class="text-[10px] px-1.5 py-0.5 rounded-m3-full font-medium"
+          class="text-[10px] px-1.5 py-0.5 rounded-m3-md font-medium"
           :class="getComplexityColor(agent.metadata.complexity)"
         >
           {{ agent.metadata.complexity }}
         </span>
         <span
           v-if="!isBuiltIn"
-          class="text-[10px] px-1.5 py-0.5 rounded-m3-full font-medium bg-tertiary-100 text-tertiary-700"
+          class="text-[10px] px-1.5 py-0.5 rounded-m3-md font-medium bg-tertiary-100 text-tertiary-700"
         >
           Custom
         </span>
