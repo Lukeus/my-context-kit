@@ -57,33 +57,41 @@ export async function readContextFile(options: ReadContextFileOptions): Promise<
     throw new Error('Requested file is outside the context repository.');
   }
 
-  const stats = await fs.stat(realPath);
-  if (!stats.isFile()) {
-    throw new Error('Requested path is not a file.');
-  }
-
   const encoding = options.encoding ?? DEFAULT_ENCODING;
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
 
-  let buffer = await fs.readFile(realPath);
-  let truncated = false;
-  if (buffer.length > maxBytes) {
-    buffer = buffer.subarray(0, maxBytes);
-    truncated = true;
-  }
+  // Use file handle to avoid TOCTOU race condition between stat and read
+  let fileHandle: fs.FileHandle | undefined;
+  try {
+    fileHandle = await fs.open(realPath, 'r');
+    const stats = await fileHandle.stat();
+    
+    if (!stats.isFile()) {
+      throw new Error('Requested path is not a file.');
+    }
 
-  let content = buffer.toString(encoding);
-  if (truncated) {
-    content += '\n\n---\n[Content truncated for safety. Download the file locally for the full contents.]';
-  }
+    let buffer = await fileHandle.readFile();
+    let truncated = false;
+    if (buffer.length > maxBytes) {
+      buffer = buffer.subarray(0, maxBytes);
+      truncated = true;
+    }
 
-  return {
-    absolutePath: realPath,
-    repoRelativePath: path.relative(realRepoRoot, realPath).replace(/\\/g, '/'),
-    content,
-    encoding,
-    size: stats.size,
-    lastModified: stats.mtime.toISOString(),
-    truncated
-  };
+    let content = buffer.toString(encoding);
+    if (truncated) {
+      content += '\n\n---\n[Content truncated for safety. Download the file locally for the full contents.]';
+    }
+
+    return {
+      absolutePath: realPath,
+      repoRelativePath: path.relative(realRepoRoot, realPath).replace(/\\/g, '/'),
+      content,
+      encoding,
+      size: stats.size,
+      lastModified: stats.mtime.toISOString(),
+      truncated
+    };
+  } finally {
+    await fileHandle?.close();
+  }
 }
