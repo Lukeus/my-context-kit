@@ -41,7 +41,20 @@ export async function readContextFile(options: ReadContextFileOptions): Promise<
     throw new Error('Requested file is outside the context repository.');
   }
 
-  const stats = await fs.stat(resolvedPath);
+  // Resolve symlinks to prevent TOCTOU vulnerability
+  let realPath: string;
+  try {
+    realPath = await fs.realpath(resolvedPath);
+  } catch (error) {
+    throw new Error(`Unable to resolve file path: ${error instanceof Error ? error.message : 'unknown error'}`);
+  }
+
+  // Verify the real path is still within the repository after resolving symlinks
+  if (!realPath.startsWith(repoRoot)) {
+    throw new Error('Requested file is outside the context repository.');
+  }
+
+  const stats = await fs.stat(realPath);
   if (!stats.isFile()) {
     throw new Error('Requested path is not a file.');
   }
@@ -49,7 +62,7 @@ export async function readContextFile(options: ReadContextFileOptions): Promise<
   const encoding = options.encoding ?? DEFAULT_ENCODING;
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
 
-  let buffer = await fs.readFile(resolvedPath);
+  let buffer = await fs.readFile(realPath);
   let truncated = false;
   if (buffer.length > maxBytes) {
     buffer = buffer.subarray(0, maxBytes);
@@ -62,8 +75,8 @@ export async function readContextFile(options: ReadContextFileOptions): Promise<
   }
 
   return {
-    absolutePath: resolvedPath,
-    repoRelativePath: path.relative(repoRoot, resolvedPath).replace(/\\/g, '/'),
+    absolutePath: realPath,
+    repoRelativePath: path.relative(repoRoot, realPath).replace(/\\/g, '/'),
     content,
     encoding,
     size: stats.size,
