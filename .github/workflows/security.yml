@@ -19,15 +19,14 @@ permissions:
   security-events: write
   pull-requests: write
 
-env:
-  NODE_VERSION: '22'
-  PNPM_VERSION: '10.19.0'
-
 jobs:
   dependency-scan:
     name: Dependency Vulnerability Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      NODE_VERSION: '22'
+      PNPM_VERSION: '10.19.0'
     
     steps:
       - name: Checkout
@@ -219,6 +218,9 @@ jobs:
     name: License Compliance Check
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      NODE_VERSION: '22'
+      PNPM_VERSION: '10.19.0'
     
     steps:
       - name: Checkout
@@ -266,6 +268,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: github.event_name != 'pull_request'
+    env:
+      NODE_VERSION: '22'
+      PNPM_VERSION: '10.19.0'
     
     steps:
       - name: Checkout
