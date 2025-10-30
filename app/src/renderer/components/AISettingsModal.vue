@@ -2,14 +2,20 @@
 import { ref, onMounted } from 'vue';
 import { useContextStore } from '../stores/contextStore';
 import { useAIStore } from '../stores/aiStore';
+import { useLangChainStore } from '../stores/langchainStore';
+import { useRAGStore } from '../stores/ragStore';
 import { DEFAULT_PROMPTS } from '../types/ai-prompts';
 import type { AIPromptConfig } from '../types/ai-prompts';
+import LangChainSettings from './LangChainSettings.vue';
+import RAGSettingsPanel from './rag/RAGSettingsPanel.vue';
 
 const emit = defineEmits(['close']);
 const contextStore = useContextStore();
 const aiStore = useAIStore();
+const langchainStore = useLangChainStore();
+const ragStore = useRAGStore();
 
-const activeTab = ref<'connection' | 'prompts'>('connection');
+const activeTab = ref<'connection' | 'prompts' | 'langchain' | 'rag'>('connection');
 
 const provider = ref('ollama');
 const endpoint = ref('http://localhost:11434');
@@ -159,6 +165,22 @@ function removeExampleQuestion(index: number) {
           :class="activeTab === 'prompts' ? 'text-primary-600 border-primary-600' : 'text-secondary-600 border-transparent hover:text-secondary-900'"
         >
           Prompts
+        </button>
+        <button 
+          @click="activeTab = 'langchain'"
+          class="px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2"
+          :class="activeTab === 'langchain' ? 'text-primary-600 border-primary-600' : 'text-secondary-600 border-transparent hover:text-secondary-900'"
+        >
+          <span>🔗 LangChain</span>
+          <span v-if="langchainStore.enabled" class="px-1.5 py-0.5 text-[10px] font-bold bg-green-100 text-green-800 rounded-m3-full">ON</span>
+        </button>
+        <button 
+          @click="activeTab = 'rag'"
+          class="px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2"
+          :class="activeTab === 'rag' ? 'text-primary-600 border-primary-600' : 'text-secondary-600 border-transparent hover:text-secondary-900'"
+        >
+          <span>🔍 RAG</span>
+          <span v-if="ragStore.isReady" class="px-1.5 py-0.5 text-[10px] font-bold bg-green-100 text-green-800 rounded-m3-full">ON</span>
         </button>
       </div>
 
@@ -341,6 +363,16 @@ function removeExampleQuestion(index: number) {
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- LangChain Tab -->
+        <div v-if="activeTab === 'langchain'">
+          <LangChainSettings />
+        </div>
+
+        <!-- RAG Tab -->
+        <div v-if="activeTab === 'rag'">
+          <RAGSettingsPanel />
         </div>
 
         <!-- Status Message -->
