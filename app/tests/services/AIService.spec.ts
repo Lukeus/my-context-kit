@@ -66,6 +66,7 @@ describe('AIService', () => {
     vi.clearAllMocks();
     // Set default mock behavior
     vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValue(true);
   });
 
   afterEach(() => {

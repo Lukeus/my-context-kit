@@ -30,18 +30,20 @@ vi.mock('execa', () => ({
   execa: vi.fn(),
 }));
 
-vi.mock('../../src/main/services/AIService', () => ({
-  AIService: vi.fn().mockImplementation(() => ({
-    getConfig: vi.fn().mockResolvedValue({
-      provider: 'ollama',
-      endpoint: 'http://localhost:11434',
-      model: 'llama2',
-      enabled: true,
+vi.mock('../../src/main/services/AIService', () => {
+  return {
+    AIService: vi.fn(function(this: any) {
+      this.getConfig = vi.fn().mockResolvedValue({
+        provider: 'ollama',
+        endpoint: 'http://localhost:11434',
+        model: 'llama2',
+        enabled: true,
+      });
+      this.hasCredentials = vi.fn().mockResolvedValue(true);
+      this.getCredentials = vi.fn().mockResolvedValue('test-api-key');
     }),
-    hasCredentials: vi.fn().mockResolvedValue(true),
-    getCredentials: vi.fn().mockResolvedValue('test-api-key'),
-  })),
-}));
+  };
+});
 
 const isSuccessFetchResult = (payload: SpecKitFetchPipelineResult): payload is SpecKitFetchPipelineSuccess => payload.ok === true;
 
