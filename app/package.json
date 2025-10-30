@@ -82,6 +82,7 @@
     "diff": "^8.0.2",
     "electron-squirrel-startup": "^1.0.1",
     "execa": "^9.6.0",
+    "faiss-node": "^0.5.1",
     "handlebars": "^4.7.8",
     "isomorphic-git": "^1.34.2",
     "langchain": "^1.0.2",
