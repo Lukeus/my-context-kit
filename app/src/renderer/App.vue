@@ -10,6 +10,7 @@ import { useBuilderStore } from './stores/builderStore';
 import { useAIStore } from './stores/aiStore';
 import { useGitStore } from './stores/gitStore';
 import { useAgentStore } from './stores/agentStore';
+import { useLangChainStore } from './stores/langchainStore';
 import { useSnackbar } from './composables/useSnackbar';
 import { useRouting } from './composables/useRouting';
 
@@ -45,6 +46,7 @@ const contextStore = useContextStore();
 const builderStore = useBuilderStore();
 const gitStore = useGitStore();
 const agentStore = useAgentStore();
+const langchainStore = useLangChainStore();
 const {
   show: snackbarVisible,
   message: snackbarMessage,
@@ -432,6 +434,9 @@ onMounted(async () => {
   // Initialize context store on app mount
   await contextStore.initializeStore();
   await contextStore.refreshRepoRegistry();
+  
+  // Initialize LangChain store (load feature flag settings)
+  await langchainStore.loadSettings();
   
   // Load repo data if configured
   if (contextStore.repoPath) {

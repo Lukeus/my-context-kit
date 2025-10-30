@@ -2,12 +2,14 @@
 import { computed, watch, ref } from 'vue';
 import { useBuilderStore } from '../stores/builderStore';
 import { useContextStore } from '../stores/contextStore';
+import { useLangChainStore } from '../stores/langchainStore';
 import { EditorView, basicSetup } from 'codemirror';
 import { yaml } from '@codemirror/lang-yaml';
 import { oneDark } from '@codemirror/theme-one-dark';
 
 const builderStore = useBuilderStore();
 const contextStore = useContextStore();
+const langchainStore = useLangChainStore();
 
 const entityTypeLabel = computed(() => {
   const labels: Record<string, string> = {
@@ -113,20 +115,38 @@ async function generateWithAI() {
   tokenUsage.value = null;
   
   try {
-    const result = await window.api.ai.generate(
-      contextStore.repoPath,
-      builderStore.entityType,
-      aiPrompt.value
-    );
+    let result;
     
-    if (result.ok && result.entity) {
-      // Merge AI-generated data with existing entity
-      builderStore.updateEntity(result.entity);
-      tokenUsage.value = result.usage;
+    // Use LangChain if enabled, otherwise use legacy AI
+    if (langchainStore.enabled) {
+      // LangChain path
+      const entity = await langchainStore.generateEntity(
+        builderStore.entityType,
+        aiPrompt.value
+      );
+      
+      // LangChain doesn't return token usage in the same format
+      // but metrics are tracked automatically in the store
+      builderStore.updateEntity(entity);
+      tokenUsage.value = null; // Token usage is in LangChain metrics
       aiPrompt.value = ''; // Clear prompt after successful generation
     } else {
-      // Show detailed error message
-      aiError.value = result.error || 'Failed to generate entity';
+      // Legacy AI path
+      result = await window.api.ai.generate(
+        contextStore.repoPath,
+        builderStore.entityType,
+        aiPrompt.value
+      );
+      
+      if (result.ok && result.entity) {
+        // Merge AI-generated data with existing entity
+        builderStore.updateEntity(result.entity);
+        tokenUsage.value = result.usage;
+        aiPrompt.value = ''; // Clear prompt after successful generation
+      } else {
+        // Show detailed error message
+        aiError.value = result.error || 'Failed to generate entity';
+      }
     }
   } catch (error: any) {
     // Show the actual error message
@@ -202,11 +222,17 @@ watch(() => builderStore.partialEntity.feature, async () => {
         <div v-if="builderStore.currentStep === 1" class="space-y-5">
           <!-- AI Assist Panel -->
           <div class="p-4 bg-gradient-to-r from-purple-50 to-primary-50 rounded-m3-md border-2 border-purple-200 shadow-elevation-2">
-            <div class="flex items-center gap-2 mb-3">
-              <svg class="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <h3 class="text-sm font-semibold text-secondary-900">✨ AI Assist</h3>
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <h3 class="text-sm font-semibold text-secondary-900">✨ AI Assist</h3>
+              </div>
+              <div class="flex items-center gap-1.5 px-2 py-1 rounded-m3-md text-xs font-medium" 
+                   :class="langchainStore.enabled ? 'bg-green-100 text-green-800' : 'bg-secondary-200 text-secondary-700'">
+                <span>{{ langchainStore.enabled ? '🔗 LangChain' : '🔧 Legacy' }}</span>
+              </div>
             </div>
             <textarea 
               v-model="aiPrompt"
