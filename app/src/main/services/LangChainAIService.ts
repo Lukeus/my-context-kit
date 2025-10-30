@@ -133,18 +133,21 @@ export class LangChainAIService {
         useEnvironmentVars: true
       });
 
-      // Don't pass an empty string as the API key to the SDK — prefer undefined
-      // which allows better error messages from the provider layer.
-      const openAIApiKey = resolvedKey || undefined;
+      if (!resolvedKey) {
+        throw new Error('No API key found for Azure OpenAI. Please configure credentials in settings.');
+      }
 
-      const defaultHeaders = resolvedKey ? { 'api-key': resolvedKey } : undefined;
-
+      // Azure OpenAI uses 'api-key' header, not 'Authorization: Bearer'
+      // We must pass the key in defaultHeaders for Azure endpoints
       model = new ChatOpenAI({
-        openAIApiKey,
+        // Don't pass openAIApiKey - it sets Authorization header which Azure doesn't use
         configuration: {
           baseURL: `${config.endpoint}/openai/deployments/${config.model}`,
           defaultQuery: { 'api-version': '2024-12-01-preview' },
-          ...(defaultHeaders ? { defaultHeaders } : {}),
+          defaultHeaders: {
+            'api-key': resolvedKey,
+            'Content-Type': 'application/json'
+          },
         },
         modelName: config.model,
         temperature: 0.7,
