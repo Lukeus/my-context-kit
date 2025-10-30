@@ -58,6 +58,18 @@ type AgentApi = {
   importAgent: StubMethod;
 };
 
+type AssistantApi = {
+  sessionStart: StubMethod;
+  sessionEnd: StubMethod;
+  sendMessage: StubMethod;
+  onMessage: StubMethod;
+  onStreamUpdate: StubMethod;
+  listPending: StubMethod;
+  approvePending: StubMethod;
+  rejectPending: StubMethod;
+  onPendingAction: StubMethod;
+};
+
 const createDefaultStub = () => vi.fn(async () => ({}));
 
 beforeEach(() => {
@@ -153,6 +165,18 @@ beforeEach(() => {
     importAgent: createDefaultStub(),
   };
 
+  const assistantApi: AssistantApi = {
+    sessionStart: createDefaultStub(),
+    sessionEnd: createDefaultStub(),
+    sendMessage: createDefaultStub(),
+    onMessage: vi.fn().mockReturnValue(() => { /* noop */ }),
+    onStreamUpdate: vi.fn().mockReturnValue(() => { /* noop */ }),
+    listPending: createDefaultStub(),
+    approvePending: createDefaultStub(),
+    rejectPending: createDefaultStub(),
+    onPendingAction: vi.fn().mockReturnValue(() => { /* noop */ }),
+  };
+
   (global as any).window = {
     api: {
       repos: repoApi,
@@ -166,6 +190,7 @@ beforeEach(() => {
       dialog: dialogApi,
       speckit: speckitApi,
       agent: agentApi,
+      assistant: assistantApi,
     },
   };
 });
