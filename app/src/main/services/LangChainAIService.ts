@@ -474,9 +474,9 @@ export class LangChainAIService {
       }
 
       // Azure OpenAI configuration
-      // Using configuration.baseURL with api-version in query params
+      // Azure uses api-key header for auth, NOT the apiKey parameter
+      // Keep configuration similar to Ollama for consistency
       model = new ChatOpenAI({
-        apiKey: resolvedKey,
         modelName: config.model,
         temperature: 0.7,
         maxTokens: 4000,
