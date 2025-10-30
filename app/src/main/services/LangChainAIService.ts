@@ -7,6 +7,7 @@ import { RunnableSequence } from '@langchain/core/runnables';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { z } from 'zod';
 import { logger } from '../utils/logger';
+import { AICredentialResolver } from './AICredentialResolver';
 
 export interface AIConfig {
   provider: string;
@@ -75,6 +76,7 @@ export interface AssistStreamOptions {
  */
 export class LangChainAIService {
   private models: Map<string, BaseChatModel> = new Map();
+  private credentialResolver = new AICredentialResolver();
 
   /**
    * Normalize proxy-related environment variables and return a copy to use when
@@ -98,7 +100,7 @@ export class LangChainAIService {
    * @returns Configured LangChain chat model instance
    * @throws {Error} If provider is unknown or configuration is invalid
    */
-  private getModel(config: AIConfig): BaseChatModel {
+  private async getModel(config: AIConfig): Promise<BaseChatModel> {
     const key = `${config.provider}:${config.endpoint}:${config.model}`;
     
     if (this.models.has(key)) {
@@ -123,8 +125,13 @@ export class LangChainAIService {
       process.env.NO_PROXY = proxyEnv.NO_PROXY;
       process.env.no_proxy = proxyEnv.NO_PROXY;
 
-      // Resolve API key: prefer explicit config.apiKey, fall back to env vars
-      const resolvedKey = (config.apiKey as string | undefined) || process.env.OPENAI_API_KEY || process.env.AZURE_OPENAI_KEY || '';
+      // Resolve API key using unified resolver (explicit → stored → env)
+      const resolvedKey = await this.credentialResolver.resolveApiKey({
+        provider: config.provider,
+        explicitKey: config.apiKey as string | undefined,
+        useStoredCredentials: true,
+        useEnvironmentVars: true
+      });
 
       // Don't pass an empty string as the API key to the SDK — prefer undefined
       // which allows better error messages from the provider layer.
@@ -211,7 +218,7 @@ export class LangChainAIService {
     return logger.logServiceCall(
       { service: 'LangChainAIService', method: 'testConnection', provider: options.provider },
       async () => {
-        const model = this.getModel({
+        const model = await this.getModel({
           provider: options.provider,
           endpoint: options.endpoint,
           model: options.model,
@@ -281,7 +288,7 @@ export class LangChainAIService {
           throw new Error('AI assistance is disabled in configuration');
         }
 
-        const model = this.getModel(options.config);
+        const model = await this.getModel(options.config);
         const parser = StructuredOutputParser.fromZodSchema(options.schema);
 
         const prompt = ChatPromptTemplate.fromMessages([
@@ -351,17 +358,17 @@ export class LangChainAIService {
       throw new Error('AI assistance is disabled in configuration');
     }
 
-    const model = this.getModel(options.config);
-
-    // If provider expects credentials, ensure we have them (explicit or env)
+    // Verify credentials are available before creating model
     if (options.config.provider === 'azure-openai') {
-      const cfgKey = (options.config.apiKey as string | undefined) || process.env.OPENAI_API_KEY || process.env.AZURE_OPENAI_KEY;
-      if (!cfgKey) {
+      const hasKey = await this.credentialResolver.hasCredentials(options.config.provider);
+      if (!hasKey) {
         const msg = 'No API key found for provider azure-openai. Please save credentials or set OPENAI_API_KEY/AZURE_OPENAI_KEY.';
         logger.error({ service: 'LangChainAIService', method: 'assistStream' }, new Error(msg));
         throw new Error(msg);
       }
     }
+
+    const model = await this.getModel(options.config);
 
     // Build message history
     const messages: BaseMessage[] = [
