@@ -286,8 +286,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: build-${{ matrix.os }}
-          path: |
-            app/out/make/**/*
+          path: app/out/make/
           retention-days: 7
 
   # Bundle size analysis
