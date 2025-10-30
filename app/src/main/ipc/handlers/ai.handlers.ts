@@ -1,4 +1,6 @@
-import { ipcMain } from 'electron';
+import { ipcMain, app, safeStorage } from 'electron';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { toErrorMessage } from '../../utils/errorHandler';
 import { AIService } from '../../services/AIService';
 import type { WritableAIConfig, TestConnectionOptions } from '../../services/AIService';
@@ -45,6 +47,23 @@ export function registerAIHandlers(): void {
     try {
       const hasCredentials = await aiService.hasCredentials(provider);
       return successWith({ hasCredentials });
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
+    }
+  });
+
+  // Non-sensitive credentials diagnostic info (file exists, size, safeStorage availability)
+  ipcMain.handle('ai:credentialsInfo', async (_event, { provider }: { provider: string }) => {
+    try {
+      const safeAvailable = safeStorage.isEncryptionAvailable();
+      const credPath = path.join(app.getPath('userData'), `${provider}-credentials.enc`);
+      const exists = existsSync(credPath);
+      let size = 0;
+      if (exists) {
+        const stat = await (await import('node:fs/promises')).stat(credPath);
+        size = stat.size;
+      }
+      return successWith({ safeAvailable, exists, credPath, size });
     } catch (err: unknown) {
       return error(toErrorMessage(err));
     }

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, reactive } from 'vue';
 import { useContextStore } from './contextStore';
 
 interface LangChainMetrics {
@@ -37,7 +37,7 @@ export const useLangChainStore = defineStore('langchain', () => {
   // State
   const enabled = ref(false);
   const isChecking = ref(false);
-  const metrics = ref<LangChainMetrics>({
+  const metrics = reactive<LangChainMetrics>({
     totalRequests: 0,
     successfulRequests: 0,
     failedRequests: 0,
@@ -47,23 +47,24 @@ export const useLangChainStore = defineStore('langchain', () => {
     totalTokensUsed: 0,
     lastRequestTimestamp: null
   });
-  const activeStreams = ref<Map<string, StreamMetrics>>(new Map());
+  // Use a reactive object keyed by streamId to avoid manual ref reassigns
+  const activeStreams = reactive<Record<string, StreamMetrics>>({});
 
   // Computed
   const successRate = computed(() => {
-    if (metrics.value.totalRequests === 0) return 0;
-    return (metrics.value.successfulRequests / metrics.value.totalRequests) * 100;
+    if (metrics.totalRequests === 0) return 0;
+    return (metrics.successfulRequests / metrics.totalRequests) * 100;
   });
 
   const cacheHitRate = computed(() => {
-    const total = metrics.value.cacheHits + metrics.value.cacheMisses;
+    const total = metrics.cacheHits + metrics.cacheMisses;
     if (total === 0) return 0;
-    return (metrics.value.cacheHits / total) * 100;
+    return (metrics.cacheHits / total) * 100;
   });
 
-  const hasActiveStreams = computed(() => activeStreams.value.size > 0);
+  const hasActiveStreams = computed(() => Object.keys(activeStreams).length > 0);
 
-  const activeStreamCount = computed(() => activeStreams.value.size);
+  const activeStreamCount = computed(() => Object.keys(activeStreams).length);
 
   // Actions
 
@@ -80,8 +81,8 @@ export const useLangChainStore = defineStore('langchain', () => {
       const prefResult = await window.api.settings.get('langchain.enabled');
       const prefEnabled = prefResult.ok && prefResult.value === true;
 
-      // User preference overrides env if env allows LangChain
-      enabled.value = Boolean(envEnabled && prefEnabled);
+      // Enable LangChain if either the environment enables it or the user has persisted the preference
+      enabled.value = Boolean(envEnabled || prefEnabled);
     } catch (error) {
       console.error('Failed to load LangChain settings:', error);
       enabled.value = false;
@@ -93,15 +94,9 @@ export const useLangChainStore = defineStore('langchain', () => {
    */
   async function toggle(): Promise<boolean> {
     try {
-      // Check if LangChain is available (environment flag)
-      const envResult = await window.api.langchain.isEnabled();
-      if (!envResult.ok || !envResult.enabled) {
-        throw new Error('LangChain is not available. Set USE_LANGCHAIN=true environment variable.');
-      }
-
       const newValue = !enabled.value;
-      
-      // Save preference
+
+      // Save preference (persist to app settings)
       const saveResult = await window.api.settings.set('langchain.enabled', newValue);
       if (!saveResult.ok) {
         throw new Error(saveResult.error || 'Failed to save setting');
@@ -146,7 +141,7 @@ export const useLangChainStore = defineStore('langchain', () => {
       });
 
       const responseTime = Date.now() - startTime;
-      
+
       if (result.ok) {
         recordRequest(true, responseTime);
         return result.message || 'Connection successful';
@@ -218,13 +213,13 @@ export const useLangChainStore = defineStore('langchain', () => {
 
     if (result.ok && result.streamId) {
       // Track stream metrics
-      activeStreams.value.set(result.streamId, {
+      activeStreams[result.streamId] = {
         streamId: result.streamId,
         startTime: Date.now(),
         firstTokenTime: null,
         tokenCount: 0,
         completed: false
-      });
+      };
 
       return result.streamId;
     } else {
@@ -236,24 +231,38 @@ export const useLangChainStore = defineStore('langchain', () => {
    * Cancel an active stream
    */
   async function cancelStream(streamId: string): Promise<void> {
+    // Defensive: if we don't have the stream tracked locally, treat as success
+    if (!activeStreams[streamId]) {
+      try { console.log('[LangChainStore] cancelStream called for unknown streamId, ignoring', { streamId }); } catch {}
+      return;
+    }
+
     const result = await window.api.langchain.assistStreamCancel(streamId);
+    // If the backend reports stream not found, we consider it a successful cancellation
+    if (!result.ok && result.error && result.error.toLowerCase().includes('stream not found')) {
+      try { console.log('[LangChainStore] assistStreamCancel: backend reports stream not found; treating as cancelled', { streamId }); } catch {}
+      delete activeStreams[streamId];
+      return;
+    }
+
     if (!result.ok) {
       throw new Error(result.error || 'Failed to cancel stream');
     }
-    
-    activeStreams.value.delete(streamId);
+
+    delete activeStreams[streamId];
   }
 
   /**
    * Record stream token
    */
   function recordStreamToken(streamId: string): void {
-    const stream = activeStreams.value.get(streamId);
+    const stream = activeStreams[streamId];
     if (stream) {
       if (stream.firstTokenTime === null) {
         stream.firstTokenTime = Date.now();
       }
       stream.tokenCount++;
+      try { console.log('[LangChainStore] recordStreamToken', { streamId, tokenCount: stream.tokenCount }); } catch {}
     }
   }
 
@@ -261,16 +270,17 @@ export const useLangChainStore = defineStore('langchain', () => {
    * Mark stream as completed
    */
   function completeStream(streamId: string): void {
-    const stream = activeStreams.value.get(streamId);
+    const stream = activeStreams[streamId];
     if (stream) {
       stream.completed = true;
       const totalTime = Date.now() - stream.startTime;
       recordRequest(true, totalTime);
-      
+
       // Clean up after a delay
       setTimeout(() => {
-        activeStreams.value.delete(streamId);
+        delete activeStreams[streamId];
       }, 5000);
+      try { console.log('[LangChainStore] completeStream', { streamId, totalTime }); } catch {}
     }
   }
 
@@ -284,27 +294,29 @@ export const useLangChainStore = defineStore('langchain', () => {
     }
     
     // Reset cache metrics
-    metrics.value.cacheHits = 0;
-    metrics.value.cacheMisses = 0;
+    metrics.cacheHits = 0;
+    metrics.cacheMisses = 0;
+    try { console.log('[LangChainStore] clearCache, metrics reset', metrics); } catch {}
   }
 
   /**
    * Record a request for metrics
    */
   function recordRequest(success: boolean, responseTime: number): void {
-    metrics.value.totalRequests++;
-    
+    metrics.totalRequests++;
+
     if (success) {
-      metrics.value.successfulRequests++;
+      metrics.successfulRequests++;
     } else {
-      metrics.value.failedRequests++;
+      metrics.failedRequests++;
     }
 
     // Update average response time (running average)
-    const prevTotal = metrics.value.averageResponseTime * (metrics.value.totalRequests - 1);
-    metrics.value.averageResponseTime = (prevTotal + responseTime) / metrics.value.totalRequests;
+    const prevTotal = metrics.averageResponseTime * (metrics.totalRequests - 1);
+    metrics.averageResponseTime = (prevTotal + responseTime) / metrics.totalRequests;
 
-    metrics.value.lastRequestTimestamp = Date.now();
+    metrics.lastRequestTimestamp = Date.now();
+    try { console.log('[LangChainStore] recordRequest', { success, responseTime, metrics }); } catch {}
   }
 
   /**
@@ -312,9 +324,9 @@ export const useLangChainStore = defineStore('langchain', () => {
    */
   function recordCacheAccess(hit: boolean): void {
     if (hit) {
-      metrics.value.cacheHits++;
+      metrics.cacheHits++;
     } else {
-      metrics.value.cacheMisses++;
+      metrics.cacheMisses++;
     }
   }
 
@@ -322,23 +334,21 @@ export const useLangChainStore = defineStore('langchain', () => {
    * Reset metrics
    */
   function resetMetrics(): void {
-    metrics.value = {
-      totalRequests: 0,
-      successfulRequests: 0,
-      failedRequests: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      averageResponseTime: 0,
-      totalTokensUsed: 0,
-      lastRequestTimestamp: null
-    };
+    metrics.totalRequests = 0;
+    metrics.successfulRequests = 0;
+    metrics.failedRequests = 0;
+    metrics.cacheHits = 0;
+    metrics.cacheMisses = 0;
+    metrics.averageResponseTime = 0;
+    metrics.totalTokensUsed = 0;
+    metrics.lastRequestTimestamp = null;
   }
 
   /**
    * Get stream metrics for a specific stream
    */
   function getStreamMetrics(streamId: string): StreamMetrics | undefined {
-    return activeStreams.value.get(streamId);
+    return activeStreams[streamId];
   }
 
   return {

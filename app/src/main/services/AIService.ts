@@ -210,6 +210,43 @@ export class AIService {
   }
 
   /**
+   * Public helper to safely retrieve stored credentials for a provider.
+   * Returns the decrypted API key string or null if credentials are not present
+   * or not recoverable. This is safe to call from IPC handlers.
+   */
+  async getStoredCredentials(provider: string): Promise<string | null> {
+    try {
+      const safeAvailable = safeStorage.isEncryptionAvailable();
+      const credPath = path.join(app.getPath('userData'), `${provider}-${CREDENTIALS_FILE}`);
+
+      if (!safeAvailable) {
+        logger.warn({ service: 'AIService', method: 'getStoredCredentials' }, `Encryption not available when attempting to read credentials for ${provider}`);
+        return null;
+      }
+
+      // If file doesn't exist, return null
+      if (!existsSync(credPath)) {
+        logger.info({ service: 'AIService', method: 'getStoredCredentials' }, `No credentials file for ${provider} at ${credPath}`);
+        return null;
+      }
+
+      const stat = await readFile(credPath);
+      try {
+        const decrypted = safeStorage.decryptString(stat);
+        logger.info({ service: 'AIService', method: 'getStoredCredentials' }, `Loaded stored credentials for ${provider} (path=${credPath}, size=${stat.length})`);
+        return decrypted;
+      } catch (decryptErr) {
+        logger.warn({ service: 'AIService', method: 'getStoredCredentials' }, `Failed to decrypt credentials for ${provider} at ${credPath}: ${decryptErr instanceof Error ? decryptErr.message : String(decryptErr)}`);
+        return null;
+      }
+    } catch (err) {
+      // Don't surface decryption errors; return null and let callers handle absence
+      logger.warn({ service: 'AIService', method: 'getStoredCredentials' }, `Could not load stored credentials for ${provider}: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    }
+  }
+
+  /**
    * Test connection to AI provider
    * 
    * Validates that the AI provider is accessible and configured correctly.

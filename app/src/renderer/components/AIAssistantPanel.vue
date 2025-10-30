@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useAIStore } from '../stores/aiStore';
 import { useContextStore } from '../stores/contextStore';
 import { useRAGStore } from '../stores/ragStore';
+import { useLangChainStore } from '../stores/langchainStore';
 import DiffViewer from './DiffViewer.vue';
 import TokenProbabilityViewer from './TokenProbabilityViewer.vue';
 import AgentSelector from './assistant/AgentSelector.vue';
@@ -15,6 +16,7 @@ const emit = defineEmits<{ 'open-settings': [] }>();
 const aiStore = useAIStore();
 const contextStore = useContextStore();
 const ragStore = useRAGStore();
+const langchainStore = useLangChainStore();
 
 const question = ref('');
 const mode = ref<AssistantMode>('general');
@@ -86,9 +88,121 @@ async function sendQuestion() {
       // Fallback to standard query
       await aiStore.askStream(question.value, { mode: mode.value, focusId });
     }
-  } else {
-    await aiStore.askStream(question.value, { mode: mode.value, focusId });
-  }
+    } else if (langchainStore.enabled) {
+      // Use LangChain streaming implementation when feature flag enabled
+      try {
+        const startRes = await langchainStore.startAssistStream(question.value, [{ role: 'user', content: question.value }], {});
+        if (!startRes) {
+          // Fallback to legacy stream if start failed
+          await aiStore.askStream(question.value, { mode: mode.value, focusId });
+        } else {
+          // startAssistStream returns a streamId string from the underlying IPC
+          const streamId = startRes;
+
+          // Prepare assistant message placeholder
+          // Create placeholder assistant message using exported helper
+          const assistantMessageId = aiStore.generateId('assistant');
+          aiStore.appendMessage({
+            id: assistantMessageId,
+            role: 'assistant',
+            content: '',
+            createdAt: new Date().toISOString(),
+            mode: mode.value,
+            suggestions: [],
+            clarifications: [],
+            followUps: [],
+            references: [],
+            edits: [],
+            logprobs: null
+          });
+
+          let pendingContent = '';
+          let placeholderShown = false;
+
+          const offToken = window.api.langchain.onAssistStreamToken((payload: any) => {
+            if (!payload || payload.streamId !== streamId) return;
+            // Debug: log incoming payloads for troubleshooting metrics
+            try { console.log('[LangChain] token', { streamId: payload.streamId, tokenPreview: String(payload.token).slice(0,50) }); } catch {}
+            if (payload.type === 'token' && typeof payload.token === 'string') {
+              pendingContent += payload.token;
+              // Record token for metrics
+              try {
+                langchainStore.recordStreamToken(streamId);
+              } catch (e) {
+                // non-fatal
+              }
+              if (!placeholderShown) {
+                placeholderShown = true;
+                // Update the placeholder message content to show a generating indicator
+                aiStore.updateAssistantMessage(assistantMessageId, { content: 'Generating response…' });
+              } else {
+                // Update with the latest partial content (throttle could be applied)
+                aiStore.updateAssistantMessage(assistantMessageId, { content: pendingContent });
+              }
+            }
+          });
+
+          const offEnd = window.api.langchain.onAssistStreamEnd((payload: any) => {
+            if (!payload || payload.streamId !== streamId) return;
+            // Finalize message content
+            const finalContent = pendingContent || 'Assistant returned no readable content.';
+            aiStore.updateAssistantMessage(assistantMessageId, { content: finalContent });
+            // Mark stream completed for metrics
+            try {
+              langchainStore.completeStream(streamId);
+            } catch (e) {
+              // non-fatal
+            }
+            offToken();
+            offEnd();
+          });
+
+          const offErr = window.api.langchain.onAssistStreamError((payload: any) => {
+            if (!payload || payload.streamId !== streamId) return;
+            const message = payload.error || 'Assistant stream failed.';
+            aiStore.updateAssistantMessage(assistantMessageId, { content: message, clarifications: [message] });
+            // Record failed request for metrics and clear active stream
+            try {
+              // Attempt to calculate elapsed time if we tracked start
+              const streamMetrics = langchainStore.getStreamMetrics(streamId);
+              const elapsed = streamMetrics ? (Date.now() - streamMetrics.startTime) : 0;
+              langchainStore.recordRequest(false, elapsed);
+              // ensure the active stream is removed
+              try { langchainStore.cancelStream(streamId); } catch { /* ignore */ }
+            } catch (e) {
+              // non-fatal
+            }
+            offToken();
+            offEnd();
+            offErr();
+          });
+        }
+      } catch (err) {
+        console.error('LangChain assist stream failed, falling back to legacy:', err);
+
+        // If handler returned a credential-related error, surface a clear
+        // assistant message and open settings prompt suggestion.
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (errMsg && errMsg.toLowerCase().includes('no api key found')) {
+          const assistantMessageId = aiStore.generateId('assistant');
+          aiStore.appendMessage({
+            id: assistantMessageId,
+            role: 'assistant',
+            content: 'AI requires credentials to operate. Open AI Settings to add your API key?',
+            createdAt: new Date().toISOString(),
+            mode: mode.value
+          });
+
+          // Offer to open settings automatically
+          openSettings();
+          return;
+        }
+
+        await aiStore.askStream(question.value, { mode: mode.value, focusId });
+      }
+    } else {
+      await aiStore.askStream(question.value, { mode: mode.value, focusId });
+    }
   
   question.value = '';
 }

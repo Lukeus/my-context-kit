@@ -1,10 +1,13 @@
-import { ipcMain } from 'electron';
+import { ipcMain, app } from 'electron';
 import { toErrorMessage } from '../../utils/errorHandler';
 import { LangChainAIService } from '../../services/LangChainAIService';
 import { getSchemaForEntityType } from '../../schemas/entitySchemas';
 import type { TestConnectionOptions } from '../../services/LangChainAIService';
 import { successWith, error } from '../types';
 import { randomUUID } from 'node:crypto';
+import { readFile, writeFile, rename } from 'node:fs/promises';
+import path from 'node:path';
+import { logger } from '../../utils/logger';
 
 const langchainService = new LangChainAIService();
 
@@ -42,7 +45,22 @@ export function registerLangChainAIHandlers(): void {
    */
   ipcMain.handle('langchain:isEnabled', async () => {
     try {
-      return successWith({ enabled: USE_LANGCHAIN });
+      // Allow LangChain to be enabled either via environment variable or via persisted app setting
+      const envEnabled = USE_LANGCHAIN;
+
+      // Read persisted app settings using safe loader which will back up and repair malformed JSON
+      const settingsPath = path.join(app.getPath('userData'), 'app-settings.json');
+      let prefEnabled = false;
+      try {
+        const parsed = await loadOrRepairSettings(settingsPath);
+        if (parsed && parsed['langchain.enabled'] === true) prefEnabled = true;
+      } catch (err) {
+        // loader logs its own diagnostics; assume false
+        logger.debug({ service: 'langchain.handlers', method: 'isEnabled' }, `Could not load/repair app settings: ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      const enabled = Boolean(envEnabled || prefEnabled);
+      return successWith({ enabled });
     } catch (err: unknown) {
       return error(toErrorMessage(err));
     }
@@ -53,6 +71,18 @@ export function registerLangChainAIHandlers(): void {
    */
   ipcMain.handle('langchain:testConnection', async (_event, payload: TestConnectionOptions) => {
     try {
+      // If no apiKey supplied, attempt to use stored credentials for Azure provider
+      if (payload.provider === 'azure-openai' && !payload.apiKey) {
+        const { AIService } = await import('../../services/AIService');
+        const legacyService = new AIService();
+        try {
+          const apiKey = await legacyService.getStoredCredentials(payload.provider);
+          if (apiKey) payload.apiKey = apiKey;
+        } catch (err) {
+          console.warn('Could not load stored credentials for testConnection:', err instanceof Error ? err.message : String(err));
+        }
+      }
+
       const message = await langchainService.testConnection(payload);
       return successWith({ message });
     } catch (err: unknown) {
@@ -129,12 +159,23 @@ export function registerLangChainAIHandlers(): void {
         return error('AI assistance is disabled in configuration');
       }
 
-      // Get credentials if needed
+      // Get credentials if needed and inject into config so LangChain receives it
       if (config.provider === 'azure-openai') {
-        if (await legacyService.hasCredentials(config.provider)) {
-          // Note: For security, we can't directly access credentials from legacy service
-          // This is a limitation that needs to be addressed in production
-          // For now, assume API key is in config
+        try {
+          const apiKey = await legacyService.getStoredCredentials(config.provider);
+          if (apiKey) {
+            (config as any).apiKey = apiKey;
+          }
+        } catch (err) {
+          console.warn('Could not load stored credentials for assistStreamStart:', err instanceof Error ? err.message : String(err));
+        }
+
+        // If provider requires an API key and we still don't have one, return
+        // an explicit error so the renderer can prompt the user to add credentials
+        if (!((config as any).apiKey || process.env.OPENAI_API_KEY || process.env.AZURE_OPENAI_KEY)) {
+          const msg = 'No API key found for provider azure-openai. Please save credentials in Settings or set OPENAI_API_KEY/AZURE_OPENAI_KEY.';
+          console.warn('LangChain stream start blocked:', msg);
+          return error(msg);
         }
       }
 
@@ -195,7 +236,8 @@ export function registerLangChainAIHandlers(): void {
         activeStreams.delete(streamId);
         return successWith({ cancelled: true });
       }
-      return error('Stream not found');
+      // If stream not present, treat as already-cancelled to make cancel idempotent
+      return successWith({ cancelled: true, alreadyAbsent: true });
     } catch (err: unknown) {
       return error(toErrorMessage(err));
     }
@@ -221,4 +263,71 @@ export function registerLangChainAIHandlers(): void {
  */
 export function isLangChainEnabled(): boolean {
   return USE_LANGCHAIN;
+}
+
+/**
+ * Load app settings JSON, backing up and attempting simple repair if parsing fails.
+ * - If file doesn't exist, returns {}.
+ * - If JSON.parse fails, moves the broken file to a timestamped .bak and attempts a
+ *   best-effort repair by extracting top-level key-value pairs using a tolerant regexp.
+ *   If repair succeeds, writes repaired JSON back to settingsPath and returns it.
+ */
+async function loadOrRepairSettings(settingsPath: string): Promise<Record<string, any>> {
+  try {
+    const content = await readFile(settingsPath, 'utf-8');
+    try {
+      return JSON.parse(content);
+    } catch (parseErr) {
+      // Backup the broken file
+      try {
+        const bakPath = `${settingsPath}.broken.${Date.now()}`;
+        await rename(settingsPath, bakPath);
+        logger.warn({ service: 'langchain.handlers', method: 'loadOrRepairSettings' }, `Backed up broken settings to ${bakPath}`);
+      } catch (bakErr) {
+        logger.warn({ service: 'langchain.handlers', method: 'loadOrRepairSettings' }, `Failed to backup broken settings: ${bakErr instanceof Error ? bakErr.message : String(bakErr)}`);
+      }
+
+      // Attempt a simple repair: find top-level key: value pairs and rebuild JSON
+      const repaired: Record<string, any> = {};
+      try {
+        // Match lines like "key": <value>, allowing trailing commas and unescaped paths
+        const kvRegex = /"([^"]+)"\s*:\s*("(?:[^"\\]|\\.)*"|true|false|null|\[.*?\]|\{.*?\}|-?\d+(?:\.\d+)?)/gs;
+        let match;
+        while ((match = kvRegex.exec(content)) !== null) {
+          const k = match[1];
+          let raw = match[2];
+          // If raw is a quoted string, unquote and unescape backslashes
+          if (raw.startsWith('"') && raw.endsWith('"')) {
+            try { repaired[k] = JSON.parse(raw); } catch { repaired[k] = raw.slice(1, -1).replace(/\\\\/g, "\\"); }
+          } else if (raw === 'true' || raw === 'false') {
+            repaired[k] = raw === 'true';
+          } else if (raw === 'null') {
+            repaired[k] = null;
+          } else {
+            // try parse numbers/arrays/objects
+            try { repaired[k] = JSON.parse(raw); } catch { repaired[k] = raw; }
+          }
+        }
+      } catch (reErr) {
+        logger.warn({ service: 'langchain.handlers', method: 'loadOrRepairSettings' }, `Repair attempt failed: ${reErr instanceof Error ? reErr.message : String(reErr)}`);
+      }
+
+      // Write repaired file if we captured any keys
+      if (Object.keys(repaired).length > 0) {
+        try {
+          await writeFile(settingsPath, JSON.stringify(repaired, null, 2), 'utf-8');
+          logger.info({ service: 'langchain.handlers', method: 'loadOrRepairSettings' }, `Wrote repaired settings to ${settingsPath}`);
+          return repaired;
+        } catch (werr) {
+          logger.warn({ service: 'langchain.handlers', method: 'loadOrRepairSettings' }, `Failed to write repaired settings: ${werr instanceof Error ? werr.message : String(werr)}`);
+        }
+      }
+
+      // If repair failed, return empty object
+      return {};
+    }
+  } catch (err) {
+    // File doesn't exist or unreadable
+    return {};
+  }
 }
