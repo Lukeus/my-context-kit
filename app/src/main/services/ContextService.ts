@@ -321,6 +321,60 @@ export class ContextService {
   }
 
   /**
+   * Lists all entities of a given type
+   */
+  async listEntities(entityType: string): Promise<Array<{id: string; title?: string; _type: string; _file: string; status?: string; [key: string]: any}>> {
+    const typeDirMap: Record<string, string> = {
+      governance: 'governance',
+      feature: 'features',
+      userstory: 'userstories',
+      spec: 'specs',
+      task: 'tasks',
+      service: 'services',
+      package: 'packages'
+    };
+
+    const typeDir = typeDirMap[entityType] || entityType + 's';
+    const entityDir = path.join(this.repoPath, 'contexts', typeDir);
+    
+    try {
+      const files = await readdir(entityDir);
+      const entities = [];
+
+      for (const fileName of files) {
+        if (!fileName.endsWith('.yaml') && !fileName.endsWith('.yml')) {
+          continue;
+        }
+
+        try {
+          const filePath = path.join(entityDir, fileName);
+          const content = await readFile(filePath, 'utf-8');
+          const data = parseYAML(content) as Record<string, unknown>;
+          
+          if (data && data.id) {
+            entities.push({
+              ...data,
+              _type: entityType,
+              _file: filePath
+            } as any);
+          }
+        } catch (error) {
+          // Skip files that can't be parsed
+          console.warn(`Failed to parse ${fileName}:`, error);
+        }
+      }
+
+      return entities;
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Directory doesn't exist - return empty array
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Finds the file path for a given entity
    */
   async findEntityFile(entityType: string, entityId: string): Promise<string> {

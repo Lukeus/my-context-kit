@@ -2,9 +2,11 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useAIStore } from '../stores/aiStore';
 import { useContextStore } from '../stores/contextStore';
+import { useRAGStore } from '../stores/ragStore';
 import DiffViewer from './DiffViewer.vue';
 import TokenProbabilityViewer from './TokenProbabilityViewer.vue';
 import AgentSelector from './assistant/AgentSelector.vue';
+import RAGSourcesPanel from './rag/RAGSourcesPanel.vue';
 
 type AssistantMode = 'improvement' | 'clarification' | 'general';
 
@@ -12,10 +14,12 @@ const emit = defineEmits<{ 'open-settings': [] }>();
 
 const aiStore = useAIStore();
 const contextStore = useContextStore();
+const ragStore = useRAGStore();
 
 const question = ref('');
 const mode = ref<AssistantMode>('general');
 const focusActive = ref(false);
+const showSources = ref(false);
 
 const activeEntity = computed(() => contextStore.activeEntity);
 const canFocusActive = computed(() => Boolean(contextStore.activeEntityId));
@@ -24,6 +28,7 @@ const isSendDisabled = computed(() => aiStore.isLoading || !question.value.trim(
 onMounted(async () => {
   await aiStore.initialize();
   await aiStore.loadPrompts();
+  await ragStore.loadSettings();
   
   // Detect capabilities if config is available
   try {
@@ -33,6 +38,11 @@ onMounted(async () => {
     }
   } catch {
     // Ignore
+  }
+  
+  // Auto-show sources panel if RAG has sources
+  if (ragStore.settings.showSources && ragStore.lastQuerySources.length > 0) {
+    showSources.value = true;
   }
 });
 
@@ -60,7 +70,26 @@ async function sendQuestion() {
   }
 
   const focusId = focusActive.value && contextStore.activeEntityId ? contextStore.activeEntityId : undefined;
-  await aiStore.askStream(question.value, { mode: mode.value, focusId });
+  
+  // If RAG is enabled and ready, use RAG query
+  if (ragStore.isReady) {
+    try {
+      const result = await ragStore.query(question.value);
+      // Add RAG answer to conversation
+      aiStore.addAssistantMessage(result.answer);
+      // Auto-show sources if enabled
+      if (ragStore.settings.showSources && result.sources.length > 0) {
+        showSources.value = true;
+      }
+    } catch (error) {
+      console.error('RAG query failed:', error);
+      // Fallback to standard query
+      await aiStore.askStream(question.value, { mode: mode.value, focusId });
+    }
+  } else {
+    await aiStore.askStream(question.value, { mode: mode.value, focusId });
+  }
+  
   question.value = '';
 }
 
@@ -152,6 +181,12 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
   focusActive.value = true;
   mode.value = 'improvement';
 }
+
+function toggleSources() {
+  showSources.value = !showSources.value;
+}
+
+const hasRAGSources = computed(() => ragStore.lastQuerySources.length > 0);
 </script>
 
 <template>
@@ -169,6 +204,30 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
           <AgentSelector />
         </div>
       </div>
+      <!-- RAG Status Indicator -->
+      <div 
+        v-if="ragStore.isReady" 
+        class="flex items-center gap-1.5 px-2 py-1 bg-success-50 border border-success-200 rounded-m3-md flex-shrink-0"
+        title="RAG enabled - Using semantic search"
+      >
+        <svg class="w-3 h-3 text-success-600" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+          <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+        </svg>
+        <span class="text-xs font-semibold text-success-700">RAG</span>
+      </div>
+      <!-- Sources Toggle -->
+      <button
+        v-if="hasRAGSources"
+        @click="toggleSources"
+        class="p-1.5 rounded-m3-md transition-colors flex-shrink-0"
+        :class="showSources ? 'bg-primary-100 text-primary-700' : 'text-secondary-600 hover:text-secondary-900 hover:bg-surface-2'"
+        :title="showSources ? 'Hide sources' : 'Show sources'"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      </button>
       <button
         class="p-1.5 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-2 transition-colors flex-shrink-0"
         title="AI Settings"
@@ -483,5 +542,49 @@ Provide the complete updated YAML file content for ${suggestion.target}.`;
         Last response: {{ aiStore.usageHistory[aiStore.usageHistory.length - 1].totalTokens }} tokens • prompt {{ aiStore.usageHistory[aiStore.usageHistory.length - 1].promptTokens }}, completion {{ aiStore.usageHistory[aiStore.usageHistory.length - 1].completionTokens }}
       </div>
     </div>
+    
+    <!-- RAG Sources Panel (Slide-over) -->
+    <Transition name="slide-left">
+      <div 
+        v-if="showSources" 
+        class="absolute top-0 right-0 bottom-0 w-[400px] bg-white border-l border-surface-variant shadow-elevation-3 z-10 flex flex-col"
+      >
+        <div class="flex items-center justify-between p-3 border-b border-surface-variant bg-surface-2">
+          <h3 class="text-sm font-semibold text-secondary-900 flex items-center gap-2">
+            <svg class="w-4 h-4 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+              <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+            </svg>
+            Context Sources
+          </h3>
+          <button 
+            @click="showSources = false"
+            class="p-1 text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-md transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="flex-1 overflow-hidden">
+          <RAGSourcesPanel />
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+.slide-left-enter-active,
+.slide-left-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-left-enter-from {
+  transform: translateX(100%);
+}
+
+.slide-left-leave-to {
+  transform: translateX(100%);
+}
+</style>

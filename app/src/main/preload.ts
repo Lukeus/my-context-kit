@@ -108,6 +108,68 @@ contextBridge.exposeInMainWorld('api', {
     applyEdit: (dir: string, filePath: string, updatedContent: string, summary?: string) =>
       ipcRenderer.invoke('ai:applyEdit', { dir, filePath, updatedContent, summary }),
   },
+  // LangChain AI API (feature-flagged implementation)
+  langchain: {
+    isEnabled: () => ipcRenderer.invoke('langchain:isEnabled'),
+    testConnection: (payload: { provider: string; endpoint: string; model: string; apiKey?: string }) =>
+      ipcRenderer.invoke('langchain:testConnection', payload),
+    generateEntity: (dir: string, entityType: string, userPrompt: string, apiKey?: string) =>
+      ipcRenderer.invoke('langchain:generateEntity', { dir, entityType, userPrompt, apiKey }),
+    assistStreamStart: (dir: string, question: string, conversationHistory?: Array<{ role: string; content: string }>, contextSnapshot?: any) =>
+      ipcRenderer.invoke('langchain:assistStreamStart', { dir, question, conversationHistory, contextSnapshot }),
+    assistStreamCancel: (streamId: string) => ipcRenderer.invoke('langchain:assistStreamCancel', { streamId }),
+    onAssistStreamToken: (listener: (payload: { streamId: string; token: string; type: string }) => void) => {
+      const wrapped = (_e: any, payload: any) => listener(payload);
+      ipcRenderer.on('langchain:assistStream:token', wrapped);
+      return () => ipcRenderer.removeListener('langchain:assistStream:token', wrapped);
+    },
+    onAssistStreamEnd: (listener: (payload: { streamId: string }) => void) => {
+      const wrapped = (_e: any, payload: any) => listener(payload);
+      ipcRenderer.on('langchain:assistStream:end', wrapped);
+      return () => ipcRenderer.removeListener('langchain:assistStream:end', wrapped);
+    },
+    onAssistStreamError: (listener: (payload: { streamId: string; error: string }) => void) => {
+      const wrapped = (_e: any, payload: any) => listener(payload);
+      ipcRenderer.on('langchain:assistStream:error', wrapped);
+      return () => ipcRenderer.removeListener('langchain:assistStream:error', wrapped);
+    },
+    clearCache: () => ipcRenderer.invoke('langchain:clearCache'),
+  },
+  // RAG API (Retrieval-Augmented Generation)
+  rag: {
+    isEnabled: () => ipcRenderer.invoke('rag:isEnabled'),
+    indexRepository: (repoPath: string, config: any) =>
+      ipcRenderer.invoke('rag:indexRepository', { repoPath, config }),
+    query: (repoPath: string, config: any, question: string, topK?: number) =>
+      ipcRenderer.invoke('rag:query', { repoPath, config, question, topK }),
+    queryStream: (repoPath: string, config: any, question: string, topK: number, streamId: string) =>
+      ipcRenderer.invoke('rag:queryStream', { repoPath, config, question, topK, streamId }),
+    findSimilar: (repoPath: string, config: any, entityId: string, limit?: number) =>
+      ipcRenderer.invoke('rag:findSimilar', { repoPath, config, entityId, limit }),
+    search: (repoPath: string, config: any, query: string, limit?: number) =>
+      ipcRenderer.invoke('rag:search', { repoPath, config, query, limit }),
+    getEntityContext: (repoPath: string, config: any, entityId: string) =>
+      ipcRenderer.invoke('rag:getEntityContext', { repoPath, config, entityId }),
+    getStatus: (repoPath: string, config: any) =>
+      ipcRenderer.invoke('rag:getStatus', { repoPath, config }),
+    clearIndex: (repoPath: string, config: any) =>
+      ipcRenderer.invoke('rag:clearIndex', { repoPath, config }),
+    onIndexProgress: (listener: (progress: { total: number; processed: number; percentage: number; currentEntity?: string }) => void) => {
+      const wrapped = (_e: any, progress: any) => listener(progress);
+      ipcRenderer.on('rag:indexProgress', wrapped);
+      return () => ipcRenderer.removeListener('rag:indexProgress', wrapped);
+    },
+    onStreamChunk: (listener: (payload: { streamId: string; type: 'source' | 'token' | 'done'; data?: any }) => void) => {
+      const wrapped = (_e: any, payload: any) => listener(payload);
+      ipcRenderer.on('rag:streamChunk', wrapped);
+      return () => ipcRenderer.removeListener('rag:streamChunk', wrapped);
+    },
+    onStreamError: (listener: (payload: { streamId: string; error: string }) => void) => {
+      const wrapped = (_e: any, payload: any) => listener(payload);
+      ipcRenderer.on('rag:streamError', wrapped);
+      return () => ipcRenderer.removeListener('rag:streamError', wrapped);
+    },
+  },
   assistant: createAssistantBridge(ipcRenderer),
   agent: agentBridge,
   speckit: {
@@ -232,6 +294,40 @@ declare global {
         onAssistStreamEnd: (listener: (payload: any) => void) => (() => void);
         applyEdit: (dir: string, filePath: string, updatedContent: string, summary?: string) =>
           Promise<{ ok: boolean; error?: string }>;
+      };
+      langchain: {
+        isEnabled: () => Promise<{ ok: boolean; enabled?: boolean; error?: string }>;
+        testConnection: (payload: { provider: string; endpoint: string; model: string; apiKey?: string }) =>
+          Promise<{ ok: boolean; message?: string; error?: string }>;
+        generateEntity: (dir: string, entityType: string, userPrompt: string, apiKey?: string) =>
+          Promise<{ ok: boolean; entity?: any; message?: string; error?: string }>;
+        assistStreamStart: (dir: string, question: string, conversationHistory?: Array<{ role: string; content: string }>, contextSnapshot?: any) =>
+          Promise<{ ok: boolean; streamId?: string; error?: string }>;
+        assistStreamCancel: (streamId: string) => Promise<{ ok: boolean; cancelled?: boolean; error?: string }>;
+        onAssistStreamToken: (listener: (payload: { streamId: string; token: string; type: string }) => void) => (() => void);
+        onAssistStreamEnd: (listener: (payload: { streamId: string }) => void) => (() => void);
+        onAssistStreamError: (listener: (payload: { streamId: string; error: string }) => void) => (() => void);
+        clearCache: () => Promise<{ ok: boolean; cleared?: boolean; error?: string }>;
+      };
+      rag: {
+        isEnabled: () => Promise<{ ok: boolean; enabled?: boolean; error?: string }>;
+        indexRepository: (repoPath: string, config: any) => Promise<{ ok: boolean; documentCount?: number; error?: string }>;
+        query: (repoPath: string, config: any, question: string, topK?: number) => 
+          Promise<{ ok: boolean; answer?: string; sources?: Array<{ id: string; title?: string; type: string; relevance: number; excerpt: string }>; error?: string }>;
+        queryStream: (repoPath: string, config: any, question: string, topK: number, streamId: string) =>
+          Promise<{ ok: boolean; streamId?: string; error?: string }>;
+        findSimilar: (repoPath: string, config: any, entityId: string, limit?: number) =>
+          Promise<{ ok: boolean; similar?: Array<{ id: string; similarity: number; title?: string; type: string }>; error?: string }>;
+        search: (repoPath: string, config: any, query: string, limit?: number) =>
+          Promise<{ ok: boolean; results?: Array<{ id: string; relevance: number; title?: string; type: string; excerpt: string }>; error?: string }>;
+        getEntityContext: (repoPath: string, config: any, entityId: string) =>
+          Promise<{ ok: boolean; answer?: string; sources?: Array<{ id: string; title?: string; type: string; relevance: number; excerpt: string }>; error?: string }>;
+        getStatus: (repoPath: string, config: any) =>
+          Promise<{ ok: boolean; indexed?: boolean; documentCount?: number; error?: string }>;
+        clearIndex: (repoPath: string, config: any) => Promise<{ ok: boolean; error?: string }>;
+        onIndexProgress: (listener: (progress: { total: number; processed: number; percentage: number; currentEntity?: string }) => void) => (() => void);
+        onStreamChunk: (listener: (payload: { streamId: string; type: 'source' | 'token' | 'done'; data?: any }) => void) => (() => void);
+        onStreamError: (listener: (payload: { streamId: string; error: string }) => void) => (() => void);
       };
       speckit: {
         specify: (repoPath: string, description: string) => Promise<{
