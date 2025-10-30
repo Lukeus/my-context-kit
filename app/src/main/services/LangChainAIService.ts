@@ -362,9 +362,16 @@ export class LangChainAIService {
     }
 
     // Verify credentials are available before creating model
+    // Note: We check if we can resolve a key, including explicit keys passed in config
     if (options.config.provider === 'azure-openai') {
-      const hasKey = await this.credentialResolver.hasCredentials(options.config.provider);
-      if (!hasKey) {
+      const resolvedKey = await this.credentialResolver.resolveApiKey({
+        provider: options.config.provider,
+        explicitKey: options.config.apiKey as string | undefined,
+        useStoredCredentials: true,
+        useEnvironmentVars: true
+      });
+      
+      if (!resolvedKey) {
         const msg = 'No API key found for provider azure-openai. Please save credentials or set OPENAI_API_KEY/AZURE_OPENAI_KEY.';
         logger.error({ service: 'LangChainAIService', method: 'assistStream' }, new Error(msg));
         throw new Error(msg);
