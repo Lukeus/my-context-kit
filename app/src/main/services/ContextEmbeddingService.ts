@@ -47,6 +47,12 @@ function mapChatModelToEmbeddingModel(chatModel?: string, provider?: string): st
     return 'nomic-embed-text';
   }
   
+  // For Azure OpenAI, use text-embedding-ada-002 deployment (most common)
+  // Users should set embeddingModel explicitly in config if using a different deployment
+  if (provider === 'azure-openai') {
+    return 'text-embedding-ada-002';
+  }
+  
   const m = chatModel.toLowerCase();
   if (m.startsWith('gpt-4') || m.startsWith('gpt4') || m.startsWith('gpt-')) return 'text-embedding-3-small';
   if (m.startsWith('gpt-3.5') || m.includes('turbo')) return 'text-embedding-3-small';
@@ -90,7 +96,11 @@ export class ContextEmbeddingService {
 
   constructor(private config: AIConfig) {
     // Embedding model: prefer explicit embeddingModel, else map chat model -> embedding, else default
-    const defaultEmbeddingModel = config.provider === 'ollama' ? 'nomic-embed-text' : 'text-embedding-3-small';
+    const defaultEmbeddingModel = config.provider === 'ollama' 
+      ? 'nomic-embed-text' 
+      : config.provider === 'azure-openai'
+      ? 'text-embedding-ada-002'
+      : 'text-embedding-3-small';
     this.embeddingModelName = (config.embeddingModel as string)
       || mapChatModelToEmbeddingModel(config.model as string, config.provider)
       || defaultEmbeddingModel;
