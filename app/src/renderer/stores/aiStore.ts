@@ -467,6 +467,11 @@ export const useAIStore = defineStore('ai', () => {
     }
   }
 
+  // Exported helper to create a stable id for assistant/user messages
+  function makeId(prefix: string) {
+    return generateId(prefix);
+  }
+
   function recordUsage(usage?: AssistantUsageSummary) {
     if (!usage) {
       return;
@@ -1051,6 +1056,10 @@ export const useAIStore = defineStore('ai', () => {
     acknowledgeError,
     applyEdit,
     addAssistantInfo,
+    // new exported helpers for other components to use instead of mutating conversation directly
+    appendMessage,
+    updateAssistantMessage,
+    generateId: makeId,
     loadPrompts,
     savePrompts,
     detectCapabilities,

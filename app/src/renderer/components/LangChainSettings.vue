@@ -32,18 +32,26 @@ const statusText = computed(() => {
 
 async function handleToggle() {
   if (!isAvailable.value) {
-    snackbarStore.show('LangChain is not available. Set USE_LANGCHAIN=true environment variable and restart.', 'error');
-    return;
+    // Allow toggling even if not currently available; persistence will be saved and a restart may be required
+    // We'll proceed and then re-check availability
   }
 
   isToggling.value = true;
   try {
     const success = await langchainStore.toggle();
     if (success) {
-      const message = langchainStore.enabled 
-        ? 'LangChain enabled! Entity generation and AI features will use the new implementation.' 
-        : 'LangChain disabled. Using legacy AI implementation.';
-      snackbarStore.show(message, 'success');
+      // Re-check availability in case persisted preference enables the feature server-side
+      isAvailable.value = await langchainStore.checkAvailability();
+
+      if (langchainStore.enabled) {
+        if (isAvailable.value) {
+          snackbarStore.show('LangChain enabled and available.', 'success');
+        } else {
+          snackbarStore.show('LangChain enabled (preference saved). Restart required to activate in the main process.', 'info');
+        }
+      } else {
+        snackbarStore.show('LangChain disabled. Using legacy AI implementation.', 'success');
+      }
     } else {
       snackbarStore.show('Failed to toggle LangChain', 'error');
     }
@@ -76,6 +84,16 @@ function formatTime(ms: number): string {
 
 function formatPercentage(percent: number): string {
   return `${percent.toFixed(1)}%`;
+}
+
+function restartApp() {
+  // Call through the preload bridge for safe API access
+  // TODO: Add a typed declaration for window.api in renderer globals
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyWin = window as any;
+  if (anyWin?.api?.app?.restart) {
+    anyWin.api.app.restart();
+  }
 }
 </script>
 
@@ -110,7 +128,7 @@ function formatPercentage(percent: number): string {
                 type="checkbox" 
                 :checked="langchainStore.enabled"
                 @change="handleToggle"
-                :disabled="!isAvailable || isToggling"
+                :disabled="isToggling"
                 class="sr-only peer"
               />
               <!-- Custom Toggle Switch (Material 3 style) -->
@@ -130,7 +148,7 @@ function formatPercentage(percent: number): string {
         </div>
       </div>
 
-      <!-- Availability Warning -->
+      <!-- Availability Warning / Restart CTA -->
       <div v-if="!isAvailable" class="mt-4 p-3 bg-warning-50 border border-warning-200 rounded-m3-md flex items-start gap-2">
         <svg class="w-5 h-5 text-warning-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -138,8 +156,19 @@ function formatPercentage(percent: number): string {
         <div class="flex-1">
           <p class="text-sm font-medium text-warning-800">LangChain Not Available</p>
           <p class="text-xs text-warning-700 mt-1">
-            Set <code class="px-1 py-0.5 bg-warning-100 rounded">USE_LANGCHAIN=true</code> environment variable and restart the app to enable LangChain.
+            Set <code class="px-1 py-0.5 bg-warning-100 rounded">USE_LANGCHAIN=true</code> environment variable and restart the app to enable LangChain immediately.
           </p>
+          <p v-if="langchainStore.enabled" class="text-xs text-secondary-700 mt-2">
+            You have enabled LangChain in settings. A restart is required for the main process to pick up the change.
+          </p>
+          <div v-if="langchainStore.enabled" class="mt-3 flex gap-2">
+            <button
+              @click="restartApp"
+              class="px-3 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-m3-md"
+            >
+              Restart App Now
+            </button>
+          </div>
         </div>
       </div>
 
