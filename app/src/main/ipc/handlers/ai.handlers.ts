@@ -267,10 +267,6 @@ export function registerAIHandlers(): void {
         return error('Edit rejected: target is outside the repository');
       }
 
-      if (!existsSync(targetPath)) {
-        return error(`Target file does not exist: ${filePath}`);
-      }
-
       // Validate YAML syntax before writing
       try {
         parseYAML(updatedContent);
@@ -279,7 +275,16 @@ export function registerAIHandlers(): void {
         return error(`Invalid YAML: ${errorMsg}`);
       }
 
-      await writeFile(targetPath, updatedContent, 'utf-8');
+      // Write file atomically - if file doesn't exist, writeFile will fail with ENOENT
+      // This eliminates TOCTOU race condition by letting the OS handle the check+write atomically
+      try {
+        await writeFile(targetPath, updatedContent, { encoding: 'utf-8', flag: 'w' });
+      } catch (writeErr: unknown) {
+        if (writeErr instanceof Error && 'code' in writeErr && writeErr.code === 'ENOENT') {
+          return error(`Target file does not exist: ${filePath}`);
+        }
+        throw writeErr;
+      }
       return successWith({});
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to apply edit';
