@@ -1,3 +1,7 @@
+import { app, safeStorage } from 'electron';
+import { readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { ChatOpenAI } from '@langchain/openai';
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -9,6 +13,10 @@ import type { z } from 'zod';
 import { logger } from '../utils/logger';
 import { AICredentialResolver } from './AICredentialResolver';
 
+const AI_CONFIG_FILE = 'ai-config.json';
+const CREDENTIALS_FILE = 'credentials.enc';
+const PROVIDER_CONFIGS_FILE = 'ai-provider-configs.json';
+
 export interface AIConfig {
   provider: string;
   endpoint: string;
@@ -17,6 +25,27 @@ export interface AIConfig {
   embeddingModel?: string;
   apiKey?: string;
   [key: string]: unknown;
+}
+
+export type WritableAIConfig = AIConfig & { apiKey?: string };
+
+/**
+ * Per-provider configuration storage.
+ * Allows users to save different settings for each provider and switch without losing configuration.
+ */
+export interface ProviderConfigs {
+  'ollama'?: {
+    endpoint: string;
+    model: string;
+  };
+  'azure-openai'?: {
+    endpoint: string;
+    model: string;
+  };
+  [key: string]: {
+    endpoint: string;
+    model: string;
+  } | undefined;
 }
 
 export interface TestConnectionOptions {
@@ -77,6 +106,313 @@ export interface AssistStreamOptions {
 export class LangChainAIService {
   private models: Map<string, BaseChatModel> = new Map();
   private credentialResolver = new AICredentialResolver();
+
+  // ============================================================================
+  // Configuration & Credential Management
+  // ============================================================================
+
+  /**
+   * Get AI configuration for a repository.
+   * 
+   * Returns the AI configuration stored in the repository's .context directory.
+   * If no configuration exists, returns default Ollama configuration with AI disabled.
+   * 
+   * @param dir - Absolute path to the repository
+   * @returns AI configuration including provider, endpoint, model, and enabled status
+   * @throws Never throws - returns default config on error
+   * 
+   * @example
+   * ```typescript
+   * const service = new LangChainAIService();
+   * const config = await service.getConfig('/path/to/repo');
+   * console.log(config.provider); // 'ollama' or 'azure-openai'
+   * ```
+   */
+  async getConfig(dir: string): Promise<AIConfig> {
+    return logger.logServiceCall(
+      { service: 'LangChainAIService', method: 'getConfig' },
+      async () => {
+        try {
+          const configPath = path.join(dir, '.context', AI_CONFIG_FILE);
+          const content = await readFile(configPath, 'utf-8');
+          const parsed = JSON.parse(content) as AIConfig;
+          logger.debug({ service: 'LangChainAIService', method: 'getConfig' }, `Loaded config for provider: ${parsed.provider}`);
+          return parsed;
+        } catch {
+          // Return default config if file doesn't exist or is invalid
+          logger.debug({ service: 'LangChainAIService', method: 'getConfig' }, 'No config found, returning defaults');
+          return {
+            provider: 'ollama',
+            endpoint: 'http://localhost:11434',
+            model: 'llama2',
+            enabled: false
+          };
+        }
+      }
+    );
+  }
+
+  /**
+   * Save AI configuration to repository.
+   * 
+   * Persists AI configuration to .context/ai-config.json. API keys are automatically
+   * stripped from the configuration and must be saved separately using saveCredentials().
+   * This ensures sensitive credentials are never committed to version control.
+   * 
+   * @param dir - Absolute path to the repository
+   * @param config - AI configuration to save (apiKey will be removed before saving)
+   * @throws {Error} If file write fails or directory doesn't exist
+   * 
+   * @example
+   * ```typescript
+   * await service.saveConfig('/path/to/repo', {
+   *   provider: 'azure-openai',
+   *   endpoint: 'https://myinstance.openai.azure.com',
+   *   model: 'gpt-4',
+   *   enabled: true,
+   *   apiKey: 'sk-xxx' // This will NOT be saved to file
+   * });
+   * ```
+   */
+  async saveConfig(dir: string, config: WritableAIConfig): Promise<void> {
+    return logger.logServiceCall(
+      { service: 'LangChainAIService', method: 'saveConfig', provider: config.provider },
+      async () => {
+        const configPath = path.join(dir, '.context', AI_CONFIG_FILE);
+        
+        // Security: Never save API keys in config file
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { apiKey, ...persistableConfig } = config;
+        
+        await writeFile(configPath, JSON.stringify(persistableConfig, null, 2), 'utf-8');
+        logger.info({ service: 'LangChainAIService', method: 'saveConfig' }, `Saved config for provider: ${config.provider}`);
+      }
+    );
+  }
+
+  /**
+   * Save encrypted credentials for an AI provider.
+   * 
+   * Encrypts and stores API key using OS-level encryption:
+   * - Windows: Credential Manager (DPAPI)
+   * - macOS: Keychain
+   * - Linux: Secret Service API (libsecret)
+   * 
+   * Credentials are stored in the app user data directory, separate from
+   * repository configuration, ensuring they're never committed to Git.
+   * 
+   * @param provider - Provider name ('ollama' or 'azure-openai')
+   * @param apiKey - API key to encrypt and store
+   * @throws {Error} If encryption is not available on the system
+   * @throws {Error} If file write fails
+   * 
+   * @example
+   * ```typescript
+   * await service.saveCredentials('azure-openai', 'sk-xxx...');
+   * ```
+   */
+  async saveCredentials(provider: string, apiKey: string): Promise<void> {
+    return logger.logServiceCall(
+      { service: 'LangChainAIService', method: 'saveCredentials', provider },
+      async () => {
+        if (!safeStorage.isEncryptionAvailable()) {
+          throw new Error('OS-level encryption not available. Cannot securely store credentials.');
+        }
+
+        // Encrypt the API key using OS-level encryption
+        const encrypted = safeStorage.encryptString(apiKey);
+
+        // Store encrypted credentials in app data directory (not in repository)
+        const credPath = path.join(app.getPath('userData'), `${provider}-${CREDENTIALS_FILE}`);
+        await writeFile(credPath, encrypted);
+        
+        logger.info({ service: 'LangChainAIService', method: 'saveCredentials' }, `Saved encrypted credentials for provider: ${provider}`);
+      }
+    );
+  }
+
+  /**
+   * Check if encrypted credentials exist for a provider.
+   * 
+   * Verifies that credentials are stored and can be decrypted without returning
+   * the actual credentials. Safe to call for credential existence checks.
+   * 
+   * @param provider - Provider name to check
+   * @returns true if valid credentials exist and can be decrypted, false otherwise
+   * 
+   * @example
+   * ```typescript
+   * if (await service.hasCredentials('azure-openai')) {
+   *   // Credentials exist, proceed with AI operations
+   * }
+   * ```
+   */
+  async hasCredentials(provider: string): Promise<boolean> {
+    try {
+      if (!safeStorage.isEncryptionAvailable()) {
+        logger.debug({ service: 'LangChainAIService', method: 'hasCredentials' }, 'Encryption not available');
+        return false;
+      }
+
+      const credPath = path.join(app.getPath('userData'), `${provider}-${CREDENTIALS_FILE}`);
+      
+      if (!existsSync(credPath)) {
+        logger.debug({ service: 'LangChainAIService', method: 'hasCredentials' }, `No credentials file for ${provider}`);
+        return false;
+      }
+      
+      const encrypted = await readFile(credPath);
+      // Just verify we can decrypt without returning the actual key
+      safeStorage.decryptString(encrypted);
+      
+      logger.debug({ service: 'LangChainAIService', method: 'hasCredentials' }, `Valid credentials found for ${provider}`);
+      return true;
+    } catch (err) {
+      logger.debug({ service: 'LangChainAIService', method: 'hasCredentials' }, `Credential check failed: ${err instanceof Error ? err.message : String(err)}`);
+      return false;
+    }
+  }
+
+  /**
+   * Get stored credentials for a provider (safe public API).
+   * 
+   * Returns the decrypted API key string or null if credentials are not present
+   * or not recoverable. This is safe to call from IPC handlers.
+   * 
+   * @param provider - Provider name
+   * @returns Decrypted API key or null if not available
+   * 
+   * @example
+   * ```typescript
+   * const apiKey = await service.getStoredCredentials('azure-openai');
+   * if (apiKey) {
+   *   // Use apiKey for API calls
+   * }
+   * ```
+   */
+  async getStoredCredentials(provider: string): Promise<string | null> {
+    try {
+      if (!safeStorage.isEncryptionAvailable()) {
+        logger.warn({ service: 'LangChainAIService', method: 'getStoredCredentials' }, 'Encryption not available');
+        return null;
+      }
+
+      const credPath = path.join(app.getPath('userData'), `${provider}-${CREDENTIALS_FILE}`);
+
+      if (!existsSync(credPath)) {
+        logger.debug({ service: 'LangChainAIService', method: 'getStoredCredentials' }, `No credentials file for ${provider}`);
+        return null;
+      }
+
+      const encrypted = await readFile(credPath);
+      const decrypted = safeStorage.decryptString(encrypted);
+      
+      logger.info({ service: 'LangChainAIService', method: 'getStoredCredentials' }, `Retrieved credentials for ${provider} (${encrypted.length} bytes encrypted)`);
+      return decrypted;
+    } catch (err) {
+      logger.warn({ service: 'LangChainAIService', method: 'getStoredCredentials' }, `Failed to load credentials: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get per-provider configurations (stored separately from active config).
+   * 
+   * This allows users to maintain different settings for each provider
+   * (e.g., different models for Ollama vs Azure OpenAI) and switch between
+   * them without losing configuration.
+   * 
+   * @param dir - Repository path
+   * @returns Provider-specific configurations
+   * 
+   * @example
+   * ```typescript
+   * const configs = await service.getProviderConfigs('/path/to/repo');
+   * console.log(configs['ollama']); // { endpoint, model }
+   * console.log(configs['azure-openai']); // { endpoint, model }
+   * ```
+   */
+  async getProviderConfigs(dir: string): Promise<ProviderConfigs> {
+    return logger.logServiceCall(
+      { service: 'LangChainAIService', method: 'getProviderConfigs' },
+      async () => {
+        try {
+          const configPath = path.join(dir, '.context', PROVIDER_CONFIGS_FILE);
+          const content = await readFile(configPath, 'utf-8');
+          const parsed = JSON.parse(content) as ProviderConfigs;
+          logger.debug({ service: 'LangChainAIService', method: 'getProviderConfigs' }, 'Loaded provider configs');
+          return parsed;
+        } catch {
+          // Return default configs for both providers
+          logger.debug({ service: 'LangChainAIService', method: 'getProviderConfigs' }, 'No provider configs found, returning defaults');
+          return {
+            'ollama': {
+              endpoint: 'http://localhost:11434',
+              model: 'llama2'
+            },
+            'azure-openai': {
+              endpoint: '',
+              model: 'gpt-4'
+            }
+          };
+        }
+      }
+    );
+  }
+
+  /**
+   * Save configuration for a specific provider (without switching to it).
+   * 
+   * This updates the provider-specific config store, allowing users to
+   * maintain separate settings for each provider.
+   * 
+   * @param dir - Repository path
+   * @param provider - Provider name ('ollama' or 'azure-openai')
+   * @param config - Provider-specific configuration
+   * 
+   * @example
+   * ```typescript
+   * // Save Ollama config without switching to it
+   * await service.saveProviderConfig('/path/to/repo', 'ollama', {
+   *   endpoint: 'http://localhost:11434',
+   *   model: 'llama3'
+   * });
+   * 
+   * // Later, user can switch to Ollama and these settings will be used
+   * ```
+   */
+  async saveProviderConfig(
+    dir: string,
+    provider: string,
+    config: { endpoint: string; model: string }
+  ): Promise<void> {
+    return logger.logServiceCall(
+      { service: 'LangChainAIService', method: 'saveProviderConfig', provider },
+      async () => {
+        const configPath = path.join(dir, '.context', PROVIDER_CONFIGS_FILE);
+        
+        // Load existing configs
+        let allConfigs: ProviderConfigs = {};
+        try {
+          const content = await readFile(configPath, 'utf-8');
+          allConfigs = JSON.parse(content) as ProviderConfigs;
+        } catch {
+          // File doesn't exist yet, start fresh
+          allConfigs = {};
+        }
+        
+        // Update specific provider config
+        allConfigs[provider] = config;
+        
+        await writeFile(configPath, JSON.stringify(allConfigs, null, 2), 'utf-8');
+        logger.info({ service: 'LangChainAIService', method: 'saveProviderConfig' }, `Saved config for provider: ${provider}`);
+      }
+    );
+  }
+
+  // ============================================================================
+  // AI Operations
+  // ============================================================================
 
   /**
    * Normalize proxy-related environment variables and return a copy to use when
@@ -167,9 +503,14 @@ export class LangChainAIService {
       process.env.NO_PROXY = proxyEnv.NO_PROXY;
       process.env.no_proxy = proxyEnv.NO_PROXY;
 
+      // Ollama doesn't require an API key, but LangChain's ChatOpenAI expects one
+      // Pass a dummy key to satisfy the library (Ollama ignores it)
       model = new ChatOpenAI({
+        apiKey: 'ollama-does-not-need-a-key',
         configuration: {
-          baseURL: config.endpoint,
+          // Use OpenAI-compatible endpoint for Ollama
+          // Recommend including /v1 for some SDKs; allow user-provided full URL
+          baseURL: config.endpoint.endsWith('/v1') ? config.endpoint : `${config.endpoint.replace(/\/$/, '')}/v1`,
         },
         modelName: config.model,
         temperature: 0.7,
