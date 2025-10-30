@@ -474,23 +474,23 @@ export class LangChainAIService {
       }
 
       // Azure OpenAI configuration
-      // IMPORTANT: apiKey is required by ChatOpenAI constructor for validation,
-      // but Azure uses 'api-key' header (set in defaultHeaders) for actual auth
+      // Using configuration.baseURL with api-version in query params
       model = new ChatOpenAI({
-        apiKey: resolvedKey, // Required by ChatOpenAI constructor
-        configuration: {
-          baseURL: `${config.endpoint}/openai/deployments/${config.model}`,
-          defaultQuery: { 'api-version': '2024-12-01-preview' },
-          defaultHeaders: {
-            'api-key': resolvedKey, // Azure uses this header for authentication
-            'Content-Type': 'application/json'
-          },
-        },
+        apiKey: resolvedKey,
         modelName: config.model,
         temperature: 0.7,
         maxTokens: 4000,
-        timeout: 60000, // 60 second timeout
-        maxRetries: 2, // Automatic retry on failure
+        timeout: 60000,
+        maxRetries: 2,
+        configuration: {
+          baseURL: `${config.endpoint.replace(/\/$/, '')}/openai/deployments/${config.model}`,
+          defaultQuery: {
+            'api-version': '2024-02-15-preview',
+          },
+          defaultHeaders: {
+            'api-key': resolvedKey,
+          },
+        },
       });
     } else if (config.provider === 'ollama') {
       logger.info({ service: 'LangChainAIService', method: 'getModel' }, `Creating Ollama model: ${config.model}`);
