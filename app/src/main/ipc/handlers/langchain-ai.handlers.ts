@@ -103,10 +103,8 @@ export function registerLangChainAIHandlers(): void {
   ipcMain.handle('langchain:generateEntity', async (_event, { dir, entityType, userPrompt, apiKey }:
     { dir: string; entityType: string; userPrompt: string; apiKey?: string }) => {
     try {
-      // Get AI config (reusing existing config loading logic)
-      const { AIService } = await import('../../services/AIService');
-      const legacyService = new AIService();
-      const config = await legacyService.getConfig(dir);
+      // Get AI config using unified service
+      const config = await langchainService.getConfig(dir);
 
       if (!config.enabled) {
         return error('AI assistance is disabled in configuration');
@@ -152,10 +150,8 @@ export function registerLangChainAIHandlers(): void {
   ipcMain.handle('langchain:assistStreamStart', async (event, { dir, question, conversationHistory, contextSnapshot }:
     { dir: string; question: string; conversationHistory?: Array<{ role: string; content: string }>; contextSnapshot?: unknown }) => {
     try {
-      // Get AI config
-      const { AIService } = await import('../../services/AIService');
-      const legacyService = new AIService();
-      const config = await legacyService.getConfig(dir);
+      // Get AI config using unified service
+      const config = await langchainService.getConfig(dir);
 
       if (!config.enabled) {
         return error('AI assistance is disabled in configuration');

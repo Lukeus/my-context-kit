@@ -45,13 +45,13 @@ export function registerAllHandlers(): void {
   // Native dialog operations
   registerDialogHandlers();
   
-  // AI operations
+  // AI operations (unified LangChain-powered implementation)
   registerAIHandlers();
   
-  // LangChain AI operations (feature-flagged)
+  // LangChain-specific IPC handlers (for langchainStore compatibility)
   registerLangChainAIHandlers();
   
-  // RAG operations (feature-flagged)
+  // RAG operations
   registerRAGHandlers();
 
   // Assistant safe tooling operations

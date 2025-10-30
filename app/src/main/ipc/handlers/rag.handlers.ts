@@ -24,10 +24,10 @@ async function getEmbeddingService(repoPath: string, config: AIConfig): Promise<
     // If essential config fields are missing, attempt to load repository AI config
     try {
       if (!config.provider || !config.endpoint || !config.model) {
-        const { AIService } = await import('../../services/AIService');
-        const legacyService = new AIService();
+        const { LangChainAIService } = await import('../../services/LangChainAIService');
+        const aiService = new LangChainAIService();
         try {
-          const repoConfig = await legacyService.getConfig(repoPath);
+          const repoConfig = await aiService.getConfig(repoPath);
           // Merge missing fields
           if (!config.provider && repoConfig.provider) config.provider = repoConfig.provider;
           if (!config.endpoint && repoConfig.endpoint) config.endpoint = repoConfig.endpoint;
@@ -39,16 +39,15 @@ async function getEmbeddingService(repoPath: string, config: AIConfig): Promise<
           logger.debug({ service: 'rag.handlers', method: 'getEmbeddingService' }, `Could not load repo AI config: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
-
-    } catch (err) {
+    } catch {
       // non-fatal
     }
 
     // If apiKey not present, attempt to load from secure credential store
     try {
       if (!('apiKey' in config) || !config.apiKey) {
-        const { AIService } = await import('../../services/AIService');
-        const legacyService = new AIService();
+        const { LangChainAIService } = await import('../../services/LangChainAIService');
+        const aiService = new LangChainAIService();
 
         // Try multiple provider keys to account for variations used when saving credentials
         const triedProviders: string[] = [];
@@ -63,9 +62,7 @@ async function getEmbeddingService(repoPath: string, config: AIConfig): Promise<
           if (!prov) continue;
           triedProviders.push(prov);
           try {
-            // internal private method; cast to any for now. TODO: expose getCredentials publicly
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const api = await (legacyService as any).getCredentials(prov);
+            const api = await aiService.getStoredCredentials(prov);
             if (api) {
               foundKey = api;
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,7 +70,7 @@ async function getEmbeddingService(repoPath: string, config: AIConfig): Promise<
               logger.info({ service: 'rag.handlers', method: 'getEmbeddingService' }, `Loaded stored credentials for provider '${prov}'`);
               break;
             }
-          } catch (err) {
+          } catch {
             // ignore and try next provider
           }
         }
@@ -116,20 +113,19 @@ async function getRAGService(repoPath: string, config: AIConfig): Promise<Contex
  */
 export function registerRAGHandlers(): void {
   /**
-   * Check if RAG is enabled via environment variable.
+   * Check if RAG is available.
+   * RAG is always available since LangChain is integrated.
    */
   ipcMain.handle('rag:isEnabled', async () => {
     try {
-      const enabled = process.env.USE_LANGCHAIN === 'true';
-      
       logger.debug(
         { service: 'rag.handlers', method: 'isEnabled' },
-        `RAG enabled: ${enabled}`
+        'RAG is available'
       );
       
       return {
         ok: true,
-        enabled
+        enabled: true
       };
     } catch (error) {
       logger.error({ service: 'rag.handlers', method: 'isEnabled' }, error as Error);
