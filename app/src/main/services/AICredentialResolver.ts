@@ -66,6 +66,11 @@ export class AICredentialResolver {
    * ```
    */
   async resolveApiKey(options: CredentialOptions): Promise<string | null> {
+    logger.debug(
+      { service: 'AICredentialResolver', method: 'resolveApiKey' },
+      `Resolving API key for ${options.provider} - explicitKey: ${options.explicitKey ? 'provided (length: ' + options.explicitKey.length + ')' : 'not provided'}, useStored: ${options.useStoredCredentials !== false}, useEnv: ${options.useEnvironmentVars !== false}`
+    );
+    
     // 1. Explicit key has highest priority
     if (options.explicitKey) {
       logger.debug(
