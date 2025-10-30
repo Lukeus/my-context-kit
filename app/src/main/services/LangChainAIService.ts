@@ -13,6 +13,7 @@ export interface AIConfig {
   endpoint: string;
   model: string;
   enabled: boolean;
+  embeddingModel?: string;
   apiKey?: string;
   [key: string]: unknown;
 }
@@ -76,6 +77,20 @@ export class LangChainAIService {
   private models: Map<string, BaseChatModel> = new Map();
 
   /**
+   * Normalize proxy-related environment variables and return a copy to use when
+   * constructing child clients or making network requests. This mirrors the
+   * proxy wiring used by AIService (which sets HTTPS_PROXY/HTTP_PROXY/NO_PROXY
+   * when spawning external processes).
+   */
+  private getProxyEnv(): Record<string, string> {
+    return {
+      HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || '',
+      HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || '',
+      NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || ''
+    };
+  }
+
+  /**
    * Get or create a cached chat model instance for the given configuration.
    * Models are cached by provider:endpoint:model key to avoid recreation.
    * 
@@ -95,13 +110,34 @@ export class LangChainAIService {
 
     if (config.provider === 'azure-openai') {
       logger.info({ service: 'LangChainAIService', method: 'getModel' }, `Creating Azure OpenAI model: ${config.model}`);
-      
+      const proxyEnv = this.getProxyEnv();
+
+      // Mirror AIService: ensure proxy environment variables are set before
+      // constructing HTTP clients so underlying libraries pick them up.
+      // Set both uppercase and lowercase variants and always set the keys
+      // (use empty string when unset) to match AIService child-process env.
+      process.env.HTTPS_PROXY = proxyEnv.HTTPS_PROXY;
+      process.env.https_proxy = proxyEnv.HTTPS_PROXY;
+      process.env.HTTP_PROXY = proxyEnv.HTTP_PROXY;
+      process.env.http_proxy = proxyEnv.HTTP_PROXY;
+      process.env.NO_PROXY = proxyEnv.NO_PROXY;
+      process.env.no_proxy = proxyEnv.NO_PROXY;
+
+      // Resolve API key: prefer explicit config.apiKey, fall back to env vars
+      const resolvedKey = (config.apiKey as string | undefined) || process.env.OPENAI_API_KEY || process.env.AZURE_OPENAI_KEY || '';
+
+      // Don't pass an empty string as the API key to the SDK — prefer undefined
+      // which allows better error messages from the provider layer.
+      const openAIApiKey = resolvedKey || undefined;
+
+      const defaultHeaders = resolvedKey ? { 'api-key': resolvedKey } : undefined;
+
       model = new ChatOpenAI({
-        openAIApiKey: config.apiKey,
+        openAIApiKey,
         configuration: {
           baseURL: `${config.endpoint}/openai/deployments/${config.model}`,
           defaultQuery: { 'api-version': '2024-12-01-preview' },
-          defaultHeaders: { 'api-key': config.apiKey || '' },
+          ...(defaultHeaders ? { defaultHeaders } : {}),
         },
         modelName: config.model,
         temperature: 0.7,
@@ -112,6 +148,15 @@ export class LangChainAIService {
     } else if (config.provider === 'ollama') {
       logger.info({ service: 'LangChainAIService', method: 'getModel' }, `Creating Ollama model: ${config.model}`);
       
+      const proxyEnv = this.getProxyEnv();
+      // Same proxy parity as above
+      process.env.HTTPS_PROXY = proxyEnv.HTTPS_PROXY;
+      process.env.https_proxy = proxyEnv.HTTPS_PROXY;
+      process.env.HTTP_PROXY = proxyEnv.HTTP_PROXY;
+      process.env.http_proxy = proxyEnv.HTTP_PROXY;
+      process.env.NO_PROXY = proxyEnv.NO_PROXY;
+      process.env.no_proxy = proxyEnv.NO_PROXY;
+
       model = new ChatOpenAI({
         configuration: {
           baseURL: config.endpoint,
@@ -308,6 +353,16 @@ export class LangChainAIService {
 
     const model = this.getModel(options.config);
 
+    // If provider expects credentials, ensure we have them (explicit or env)
+    if (options.config.provider === 'azure-openai') {
+      const cfgKey = (options.config.apiKey as string | undefined) || process.env.OPENAI_API_KEY || process.env.AZURE_OPENAI_KEY;
+      if (!cfgKey) {
+        const msg = 'No API key found for provider azure-openai. Please save credentials or set OPENAI_API_KEY/AZURE_OPENAI_KEY.';
+        logger.error({ service: 'LangChainAIService', method: 'assistStream' }, new Error(msg));
+        throw new Error(msg);
+      }
+    }
+
     // Build message history
     const messages: BaseMessage[] = [
       new SystemMessage(this.buildSystemPrompt(options.contextSnapshot))
@@ -351,6 +406,15 @@ export class LangChainAIService {
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+
+      // Normalize common SDK/provider credential errors into a clearer message
+      const lower = message.toLowerCase();
+      if (lower.includes('missing credentials') || lower.includes('openaierror') || lower.includes('missing api key') || lower.includes('no api key')) {
+        const credMsg = 'No API key found for provider azure-openai. Please save credentials or set OPENAI_API_KEY/AZURE_OPENAI_KEY.';
+        logger.error({ service: 'LangChainAIService', method: 'assistStream' }, new Error(credMsg));
+        throw new Error(credMsg);
+      }
+
       logger.error(
         { service: 'LangChainAIService', method: 'assistStream' },
         new Error(`Streaming failed: ${message}`)

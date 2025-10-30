@@ -11,35 +11,103 @@ const ragServices = new Map<string, ContextRAGService>();
 /**
  * Get or create embedding service for a repository.
  */
-function getEmbeddingService(repoPath: string, config: AIConfig): ContextEmbeddingService {
-  const key = `${repoPath}:${config.provider}:${config.model}`;
-  
+async function getEmbeddingService(repoPath: string, config: AIConfig): Promise<ContextEmbeddingService> {
+  const embeddingKeyModel = (config as any).embeddingModel || config.model || '';
+  const key = `${repoPath}:${config.provider}:${embeddingKeyModel}`;
+
   if (!embeddingServices.has(key)) {
     logger.info(
       { service: 'rag.handlers', method: 'getEmbeddingService' },
       `Creating new embedding service for ${repoPath}`
     );
+
+    // If essential config fields are missing, attempt to load repository AI config
+    try {
+      if (!config.provider || !config.endpoint || !config.model) {
+        const { AIService } = await import('../../services/AIService');
+        const legacyService = new AIService();
+        try {
+          const repoConfig = await legacyService.getConfig(repoPath);
+          // Merge missing fields
+          if (!config.provider && repoConfig.provider) config.provider = repoConfig.provider;
+          if (!config.endpoint && repoConfig.endpoint) config.endpoint = repoConfig.endpoint;
+          if (!config.model && repoConfig.model) config.model = repoConfig.model;
+          if (!('embeddingModel' in config) && (repoConfig as any).embeddingModel) {
+            (config as any).embeddingModel = (repoConfig as any).embeddingModel;
+          }
+        } catch (err) {
+          logger.debug({ service: 'rag.handlers', method: 'getEmbeddingService' }, `Could not load repo AI config: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+
+    } catch (err) {
+      // non-fatal
+    }
+
+    // If apiKey not present, attempt to load from secure credential store
+    try {
+      if (!('apiKey' in config) || !config.apiKey) {
+        const { AIService } = await import('../../services/AIService');
+        const legacyService = new AIService();
+
+        // Try multiple provider keys to account for variations used when saving credentials
+        const triedProviders: string[] = [];
+        const providerCandidates = new Set<string>([
+          String(config.provider || ''),
+          'azure-openai',
+          'openai'
+        ]);
+
+        let foundKey: string | undefined;
+        for (const prov of providerCandidates) {
+          if (!prov) continue;
+          triedProviders.push(prov);
+          try {
+            // internal private method; cast to any for now. TODO: expose getCredentials publicly
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const api = await (legacyService as any).getCredentials(prov);
+            if (api) {
+              foundKey = api;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (config as any).apiKey = api;
+              logger.info({ service: 'rag.handlers', method: 'getEmbeddingService' }, `Loaded stored credentials for provider '${prov}'`);
+              break;
+            }
+          } catch (err) {
+            // ignore and try next provider
+          }
+        }
+
+        if (!foundKey) {
+          logger.debug({ service: 'rag.handlers', method: 'getEmbeddingService' }, `No stored credentials found for providers: ${triedProviders.join(', ')}`);
+        }
+      }
+    } catch (err) {
+      logger.debug({ service: 'rag.handlers', method: 'getEmbeddingService' }, `Could not load stored credentials: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
     embeddingServices.set(key, new ContextEmbeddingService(config));
   }
-  
+
   return embeddingServices.get(key)!;
 }
 
 /**
  * Get or create RAG service for a repository.
  */
-function getRAGService(repoPath: string, config: AIConfig): ContextRAGService {
-  const key = `${repoPath}:${config.provider}:${config.model}`;
-  
+async function getRAGService(repoPath: string, config: AIConfig): Promise<ContextRAGService> {
+  const embeddingKeyModel = (config as any).embeddingModel || config.model || '';
+  const key = `${repoPath}:${config.provider}:${embeddingKeyModel}`;
+
   if (!ragServices.has(key)) {
     logger.info(
       { service: 'rag.handlers', method: 'getRAGService' },
       `Creating new RAG service for ${repoPath}`
     );
-    const embeddingService = getEmbeddingService(repoPath, config);
+    const embeddingService = await getEmbeddingService(repoPath, config);
     ragServices.set(key, new ContextRAGService(config, embeddingService));
   }
-  
+
   return ragServices.get(key)!;
 }
 
@@ -85,7 +153,7 @@ export function registerRAGHandlers(): void {
         'Starting repository indexing'
       );
 
-      const embeddingService = getEmbeddingService(params.repoPath, params.config);
+      const embeddingService = await getEmbeddingService(params.repoPath, params.config);
       
       // Send progress updates back to renderer
       const documentCount = await embeddingService.indexRepository(
@@ -96,7 +164,7 @@ export function registerRAGHandlers(): void {
       );
 
       // Reinitialize RAG service chain after indexing
-      const ragService = getRAGService(params.repoPath, params.config);
+      const ragService = await getRAGService(params.repoPath, params.config);
       ragService.reinitialize();
 
       logger.info(
@@ -132,7 +200,7 @@ export function registerRAGHandlers(): void {
         'Processing RAG query'
       );
 
-      const ragService = getRAGService(params.repoPath, params.config);
+      const ragService = await getRAGService(params.repoPath, params.config);
       
       if (!ragService.isReady()) {
         throw new Error('RAG not ready. Repository must be indexed first.');
@@ -175,7 +243,7 @@ export function registerRAGHandlers(): void {
         'Starting RAG stream query'
       );
 
-      const ragService = getRAGService(params.repoPath, params.config);
+      const ragService = await getRAGService(params.repoPath, params.config);
       
       if (!ragService.isReady()) {
         throw new Error('RAG not ready. Repository must be indexed first.');
@@ -228,7 +296,7 @@ export function registerRAGHandlers(): void {
         'Finding similar entities'
       );
 
-      const embeddingService = getEmbeddingService(params.repoPath, params.config);
+      const embeddingService = await getEmbeddingService(params.repoPath, params.config);
       
       if (!embeddingService.isIndexed()) {
         throw new Error('Repository not indexed.');
@@ -272,7 +340,7 @@ export function registerRAGHandlers(): void {
         'Searching entities'
       );
 
-      const embeddingService = getEmbeddingService(params.repoPath, params.config);
+      const embeddingService = await getEmbeddingService(params.repoPath, params.config);
       
       if (!embeddingService.isIndexed()) {
         throw new Error('Repository not indexed.');
@@ -315,7 +383,7 @@ export function registerRAGHandlers(): void {
         'Getting entity context'
       );
 
-      const ragService = getRAGService(params.repoPath, params.config);
+      const ragService = await getRAGService(params.repoPath, params.config);
       
       if (!ragService.isReady()) {
         throw new Error('RAG not ready. Repository must be indexed first.');
@@ -345,7 +413,8 @@ export function registerRAGHandlers(): void {
     config: AIConfig;
   }) => {
     try {
-      const key = `${params.repoPath}:${params.config.provider}:${params.config.model}`;
+      const embeddingKeyModel = (params.config as any).embeddingModel || params.config.model || '';
+      const key = `${params.repoPath}:${params.config.provider}:${embeddingKeyModel}`;
       const embeddingService = embeddingServices.get(key);
       
       if (!embeddingService) {
@@ -384,7 +453,8 @@ export function registerRAGHandlers(): void {
         'Clearing vector index'
       );
 
-      const key = `${params.repoPath}:${params.config.provider}:${params.config.model}`;
+      const embeddingKeyModel = (params.config as any).embeddingModel || params.config.model || '';
+      const key = `${params.repoPath}:${params.config.provider}:${embeddingKeyModel}`;
       const embeddingService = embeddingServices.get(key);
       
       if (embeddingService) {
