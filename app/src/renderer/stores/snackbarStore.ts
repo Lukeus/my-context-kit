@@ -26,8 +26,18 @@ export const useSnackbarStore = defineStore('snackbar', () => {
   const snackbars = ref<Snackbar[]>([]);
   let idCounter = 0;
 
-  const show = (options: SnackbarOptions): string => {
+  const show = (
+    messageOrOptions: string | SnackbarOptions,
+    type?: SnackbarOptions['type'],
+    opts?: Partial<SnackbarOptions>
+  ): string => {
     const id = `snackbar-${++idCounter}`;
+
+    // Normalize options
+    const options: SnackbarOptions = typeof messageOrOptions === 'string'
+      ? { message: messageOrOptions, type: type ?? 'info', ...opts }
+      : messageOrOptions;
+
     const timeout = options.timeout ?? DEFAULT_SNACKBAR_TIMEOUT_MS;
 
     const snackbar: Snackbar = {

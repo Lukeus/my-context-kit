@@ -66,7 +66,7 @@ export class ContextRAGService {
           : undefined,
       },
       modelName: config.model,
-      temperature: 0.7,
+      temperature: 1.0,
       maxTokens: 2000
     });
 

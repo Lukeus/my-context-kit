@@ -19,6 +19,7 @@ function cosineSimilarity(a: EmbeddingVector, b: EmbeddingVector): number {
   
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
+import path from 'node:path';
 import { ContextService } from './ContextService';
 import { logger } from '../utils/logger';
 import type { AIConfig } from './LangChainAIService';
@@ -36,6 +37,14 @@ export interface IndexingProgress {
   processed: number;
   percentage: number;
   currentEntity?: string;
+}
+
+function mapChatModelToEmbeddingModel(chatModel?: string): string | undefined {
+  if (!chatModel) return undefined;
+  const m = chatModel.toLowerCase();
+  if (m.startsWith('gpt-4') || m.startsWith('gpt4') || m.startsWith('gpt-')) return 'text-embedding-3-small';
+  if (m.startsWith('gpt-3.5') || m.includes('turbo')) return 'text-embedding-3-small';
+  return undefined;
 }
 
 /**
@@ -66,23 +75,27 @@ export interface IndexingProgress {
 export class ContextEmbeddingService {
   private documents: Array<{ doc: Document<EmbeddingMetadata>; embedding: EmbeddingVector }> = [];
   private embeddings: OpenAIEmbeddings;
+  private embeddingModelName: string;
+  private embeddingErrorCount = 0;
+  private embeddingHttp4xx = 0;
+  private embeddingHttp5xx = 0;
+  private lastEmbeddingError?: string;
   private indexed = false;
 
   constructor(private config: AIConfig) {
+    // Embedding model: prefer explicit embeddingModel, else map chat model -> embedding, else default
+    this.embeddingModelName = (config.embeddingModel as string)
+      || mapChatModelToEmbeddingModel(config.model as string)
+      || 'text-embedding-3-small';
+
     this.embeddings = new OpenAIEmbeddings({
       openAIApiKey: config.apiKey,
-      configuration: {
-        baseURL: config.provider === 'azure-openai' 
-          ? `${config.endpoint}/openai/deployments/text-embedding-ada-002`
-          : undefined,
-        defaultQuery: config.provider === 'azure-openai'
-          ? { 'api-version': '2024-12-01-preview' }
-          : undefined,
-        defaultHeaders: config.provider === 'azure-openai'
-          ? { 'api-key': config.apiKey || '' }
-          : undefined,
-      },
-      modelName: config.provider === 'azure-openai' ? 'text-embedding-ada-002' : 'text-embedding-ada-002',
+      configuration: config.provider === 'azure-openai' ? {
+        baseURL: `${config.endpoint}/openai/deployments/${encodeURIComponent(this.embeddingModelName)}`,
+        defaultQuery: { 'api-version': '2024-12-01-preview' },
+        defaultHeaders: { 'api-key': config.apiKey || '' }
+      } : undefined,
+      modelName: this.embeddingModelName,
     });
   }
 
@@ -115,7 +128,7 @@ export class ContextEmbeddingService {
         );
 
         // Convert entities to documents
-        const documents: Document<EmbeddingMetadata>[] = [];
+        let documents: Document<EmbeddingMetadata>[] = [];
         
         for (let i = 0; i < entities.length; i++) {
           const entity = entities[i];
@@ -174,10 +187,105 @@ export class ContextEmbeddingService {
           }
         }
 
-        // Generate embeddings for all documents
-        const embeddings = await this.embeddings.embedDocuments(
-          documents.map(d => d.pageContent)
-        );
+        // Filter out files under node_modules to avoid indexing third-party code
+        try {
+          const beforeCount = documents.length;
+          documents = documents.filter(d => {
+            const p = path.normalize(String(d.metadata.path || ''));
+            const parts = p.split(path.sep);
+            return !parts.includes('node_modules');
+          });
+          const skipped = beforeCount - documents.length;
+          if (skipped > 0) {
+            logger.info({ service: 'ContextEmbeddingService', method: 'indexRepository' }, `Skipped ${skipped} document(s) inside node_modules`);
+          }
+        } catch {
+          // ignore filtering errors - proceed with original documents
+        }
+
+        // Generate embeddings for all documents using batching and retries to avoid full-run hangs
+        const TIMEOUT_MS = 90_000; // per-attempt timeout (increase to 90s)
+        const BATCH_SIZE = 4; // number of documents per batch (smaller batches)
+        const MAX_RETRIES = 3; // per-batch retries
+        const allContents = documents.map(d => d.pageContent);
+        const batches: string[][] = [];
+        for (let i = 0; i < allContents.length; i += BATCH_SIZE) {
+          batches.push(allContents.slice(i, i + BATCH_SIZE));
+        }
+
+        try {
+          logger.info({ service: 'ContextEmbeddingService', method: 'indexRepository' },
+            `Requesting embeddings for ${documents.length} documents in ${batches.length} batch(es) (provider=${this.config.provider}, embeddingModel=${this.embeddingModelName}, chatModel=${this.config.model || 'n/a'}, endpoint=${this.config.endpoint || 'n/a'}, hasApiKey=${!!this.config.apiKey})`
+          );
+        } catch {
+          // ignore logging errors
+        }
+
+        const embeddings: EmbeddingVector[] = [];
+
+        for (let bi = 0; bi < batches.length; bi++) {
+          const batch = batches[bi];
+          let attempt = 0;
+          let batchResult: EmbeddingVector[] | null = null;
+
+          while (attempt <= MAX_RETRIES && batchResult === null) {
+            attempt++;
+            try {
+              logger.debug({ service: 'ContextEmbeddingService', method: 'indexRepository', batch: bi, attempt },
+                `Requesting embeddings for batch ${bi + 1}/${batches.length} (size=${batch.length}, attempt=${attempt})`
+              );
+
+              const embedPromise = this.embeddings.embedDocuments(batch);
+              const result = await Promise.race<EmbeddingVector[]>([
+                embedPromise,
+                new Promise<EmbeddingVector[]>((_, reject) => setTimeout(() => reject(new Error(`Embedding request timed out after ${TIMEOUT_MS}ms (batch ${bi + 1})`)), TIMEOUT_MS))
+              ]);
+
+              batchResult = result;
+              embeddings.push(...batchResult);
+              logger.info({ service: 'ContextEmbeddingService', method: 'indexRepository', batch: bi }, `Received ${batchResult.length} embeddings for batch ${bi + 1}`);
+            } catch (err) {
+              const message = err instanceof Error ? err.message : String(err);
+              const stack = err instanceof Error ? err.stack : undefined;
+
+              // Try to extract HTTP status and body from provider error shapes
+              const anyErr = err as any;
+              const status = anyErr?.response?.status || anyErr?.statusCode || anyErr?.status;
+              const body = anyErr?.response?.data || anyErr?.body || anyErr?.response?.text || anyErr?.response?.data?.error;
+
+              // Increment counters
+              this.embeddingErrorCount++;
+              if (typeof status === 'number') {
+                if (status >= 500) this.embeddingHttp5xx++;
+                else if (status >= 400) this.embeddingHttp4xx++;
+              }
+
+              // Save last error summary
+              this.lastEmbeddingError = `${message}${status ? ` (status=${status})` : ''}`;
+
+              logger.warn({ service: 'ContextEmbeddingService', method: 'indexRepository', batch: bi, attempt }, `Batch ${bi + 1} attempt ${attempt} failed: ${message}${status ? ` (HTTP ${status})` : ''}`);
+              if (stack) {
+                logger.debug({ service: 'ContextEmbeddingService', method: 'indexRepository', batch: bi, attempt }, `Stack: ${stack}`);
+              }
+              if (body) {
+                // Avoid logging huge bodies at info level
+                logger.debug({ service: 'ContextEmbeddingService', method: 'indexRepository', batch: bi, attempt }, `Body: ${JSON.stringify(body)}`);
+              }
+
+              if (attempt > MAX_RETRIES) {
+                logger.error({ service: 'ContextEmbeddingService', method: 'indexRepository' }, new Error(`Failed to generate embeddings for batch ${bi + 1}: ${message}${status ? ` (HTTP ${status})` : ''}`));
+                throw new Error(`Failed to generate embeddings: ${message}${status ? ` (HTTP ${status})` : ''}`);
+              }
+
+              // exponential backoff with jitter before retrying
+              const base = 500; // ms
+              const backoff = Math.min(10_000, base * Math.pow(2, attempt - 1));
+              const jitter = Math.floor(Math.random() * 300);
+              const wait = backoff + jitter;
+              await new Promise((res) => setTimeout(res, wait));
+            }
+          }
+        }
         
         this.documents = documents.map((doc, i) => ({
           doc,
@@ -349,10 +457,18 @@ export class ContextEmbeddingService {
   async getStats(): Promise<{
     indexed: boolean;
     documentCount: number;
+    embeddingErrorCount: number;
+    embeddingHttp4xx: number;
+    embeddingHttp5xx: number;
+    lastEmbeddingError?: string;
   }> {
     return {
       indexed: this.indexed,
       documentCount: this.documents.length
+      , embeddingErrorCount: this.embeddingErrorCount,
+      embeddingHttp4xx: this.embeddingHttp4xx,
+      embeddingHttp5xx: this.embeddingHttp5xx,
+      lastEmbeddingError: this.lastEmbeddingError
     };
   }
 }

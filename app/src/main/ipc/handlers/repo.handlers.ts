@@ -104,4 +104,17 @@ export function registerRepoHandlers(): void {
       return error(toErrorMessage(err));
     }
   });
+
+  // App control handlers
+  ipcMain.handle('app:restart', async () => {
+    try {
+      // Relaunch the app and exit the current process
+      const { app } = await import('electron');
+      app.relaunch();
+      app.exit(0);
+      return successWith({});
+    } catch (err: unknown) {
+      return error(toErrorMessage(err));
+    }
+  });
 }

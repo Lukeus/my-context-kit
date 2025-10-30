@@ -26,6 +26,7 @@ import { agentBridge, type AgentBridge } from '../preload/agentBridge';
 contextBridge.exposeInMainWorld('api', {
   app: {
     getDefaultRepoPath: () => ipcRenderer.invoke('app:getDefaultRepoPath'),
+    restart: () => ipcRenderer.invoke('app:restart'),
   },
   repos: {
     list: () => ipcRenderer.invoke('repos:list'),
