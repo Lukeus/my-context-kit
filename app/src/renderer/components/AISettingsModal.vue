@@ -20,6 +20,7 @@ const activeTab = ref<'connection' | 'prompts' | 'langchain' | 'rag'>('connectio
 const provider = ref('ollama');
 const endpoint = ref('http://localhost:11434');
 const model = ref('llama2');
+const embeddingModel = ref('text-embedding-ada-002');
 const apiKey = ref('');
 const enabled = ref(false);
 const hasStoredKey = ref(false);
@@ -38,6 +39,7 @@ onMounted(async () => {
     provider.value = result.config.provider || 'ollama';
     endpoint.value = result.config.endpoint || 'http://localhost:11434';
     model.value = result.config.model || 'llama2';
+    embeddingModel.value = result.config.embeddingModel || 'text-embedding-ada-002';
     enabled.value = result.config.enabled || false;
   }
   
@@ -90,7 +92,13 @@ async function saveSettings() {
     }
     
     // Save configuration (without API key)
-    const config = { provider: provider.value, endpoint: endpoint.value, model: model.value, enabled: enabled.value };
+    const config = { 
+      provider: provider.value, 
+      endpoint: endpoint.value, 
+      model: model.value, 
+      embeddingModel: embeddingModel.value,
+      enabled: enabled.value 
+    };
     const result = await window.api.ai.saveConfig(contextStore.repoPath, config);
     
     if (!result.ok) {
@@ -220,7 +228,7 @@ function removeExampleQuestion(index: number) {
 
           <!-- Model -->
           <div>
-            <label class="block text-sm font-medium text-secondary-800 mb-2">Model</label>
+            <label class="block text-sm font-medium text-secondary-800 mb-2">Chat Model</label>
             <input 
               v-model="model" 
               type="text" 
@@ -229,7 +237,24 @@ function removeExampleQuestion(index: number) {
             />
             <p class="text-xs text-secondary-600 mt-2">
               <span v-if="provider === 'ollama'">Available models: llama2, mistral, codellama</span>
-              <span v-else>Azure deployment name</span>
+              <span v-else>Azure deployment name for chat completions</span>
+            </p>
+          </div>
+
+          <!-- Embedding Model (Azure only) -->
+          <div v-if="provider === 'azure-openai'">
+            <label class="block text-sm font-medium text-secondary-800 mb-2">
+              Embedding Model
+              <span class="text-xs text-secondary-600 font-normal ml-2">(for semantic search)</span>
+            </label>
+            <input 
+              v-model="embeddingModel" 
+              type="text" 
+              class="w-full px-4 py-3 bg-surface-2 border border-surface-variant rounded-m3-md text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all shadow-elevation-1 hover:shadow-elevation-2"
+              placeholder="text-embedding-ada-002"
+            />
+            <p class="text-xs text-secondary-600 mt-2">
+              Azure deployment name for embeddings (e.g., text-embedding-ada-002, text-embedding-3-small)
             </p>
           </div>
 

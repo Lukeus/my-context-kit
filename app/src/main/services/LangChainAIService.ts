@@ -475,8 +475,10 @@ export class LangChainAIService {
 
       // Azure OpenAI uses 'api-key' header, not 'Authorization: Bearer'
       // We must pass the key in defaultHeaders for Azure endpoints
+      // Note: apiKey parameter is still required by ChatOpenAI constructor even though
+      // Azure uses the 'api-key' header instead
       model = new ChatOpenAI({
-        // Don't pass openAIApiKey - it sets Authorization header which Azure doesn't use
+        apiKey: resolvedKey, // Required by ChatOpenAI constructor
         configuration: {
           baseURL: `${config.endpoint}/openai/deployments/${config.model}`,
           defaultQuery: { 'api-version': '2024-12-01-preview' },
