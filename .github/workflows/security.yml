@@ -43,22 +43,20 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-          cache-dependency-path: app/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
       
       - name: Install dependencies
         run: |
-          cd app
           pnpm install --frozen-lockfile
       
       - name: Run pnpm audit
         id: pnpm_audit
         run: |
-          cd app
-          pnpm audit --json > ../audit-report.json || true
+          pnpm audit --json > audit-report.json || true
           
           # Check severity levels
-          HIGH_VULNS=$(jq '.metadata.vulnerabilities.high // 0' ../audit-report.json)
-          CRITICAL_VULNS=$(jq '.metadata.vulnerabilities.critical // 0' ../audit-report.json)
+          HIGH_VULNS=$(jq '.metadata.vulnerabilities.high // 0' audit-report.json)
+          CRITICAL_VULNS=$(jq '.metadata.vulnerabilities.critical // 0' audit-report.json)
           
           echo "high_vulnerabilities=$HIGH_VULNS" >> $GITHUB_OUTPUT
           echo "critical_vulnerabilities=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
@@ -79,7 +77,6 @@ jobs:
       
       - name: Check for outdated packages
         run: |
-          cd app
           pnpm outdated || true
       
       - name: Comment on PR with audit results
@@ -240,20 +237,20 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-          cache-dependency-path: app/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
       
       - name: Install dependencies
         run: |
-          cd app
           pnpm install --frozen-lockfile
       
       - name: Check licenses
         run: |
           cd app
           npx license-checker --json --out ../licenses.json
+          cd ..
           
           # Check for restricted licenses
-          if npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD' --excludePrivatePackages; then
+          if cd app && npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD' --excludePrivatePackages; then
             echo "✅ All licenses are compliant"
           else
             echo "⚠️ Some packages have non-compliant licenses"
@@ -293,13 +290,12 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-          cache-dependency-path: app/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
       
       - name: Build application
         run: |
-          cd app
           pnpm install --frozen-lockfile
-          pnpm build
+          cd app && pnpm build
       
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
