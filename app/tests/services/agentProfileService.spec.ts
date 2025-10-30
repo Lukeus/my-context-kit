@@ -4,8 +4,13 @@ import { getAllBuiltInAgents } from '../../src/main/services/agents/builtInAgent
 import type { AgentProfile } from '../../src/shared/agents/types';
 import * as fs from 'fs/promises';
 
-// Mock fs module
-vi.mock('fs/promises');
+// Mock fs module with explicit factory
+vi.mock('fs/promises', () => ({
+  readFile: vi.fn(),
+  writeFile: vi.fn(),
+  mkdir: vi.fn(),
+  access: vi.fn(),
+}));
 
 describe('AgentProfileService', () => {
   let service: AgentProfileService;

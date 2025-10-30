@@ -51,7 +51,7 @@
     "@typescript-eslint/eslint-plugin": "^8.46.2",
     "@typescript-eslint/parser": "^8.46.2",
     "@vitejs/plugin-vue": "^6.0.1",
-    "@vitest/coverage-v8": "^4.0.5",
+    "@vitest/coverage-v8": "4.0.5",
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.21",
     "electron": "39.0.0",
@@ -64,8 +64,8 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.2",
-    "vite": "^7.1.12",
-    "vitest": "^4.0.5",
+    "vite": "7.1.12",
+    "vitest": "4.0.5",
     "jsdom": "^25.0.1"
   },
   "dependencies": {
