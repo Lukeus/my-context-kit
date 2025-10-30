@@ -16,14 +16,15 @@ on:
 
 permissions:
   contents: read
-  security-events: write
-  pull-requests: write
 
 jobs:
   dependency-scan:
     name: Dependency Vulnerability Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
     env:
       NODE_VERSION: '22'
       PNPM_VERSION: '10.19.0'
@@ -191,6 +192,9 @@ jobs:
     name: SAST - Semgrep Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
     
     steps:
       - name: Checkout
@@ -268,6 +272,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      security-events: write
     env:
       NODE_VERSION: '22'
       PNPM_VERSION: '10.19.0'
