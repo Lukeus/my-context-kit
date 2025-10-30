@@ -124,12 +124,35 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
       
-      - name: TruffleHog scan
+      - name: Check if commits differ
+        id: check_commits
+        run: |
+          BASE_SHA=$(git rev-parse origin/${{ github.event.repository.default_branch }})
+          HEAD_SHA=$(git rev-parse HEAD)
+          echo "base_sha=$BASE_SHA" >> $GITHUB_OUTPUT
+          echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
+          if [ "$BASE_SHA" = "$HEAD_SHA" ]; then
+            echo "commits_differ=false" >> $GITHUB_OUTPUT
+            echo "Base and HEAD are the same, will scan entire repo"
+          else
+            echo "commits_differ=true" >> $GITHUB_OUTPUT
+            echo "Base and HEAD differ, will scan commits"
+          fi
+      
+      - name: TruffleHog scan (diff mode)
+        if: steps.check_commits.outputs.commits_differ == 'true'
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
           head: HEAD
+          extra_args: --debug --only-verified
+      
+      - name: TruffleHog scan (full repo mode)
+        if: steps.check_commits.outputs.commits_differ == 'false'
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
           extra_args: --debug --only-verified
 
   sast-codeql:
@@ -296,7 +319,7 @@ jobs:
           persist-credentials: false
       
       - name: Run analysis
-        uses: ossf/scorecard-action@v2
+        uses: ossf/scorecard-action@v2.4.0
         with:
           results_file: results.sarif
           results_format: sarif
