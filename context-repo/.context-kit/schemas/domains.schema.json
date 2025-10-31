@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://context-kit.dev/schemas/domains.schema.json",
+  "title": "Domains Schema",
+  "description": "Defines architectural domains, bounded contexts, and their relationships",
+  "type": "object",
+  "required": ["version", "domains"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version for migration compatibility",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "domains": {
+      "type": "array",
+      "description": "List of architectural domains",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "type"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "Unique domain identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable domain name"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["core", "supporting", "generic", "external"],
+            "description": "Domain classification per DDD"
+          },
+          "description": {
+            "type": "string",
+            "description": "Domain purpose and responsibilities"
+          },
+          "owner": {
+            "type": "string",
+            "description": "Team or person responsible for the domain"
+          },
+          "boundaries": {
+            "type": "object",
+            "description": "Domain boundaries and interfaces",
+            "properties": {
+              "entities": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Key entities owned by this domain"
+              },
+              "services": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Services implementing this domain"
+              },
+              "apis": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "API endpoints exposed by this domain"
+              }
+            }
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Other domains this domain depends on"
+          },
+          "ubiquitousLanguage": {
+            "type": "object",
+            "description": "Domain-specific terminology",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

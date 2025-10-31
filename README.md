@@ -168,6 +168,49 @@ cd context-repo
 pnpm validate
 ```
 
+## Context Kit Service
+
+**NEW**: Integrated Python FastAPI service for AI-powered context operations.
+
+### Quick Setup
+
+```powershell
+# From project root
+pnpm service:setup        # Setup Python environment with uv
+pnpm service:start        # Start the service (or let Electron auto-start it)
+pnpm service:health       # Check if service is running
+```
+
+### Service Commands
+
+```powershell
+pnpm service:setup        # Install Python dependencies
+pnpm service:dev          # Start with hot reload
+pnpm service:test         # Run pytest tests
+pnpm service:lint         # Check code quality
+pnpm service:typecheck    # Run mypy type checking
+pnpm service:clean        # Clean virtual environment
+```
+
+### Features
+
+- **Context Inspection**: Analyze repository structure and entity relationships
+- **Spec Generation**: AI-powered technical specification generation
+- **Promptification**: Convert specs into agent-ready prompts
+- **Code Generation**: Generate implementation artifacts from specifications
+- **Spec Logging**: All operations logged to `.context-kit/spec-log/`
+
+### Integration
+
+The Context Kit service is automatically started by Electron and managed throughout the application lifecycle:
+
+1. **Auto-Start**: Service spawns when Electron app launches
+2. **Health Monitoring**: 30-second health checks
+3. **Auto-Cleanup**: Virtual environment removed on app quit
+4. **IPC Bridge**: Seamless communication between Vue UI and Python service
+
+See [context-kit-service/README.md](context-kit-service/README.md) for detailed documentation.
+
 ## Spec Kit Workflow
 
 ### Additional Prerequisites

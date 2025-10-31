@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://context-kit.dev/schemas/project.schema.json",
+  "title": "Project Schema",
+  "description": "Defines the project-level metadata and configuration for Context Kit repositories",
+  "type": "object",
+  "required": ["version", "id", "name", "type"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version for migration compatibility",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the project",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable project name",
+      "minLength": 1
+    },
+    "type": {
+      "type": "string",
+      "description": "Project type classification",
+      "enum": ["application", "library", "service", "monorepo"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief project description"
+    },
+    "repository": {
+      "type": "object",
+      "description": "Source control repository information",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "branch": {
+          "type": "string",
+          "default": "main"
+        }
+      }
+    },
+    "team": {
+      "type": "object",
+      "description": "Team and contact information",
+      "properties": {
+        "owner": {
+          "type": "string"
+        },
+        "maintainers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional custom metadata",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}
