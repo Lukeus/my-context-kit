@@ -33,7 +33,8 @@
 			"electron-winstaller"
 		],
 		"ignoredBuiltDependencies": [
-			"esbuild"
+			"esbuild",
+			"faiss-node"
 		],
 		"peerDependencyRules": {
 			"ignoreMissing": [

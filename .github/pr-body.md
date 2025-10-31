@@ -62,7 +62,7 @@ This PR implements **5 major enterprise-grade AI enhancements** that transform t
 
 ### Configuration Enhancements
 - ✅ Added **Embedding Model** configuration to AI Settings UI
-- ✅ Separate embedding model field for Azure OpenAI (defaults to `text-embedding-ada-002`)
+- ✅ Separate embedding model field for Azure OpenAI (defaults to `text-embedding-3-small`)
 - ✅ Persisted in `.context/ai-config.json` alongside chat model
 - ✅ UI shows helpful hints about available embedding models
 

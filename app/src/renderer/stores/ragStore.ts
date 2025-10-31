@@ -21,6 +21,12 @@ interface RAGQueryResult {
   answer: string;
   sources: RAGSource[];
   tokensUsed?: number;
+  usage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+  };
+  toolCalls?: Array<{ id: string; name: string; args: Record<string, unknown> }>;
 }
 
 interface RAGQuery {
@@ -260,10 +266,16 @@ export const useRAGStore = defineStore('rag', () => {
           answer: result.answer || '',
           sources: result.sources || []
         };
-        
-        // Add tokensUsed if available
-        if ('tokensUsed' in result) {
+
+        if ('usage' in result && result.usage) {
+          queryResult.usage = result.usage as RAGQueryResult['usage'];
+          queryResult.tokensUsed = result.usage?.totalTokens ?? result.usage?.completionTokens ?? result.usage?.promptTokens;
+        } else if ('tokensUsed' in result) {
           queryResult.tokensUsed = result.tokensUsed as number | undefined;
+        }
+
+        if ('toolCalls' in result && Array.isArray(result.toolCalls)) {
+          queryResult.toolCalls = result.toolCalls as RAGQueryResult['toolCalls'];
         }
 
         // Save to history
@@ -288,6 +300,14 @@ export const useRAGStore = defineStore('rag', () => {
         throw new Error(result.error || 'Query failed');
       }
     } catch (error) {
+      if (error instanceof Error && error.message === 'cancelled') {
+        // TODO(RAG-UX): Surface cancellation feedback to UI when streaming integration lands.
+        return {
+          answer: '',
+          sources: []
+        };
+      }
+
       console.error('Failed to query RAG:', error);
       throw error;
     }
@@ -425,6 +445,32 @@ export const useRAGStore = defineStore('rag', () => {
     }
   }
 
+  async function cancelActiveQuery(): Promise<boolean> {
+    const contextStore = useContextStore();
+    if (!contextStore.repoPath) {
+      return false;
+    }
+
+    try {
+      const config = await getAIConfig();
+      const result = await window.api.rag.cancelQuery(contextStore.repoPath, config);
+      return !!(result.ok && result.cancelled);
+    } catch (error) {
+      console.error('Failed to cancel RAG query:', error);
+      return false;
+    }
+  }
+
+  async function cancelStream(streamId: string): Promise<boolean> {
+    try {
+      const result = await window.api.rag.cancelStream(streamId);
+      return !!(result.ok && result.cancelled);
+    } catch (error) {
+      console.error('Failed to cancel RAG stream:', error);
+      return false;
+    }
+  }
+
   /**
    * Refresh RAG statistics
    */
@@ -476,19 +522,17 @@ export const useRAGStore = defineStore('rag', () => {
    * Helper to get AI config from settings
    */
   async function getAIConfig(): Promise<any> {
-    // This would need to be implemented to get AI config
-    // For now, return a placeholder
-    const providerResult = await window.api.settings.get('ai.provider');
-    const endpointResult = await window.api.settings.get('ai.endpoint');
-    const modelResult = await window.api.settings.get('ai.model');
-    const apiKeyResult = await window.api.settings.get('ai.apiKey');
+    const contextStore = useContextStore();
+    if (!contextStore.repoPath) {
+      throw new Error('No repository selected');
+    }
 
-    return {
-      provider: providerResult.ok ? providerResult.value : 'openai',
-      endpoint: endpointResult.ok ? endpointResult.value : '',
-      model: modelResult.ok ? modelResult.value : 'gpt-4',
-      apiKey: apiKeyResult.ok ? apiKeyResult.value : ''
-    };
+    const response = await window.api.ai.getConfig(contextStore.repoPath);
+    if (!response.ok || !response.config) {
+      throw new Error(response.error || 'Failed to load AI configuration');
+    }
+
+    return response.config;
   }
 
   /**
@@ -528,6 +572,8 @@ export const useRAGStore = defineStore('rag', () => {
     search,
     getEntityContext,
     clearIndex,
+    cancelActiveQuery,
+    cancelStream,
     refreshStats,
     clearHistory,
     clearSources,
