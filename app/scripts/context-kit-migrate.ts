@@ -7,7 +7,7 @@
  * while maintaining backward compatibility with .context/ assets.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYAML, stringify as stringifyYAML } from 'yaml';
