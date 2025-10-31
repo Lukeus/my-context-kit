@@ -16,6 +16,9 @@ export default tseslint.config(
       '*.cjs',
       '*.config.*',
       '*.log',
+      // Standalone scripts not in main tsconfig
+      'scripts/**',
+      'src/main/scripts/**',
       // Files not in tsconfig but required for build tooling
       'forge.env.d.ts',
       'vite.shared.alias.ts'

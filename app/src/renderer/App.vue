@@ -11,6 +11,7 @@ import { useAIStore } from './stores/aiStore';
 import { useGitStore } from './stores/gitStore';
 import { useAgentStore } from './stores/agentStore';
 import { useLangChainStore } from './stores/langchainStore';
+import { useContextKitStore } from './stores/contextKitStore';
 import { useSnackbar } from './composables/useSnackbar';
 import { useRouting } from './composables/useRouting';
 
@@ -39,6 +40,14 @@ const WelcomeDocumentation = defineAsyncComponent(() => import('./components/Wel
 const C4DiagramRenderer = defineAsyncComponent(() => import('./components/C4DiagramRenderer.vue'));
 const C4DiagramBuilder = defineAsyncComponent(() => import('./components/C4DiagramBuilder.vue'));
 
+// Lazy-loaded Context Kit components
+const ContextKitHub = defineAsyncComponent(() => import('./components/ContextKit/ContextKitHub.vue'));
+const SpecGenerationWizard = defineAsyncComponent(() => import('./components/ContextKit/SpecGenerationWizard.vue'));
+const SpecLogBrowser = defineAsyncComponent(() => import('./components/ContextKit/SpecLogBrowser.vue'));
+const RepositoryInspector = defineAsyncComponent(() => import('./components/ContextKit/RepositoryInspector.vue'));
+const PromptBuilder = defineAsyncComponent(() => import('./components/ContextKit/PromptBuilder.vue'));
+const CodeGenerator = defineAsyncComponent(() => import('./components/ContextKit/CodeGenerator.vue'));
+
 // AI Assistant - keep eager loaded as it's frequently used
 import AIAssistantPanel from './components/AIAssistantPanel.vue';
 
@@ -47,6 +56,7 @@ const builderStore = useBuilderStore();
 const gitStore = useGitStore();
 const agentStore = useAgentStore();
 const langchainStore = useLangChainStore();
+const contextKitStore = useContextKitStore();
 const {
   show: snackbarVisible,
   message: snackbarMessage,
@@ -70,6 +80,11 @@ const showAISettings = ref(false);
 const showRepoManager = ref(false);
 const showNewRepoModal = ref(false);
 const showSpeckitWizard = ref(false);
+const showSpecWizard = ref(false);
+const showSpecLog = ref(false);
+const showRepoInspector = ref(false);
+const showPromptBuilder = ref(false);
+const showCodeGenerator = ref(false);
 const newRepoLabel = ref('');
 const newRepoPath = ref('');
 const repoFormError = ref('');
@@ -88,7 +103,7 @@ const lastValidationAt = ref<string | null>(null);
 const lastValidationStatus = ref<'success' | 'error' | null>(null);
 const lastGraphRefresh = ref<string | null>(null);
 
-type NavId = 'hub' | 'entities' | 'graph' | 'git' | 'validate' | 'docs' | 'ai' | 'c4' | 'entity' | 'agents';
+type NavId = 'hub' | 'entities' | 'graph' | 'git' | 'validate' | 'docs' | 'ai' | 'c4' | 'entity' | 'agents' | 'contextkit';
 type NavRailId = Exclude<NavId, 'entity'>;
 
 const activeNavId = ref<NavId>('hub');
@@ -97,6 +112,7 @@ const navRailItems: Array<{ id: NavRailId; label: string; requiresRepo?: boolean
   { id: 'hub', label: 'Hub', shortcut: 'Home' },
   { id: 'entities', label: 'Tree', shortcut: 'Toggle' },
   { id: 'agents', label: 'Agents', shortcut: 'Manage' },
+  { id: 'contextkit', label: 'Context Kit', requiresRepo: true, shortcut: 'CK' },
   { id: 'c4', label: 'C4', shortcut: 'Architecture' },
   { id: 'graph', label: 'Graph', requiresRepo: true, shortcut: 'View' },
   { id: 'git', label: 'Git', requiresRepo: true, shortcut: 'Status' },
@@ -248,6 +264,9 @@ async function handleNavClick(id: NavRailId) {
     case 'agents':
       openAgentLibrary();
       break;
+    case 'contextkit':
+      openContextKit();
+      break;
     case 'c4':
       openC4Builder();
       leftPanelOpen.value = true; // Show left panel for C4
@@ -282,6 +301,8 @@ function isNavActive(id: NavRailId) {
       return activeNavId.value === 'entities';
     case 'agents':
       return activeNavId.value === 'agents';
+    case 'contextkit':
+      return activeNavId.value === 'contextkit';
     case 'c4':
       return activeNavId.value === 'c4';
     case 'graph':
@@ -552,6 +573,34 @@ function openAgentLibrary() {
   leftPanelOpen.value = false; // Agent library is full-width
 }
 
+function openContextKit() {
+  if (!isRepoConfigured.value) {
+    triggerSnackbar({ message: 'Connect a context repository to use Context Kit.', type: 'warning' });
+    return;
+  }
+  contextStore.setActiveEntity(null);
+  activeNavId.value = 'contextkit';
+  leftPanelOpen.value = false; // Context Kit hub is full-width
+}
+
+function openRepoInspector() {
+  showRepoInspector.value = true;
+}
+
+function openPromptBuilder() {
+  showPromptBuilder.value = true;
+}
+
+function openCodeGenerator() {
+  showCodeGenerator.value = true;
+}
+
+function handleSendPromptToAssistant(prompt: string) {
+  openAssistantPanel();
+  void aiStore.initialize().then(() => {
+    void aiStore.ask(prompt, { mode: 'general' });
+  });
+}
 
 function openNewRepoModal() {
   showNewRepoModal.value = true;
@@ -788,6 +837,19 @@ async function handleRemoveRepo(id: string) {
               <h1 class="text-xl font-semibold tracking-tight">FCS Context-Sync</h1>
               <div class="flex items-center gap-2 text-[11px] text-white/70">
                 <span v-if="totalEntities" class="px-2 py-0.5 rounded-m3-full bg-white/20">{{ totalEntities }} {{ totalEntities === 1 ? 'Entity' : 'Entities' }}</span>
+                <span 
+                  v-if="contextKitStore.serviceStatus"
+                  class="px-2 py-0.5 rounded-m3-full cursor-pointer transition-colors"
+                  :class="contextKitStore.isServiceHealthy 
+                    ? 'bg-green-600/20 text-green-200 hover:bg-green-600/30' 
+                    : contextKitStore.isServiceRunning
+                    ? 'bg-yellow-600/20 text-yellow-200 hover:bg-yellow-600/30'
+                    : 'bg-red-600/20 text-red-200 hover:bg-red-600/30'"
+                  :title="contextKitStore.isServiceHealthy ? 'Context Kit: Healthy' : contextKitStore.isServiceRunning ? 'Context Kit: Degraded' : 'Context Kit: Offline'"
+                  @click="activeNavId = 'contextkit'"
+                >
+                  CK: {{ contextKitStore.isServiceHealthy ? '●' : contextKitStore.isServiceRunning ? '◐' : '○' }}
+                </span>
               </div>
             </div>
           </div>
@@ -1140,6 +1202,28 @@ async function handleRemoveRepo(id: string) {
           </div>
         </div>
 
+        <!-- Context Kit Hub View -->
+        <Suspense v-else-if="activeNavId === 'contextkit'">
+          <template #default>
+            <ContextKitHub 
+              @open-inspector="openRepoInspector"
+              @open-spec-wizard="showSpecWizard = true"
+              @open-spec-log="showSpecLog = true"
+            />
+          </template>
+          <template #fallback>
+            <div class="flex items-center justify-center h-full">
+              <div class="text-center">
+                <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-sm text-secondary-600">Loading Context Kit...</p>
+              </div>
+            </div>
+          </template>
+        </Suspense>
+
         <!-- Agent Library View -->
         <Suspense v-else-if="activeNavId === 'agents'">
           <template #default>
@@ -1188,6 +1272,7 @@ async function handleRemoveRepo(id: string) {
           @open-diff="handleOpenDiff"
           @open-prompts="handleOpenPrompts"
           @create-repo="openNewRepoModal"
+          @open-context-kit="openContextKit"
         />
       </section>
 
@@ -1222,6 +1307,54 @@ async function handleRemoveRepo(id: string) {
     <!-- Speckit Workflow Modal -->
     <SpeckitWizard :show="showSpeckitWizard" @close="showSpeckitWizard = false" />
     
+    <!-- Context Kit Modals -->
+    <SpecGenerationWizard 
+      v-if="showSpecWizard" 
+      :show="showSpecWizard" 
+      @close="showSpecWizard = false"
+      @spec-generated="(specId) => triggerSnackbar({ message: `Specification ${specId} generated successfully!`, type: 'success' })"
+    />
+    
+    <RepositoryInspector 
+      :show="showRepoInspector"
+      @close="showRepoInspector = false"
+    />
+    
+    <PromptBuilder 
+      :show="showPromptBuilder"
+      @close="showPromptBuilder = false"
+      @send-to-assistant="handleSendPromptToAssistant"
+    />
+    
+    <CodeGenerator 
+      :show="showCodeGenerator"
+      @close="showCodeGenerator = false"
+    />
+    
+    <Teleport to="body">
+      <div
+        v-if="showSpecLog"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+        @click.self="showSpecLog = false"
+      >
+        <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-full max-w-7xl max-h-[90vh] flex flex-col overflow-hidden">
+          <div class="flex items-center justify-between px-6 py-4 bg-surface-2 border-b border-surface-variant">
+            <h2 class="text-xl font-semibold text-primary-900">Specification Log</h2>
+            <button
+              @click="showSpecLog = false"
+              class="text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 p-2 rounded-m3-full transition-all"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="flex-1 overflow-hidden">
+            <SpecLogBrowser v-if="showSpecLog" />
+          </div>
+        </div>
+      </div>
+    </Teleport>
     
     <!-- Global Snackbar -->
     <Snackbar

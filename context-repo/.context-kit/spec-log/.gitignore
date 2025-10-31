@@ -1,0 +1,6 @@
+# Ignore all spec log files (generated artifacts)
+*
+!.gitignore
+
+# Spec logs are ephemeral and should not be committed
+# They can be regenerated from the Context Kit service

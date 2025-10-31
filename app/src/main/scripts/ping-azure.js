@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable */
 // Lightweight ping script for Azure OpenAI deployments
 // Usage: node ping-azure.js <endpoint> <model> <apiKey>
 const https = require('https');

@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://context-kit.dev/schemas/spec-log.schema.json",
+  "title": "Spec Log Entry Schema",
+  "description": "Defines the structure of specification generation log entries for tracking AI-assisted spec creation",
+  "type": "object",
+  "required": ["id", "timestamp", "requestType", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this spec log entry",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when the spec was generated"
+    },
+    "requestType": {
+      "type": "string",
+      "enum": ["inspect", "spec-generate", "promptify", "codegen"],
+      "description": "Type of Context Kit operation performed"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "partial"],
+      "description": "Outcome of the operation"
+    },
+    "input": {
+      "type": "object",
+      "description": "Input context and parameters provided to the operation",
+      "properties": {
+        "entityIds": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Entity IDs involved in the request"
+        },
+        "userPrompt": {
+          "type": "string",
+          "description": "User's natural language request"
+        },
+        "templateId": {
+          "type": "string",
+          "description": "Template used for generation"
+        },
+        "ragContext": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Retrieved context used for augmentation"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "description": "Generated output and artifacts",
+      "properties": {
+        "specId": {
+          "type": "string",
+          "description": "ID of generated specification"
+        },
+        "content": {
+          "type": "string",
+          "description": "Generated specification content"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Agent-ready prompt (for promptify)"
+        },
+        "codeArtifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"},
+              "content": {"type": "string"},
+              "language": {"type": "string"}
+            }
+          },
+          "description": "Generated code files (for codegen)"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional generation metadata"
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "description": "AI model information",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["azure-openai", "openai", "ollama", "anthropic"]
+        },
+        "model": {
+          "type": "string",
+          "description": "Model identifier"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "tokensUsed": {
+          "type": "object",
+          "properties": {
+            "prompt": {"type": "integer"},
+            "completion": {"type": "integer"},
+            "total": {"type": "integer"}
+          }
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "description": "Error details if status is failure",
+      "properties": {
+        "message": {"type": "string"},
+        "code": {"type": "string"},
+        "stack": {"type": "string"}
+      }
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Operation duration in milliseconds"
+    },
+    "relatedEntities": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Entity IDs referenced or created during operation"
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "User-defined tags for organization"
+    }
+  },
+  "additionalProperties": false
+}

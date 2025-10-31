@@ -221,6 +221,19 @@ contextBridge.exposeInMainWorld('api', {
     loadDiagrams: (dir: string) => ipcRenderer.invoke('c4:load-diagrams', { dir }),
     analyze: (filePath: string) => ipcRenderer.invoke('c4:analyze', { filePath }),
   },
+  contextKit: {
+    status: () => ipcRenderer.invoke('context-kit:status'),
+    start: () => ipcRenderer.invoke('context-kit:start'),
+    stop: () => ipcRenderer.invoke('context-kit:stop'),
+    inspect: (repoPath: string, includeTypes?: string[], depth?: number) =>
+      ipcRenderer.invoke('context-kit:inspect', { repoPath, includeTypes, depth }),
+    specGenerate: (repoPath: string, entityIds: string[], userPrompt: string, templateId?: string, includeRag?: boolean) =>
+      ipcRenderer.invoke('context-kit:spec-generate', { repoPath, entityIds, userPrompt, templateId, includeRag }),
+    promptify: (repoPath: string, specId: string, specContent?: string, targetAgent?: string, includeContext?: boolean) =>
+      ipcRenderer.invoke('context-kit:promptify', { repoPath, specId, specContent, targetAgent, includeContext }),
+    codegen: (repoPath: string, specId: string, prompt?: string, language?: string, framework?: string, styleGuide?: string) =>
+      ipcRenderer.invoke('context-kit:codegen', { repoPath, specId, prompt, language, framework, styleGuide }),
+  },
 });
 
 // Type definitions for window.api
@@ -418,6 +431,15 @@ declare global {
       c4: {
         loadDiagrams: (dir: string) => Promise<{ success: boolean; diagrams?: any[]; error?: string }>;
         analyze: (filePath: string) => Promise<{ success: boolean; analysis?: any; validation?: any; error?: string }>;
+      };
+      contextKit: {
+        status: () => Promise<{ running: boolean; healthy: boolean; port: number; uptime?: number; lastError?: string }>;
+        start: () => Promise<{ success: boolean; error?: string }>;
+        stop: () => Promise<{ success: boolean; error?: string }>;
+        inspect: (repoPath: string, includeTypes?: string[], depth?: number) => Promise<{ success: boolean; data?: any; error?: string }>;
+        specGenerate: (repoPath: string, entityIds: string[], userPrompt: string, templateId?: string, includeRag?: boolean) => Promise<{ success: boolean; data?: any; error?: string }>;
+        promptify: (repoPath: string, specId: string, specContent?: string, targetAgent?: string, includeContext?: boolean) => Promise<{ success: boolean; data?: any; error?: string }>;
+        codegen: (repoPath: string, specId: string, prompt?: string, language?: string, framework?: string, styleGuide?: string) => Promise<{ success: boolean; data?: any; error?: string }>;
       };
       app: {
         getDefaultRepoPath: () => Promise<{ ok: boolean; path?: string; error?: string }>;

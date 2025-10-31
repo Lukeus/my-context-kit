@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://context-kit.dev/schemas/stack.schema.json",
+  "title": "Stack Schema",
+  "description": "Defines the technology stack, frameworks, and dependencies for Context Kit repositories",
+  "type": "object",
+  "required": ["version", "runtime", "frameworks"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version for migration compatibility",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "runtime": {
+      "type": "object",
+      "description": "Runtime environment configuration",
+      "required": ["language", "version"],
+      "properties": {
+        "language": {
+          "type": "string",
+          "description": "Primary programming language",
+          "examples": ["typescript", "python", "javascript", "go", "rust"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Language version or range"
+        },
+        "packageManager": {
+          "type": "string",
+          "description": "Package manager used",
+          "examples": ["pnpm", "npm", "pip", "poetry", "uv"]
+        }
+      }
+    },
+    "frameworks": {
+      "type": "array",
+      "description": "List of frameworks and libraries",
+      "items": {
+        "type": "object",
+        "required": ["name", "category"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["frontend", "backend", "desktop", "testing", "build", "data", "ml", "other"]
+          },
+          "purpose": {
+            "type": "string",
+            "description": "Brief description of what this framework provides"
+          }
+        }
+      }
+    },
+    "services": {
+      "type": "array",
+      "description": "External services and APIs",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["api", "database", "cache", "queue", "storage", "ml-provider", "other"]
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "authentication": {
+            "type": "string",
+            "enum": ["api-key", "oauth", "basic-auth", "certificate", "none"]
+          }
+        }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "description": "Development and build tools",
+      "properties": {
+        "linter": {
+          "type": "string"
+        },
+        "formatter": {
+          "type": "string"
+        },
+        "bundler": {
+          "type": "string"
+        },
+        "testRunner": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -10,6 +10,13 @@
     "plugin:@typescript-eslint/recommended"
   ],
   "parser": "@typescript-eslint/parser",
+  "ignorePatterns": [
+    "scripts/**/*",
+    "src/main/scripts/**/*",
+    "dist/**/*",
+    "node_modules/**/*",
+    ".vite/**/*"
+  ],
   "rules": {
     "@typescript-eslint/no-explicit-any": "warn"
   }

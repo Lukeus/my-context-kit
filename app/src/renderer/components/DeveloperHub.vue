@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useContextStore } from '../stores/contextStore';
 import { useImpactStore } from '../stores/impactStore';
 import { useGitStore } from '../stores/gitStore';
+import { useContextKitStore } from '../stores/contextKitStore';
 import KanbanBoard from './KanbanBoard.vue';
 
 const props = defineProps<{
@@ -20,11 +21,13 @@ const emit = defineEmits<{
   'open-diff': [];
   'open-prompts': [];
   'create-repo': [];
+  'open-context-kit': [];
 }>();
 
 const contextStore = useContextStore();
 const impactStore = useImpactStore();
 const gitStore = useGitStore();
+const contextKitStore = useContextKitStore();
 const activeTab = ref<'overview' | 'kanban'>('overview');
 
 const entityTypeBreakdown = computed(() => {
@@ -75,6 +78,13 @@ const checklistSummary = computed(() => {
     total: 0,
   };
 });
+
+const contextKitMetrics = computed(() => ({
+  specs: contextKitStore.generatedSpecs.size,
+  prompts: contextKitStore.generatedPrompts.size,
+  code: contextKitStore.generatedCode.size,
+  serviceHealthy: contextKitStore.isServiceHealthy,
+}));
 
 function formatTimestamp(value: string | null) {
   if (!value) return 'Never';
@@ -224,6 +234,40 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                     this list.</p>
                 </div>
               </div>
+              <div class="rounded-m3-md border border-surface-variant bg-surface-1 px-4 py-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-xs text-primary-700 uppercase tracking-[0.15em] font-semibold">Context Kit Pipeline</p>
+                    <p class="text-sm text-primary-600 mt-1">AI-powered spec generation and code synthesis</p>
+                  </div>
+                  <div 
+                    class="px-2 py-1 rounded-m3-full text-xs font-semibold"
+                    :class="contextKitMetrics.serviceHealthy ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+                  >
+                    {{ contextKitMetrics.serviceHealthy ? 'Active' : 'Offline' }}
+                  </div>
+                </div>
+                <div class="mt-4 grid grid-cols-3 gap-3">
+                  <div class="text-center">
+                    <p class="text-2xl font-bold text-primary-800">{{ contextKitMetrics.specs }}</p>
+                    <p class="text-xs text-primary-600 mt-1">Specs</p>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-2xl font-bold text-primary-800">{{ contextKitMetrics.prompts }}</p>
+                    <p class="text-xs text-primary-600 mt-1">Prompts</p>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-2xl font-bold text-primary-800">{{ contextKitMetrics.code }}</p>
+                    <p class="text-xs text-primary-600 mt-1">Artifacts</p>
+                  </div>
+                </div>
+                <button
+                  class="mt-4 w-full rounded-m3-md bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 text-sm font-semibold transition-colors shadow-elevation-1 hover:shadow-elevation-2"
+                  @click="emit('open-context-kit')">
+                  Open Context Kit
+                </button>
+              </div>
+              
               <div class="rounded-m3-md border border-surface-variant bg-surface-1 px-4 py-4">
                 <p class="text-xs text-secondary-600 uppercase tracking-[0.15em]">Quick actions</p>
                 <div class="mt-3 grid gap-3 md:grid-cols-3">
