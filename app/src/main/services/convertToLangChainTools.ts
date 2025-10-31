@@ -30,7 +30,7 @@ export function convertToLangChainTools(
           
           return JSON.stringify(result);
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
+
           throw error;
         }
       }
