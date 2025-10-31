@@ -144,13 +144,13 @@ async function viewEntity(entityId: string) {
     if (result.ok && result.filePath) {
       // Emit event to open entity in editor
       // This would need to be handled by a parent component
-      snackbarStore.showSuccess(`Entity file: ${result.filePath}`);
+      snackbarStore.success(`Entity file: ${result.filePath}`);
     } else {
-      snackbarStore.showError('Entity file not found');
+      snackbarStore.error('Entity file not found');
     }
   } catch (error) {
     console.error('Failed to view entity:', error);
-    snackbarStore.showError('Failed to view entity');
+    snackbarStore.error('Failed to view entity');
   }
 }
 
@@ -159,25 +159,25 @@ async function findSimilar(entityId: string) {
     const similar = await ragStore.findSimilar(entityId, 5);
     
     if (similar.length > 0) {
-      snackbarStore.showInfo(`Found ${similar.length} similar entities`);
+      snackbarStore.info(`Found ${similar.length} similar entities`);
       // Could emit event or open a modal to display similar entities
       console.log('Similar entities:', similar);
     } else {
-      snackbarStore.showInfo('No similar entities found');
+      snackbarStore.info('No similar entities found');
     }
   } catch (error) {
     console.error('Failed to find similar entities:', error);
-    snackbarStore.showError('Failed to find similar entities');
+    snackbarStore.error('Failed to find similar entities');
   }
 }
 
 async function copyId(entityId: string) {
   try {
     await window.api.clipboard.writeText(entityId);
-    snackbarStore.showSuccess('ID copied to clipboard');
+    snackbarStore.success('ID copied to clipboard');
   } catch (error) {
     console.error('Failed to copy ID:', error);
-    snackbarStore.showError('Failed to copy ID');
+    snackbarStore.error('Failed to copy ID');
   }
 }
 </script>

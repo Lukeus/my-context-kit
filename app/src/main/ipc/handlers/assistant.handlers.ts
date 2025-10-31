@@ -12,7 +12,11 @@ import { ContextService } from '../../services/ContextService';
 import { createTelemetryWriter } from '../../services/telemetryWriter';
 import { AssistantSessionManager } from '../../services/assistantSessionManager';
 import { readContextFile } from '../../services/tools/readContextFile';
+import { searchContextRepository } from '../../services/tools/searchContextRepository';
+import { getEntityDetails } from '../../services/tools/getEntityDetails';
+import { findSimilarEntities } from '../../services/tools/findSimilarEntities';
 import { openPullRequest } from '../../services/tools/openPullRequest';
+import { LangChainAIService } from '../../services/LangChainAIService';
 import type { PendingAction } from '@shared/assistant/types';
 import { broadcastAssistantStream } from '../streamingEmitter';
 
@@ -29,7 +33,14 @@ const orchestrator = new ToolOrchestrator({
   loadConfiguration: loadProviderConfiguration,
   runPipeline: runContextPipeline,
   readContextFile,
-  telemetryWriter
+  searchContextRepository,
+  getEntityDetails,
+  findSimilarEntities,
+  getAIConfig: async (repoPath: string) => {
+    const service = new LangChainAIService();
+    return service.getConfig(repoPath);
+  },
+  telemetryWriter,
 });
 
 export function registerAssistantHandlers(): void {

@@ -108,6 +108,7 @@ contextBridge.exposeInMainWorld('api', {
     },
     applyEdit: (dir: string, filePath: string, updatedContent: string, summary?: string) =>
       ipcRenderer.invoke('ai:applyEdit', { dir, filePath, updatedContent, summary }),
+        pingEndpoint: (endpoint: string, model: string) => ipcRenderer.invoke('ai:pingEndpoint', { endpoint, model }),
     // Per-provider configuration
     getProviderConfigs: (dir: string) => ipcRenderer.invoke('ai:getProviderConfigs', { dir }),
     saveProviderConfig: (dir: string, provider: string, config: { endpoint: string; model: string }) =>
@@ -174,6 +175,9 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('rag:streamError', wrapped);
       return () => ipcRenderer.removeListener('rag:streamError', wrapped);
     },
+    cancelQuery: (repoPath: string, config: any) =>
+      ipcRenderer.invoke('rag:cancelQuery', { repoPath, config }),
+    cancelStream: (streamId: string) => ipcRenderer.invoke('rag:cancelStream', { streamId }),
   },
   assistant: createAssistantBridge(ipcRenderer),
   agent: agentBridge,
@@ -318,7 +322,7 @@ declare global {
         isEnabled: () => Promise<{ ok: boolean; enabled?: boolean; error?: string }>;
         indexRepository: (repoPath: string, config: any) => Promise<{ ok: boolean; documentCount?: number; error?: string }>;
         query: (repoPath: string, config: any, question: string, topK?: number) => 
-          Promise<{ ok: boolean; answer?: string; sources?: Array<{ id: string; title?: string; type: string; relevance: number; excerpt: string }>; error?: string }>;
+          Promise<{ ok: boolean; answer?: string; sources?: Array<{ id: string; title?: string; type: string; relevance: number; excerpt: string }>; tokensUsed?: number; usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number }; toolCalls?: Array<{ id: string; name: string; args: Record<string, unknown> }>; error?: string }>;
         queryStream: (repoPath: string, config: any, question: string, topK: number, streamId: string) =>
           Promise<{ ok: boolean; streamId?: string; error?: string }>;
         findSimilar: (repoPath: string, config: any, entityId: string, limit?: number) =>
@@ -333,6 +337,8 @@ declare global {
         onIndexProgress: (listener: (progress: { total: number; processed: number; percentage: number; currentEntity?: string }) => void) => (() => void);
         onStreamChunk: (listener: (payload: { streamId: string; type: 'source' | 'token' | 'done'; data?: any }) => void) => (() => void);
         onStreamError: (listener: (payload: { streamId: string; error: string }) => void) => (() => void);
+        cancelQuery: (repoPath: string, config: any) => Promise<{ ok: boolean; cancelled?: boolean; error?: string }>;
+        cancelStream: (streamId: string) => Promise<{ ok: boolean; cancelled?: boolean; error?: string }>;
       };
       speckit: {
         specify: (repoPath: string, description: string) => Promise<{

@@ -3,13 +3,15 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { ChatOpenAI } from '@langchain/openai';
-import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { StructuredOutputParser } from '@langchain/core/output_parsers';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { DynamicStructuredTool } from '@langchain/core/tools';
 import type { z } from 'zod';
+import type { Dispatcher } from 'undici';
 import { logger } from '../utils/logger';
 import { AICredentialResolver } from './AICredentialResolver';
 
@@ -23,7 +25,9 @@ export interface AIConfig {
   model: string;
   enabled: boolean;
   embeddingModel?: string;
+  embeddingApiVersion?: string;
   apiKey?: string;
+  apiVersion?: string;
   [key: string]: unknown;
 }
 
@@ -67,6 +71,7 @@ export interface AssistStreamOptions {
   question: string;
   conversationHistory: Array<{ role: string; content: string }>;
   contextSnapshot: any;
+  tools?: DynamicStructuredTool[];
 }
 
 /**
@@ -106,6 +111,7 @@ export interface AssistStreamOptions {
 export class LangChainAIService {
   private models: Map<string, BaseChatModel> = new Map();
   private credentialResolver = new AICredentialResolver();
+  private proxyDispatchers = new Map<string, Promise<Dispatcher | null>>();
 
   // ============================================================================
   // Configuration & Credential Management
@@ -410,22 +416,19 @@ export class LangChainAIService {
     );
   }
 
-  // ============================================================================
-  // AI Operations
-  // ============================================================================
+  private resolveAzureApiVersion(config: AIConfig): string {
+    const explicit = typeof config.apiVersion === 'string' ? config.apiVersion.trim() : '';
+    if (explicit) {
+      return explicit;
+    }
 
-  /**
-   * Normalize proxy-related environment variables and return a copy to use when
-   * constructing child clients or making network requests. This mirrors the
-   * proxy wiring used by AIService (which sets HTTPS_PROXY/HTTP_PROXY/NO_PROXY
-   * when spawning external processes).
-   */
-  private getProxyEnv(): Record<string, string> {
-    return {
-      HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || '',
-      HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || '',
-      NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || ''
-    };
+    const envVersion = process.env.AZURE_OPENAI_API_VERSION?.trim();
+    if (envVersion) {
+      return envVersion;
+    }
+
+    // Default to the same preview version used by our pipeline scripts so behavior stays consistent.
+    return '2024-12-01-preview';
   }
 
   /**
@@ -437,7 +440,8 @@ export class LangChainAIService {
    * @throws {Error} If provider is unknown or configuration is invalid
    */
   private async getModel(config: AIConfig): Promise<BaseChatModel> {
-    const key = `${config.provider}:${config.endpoint}:${config.model}`;
+    const apiVersionSegment = config.provider === 'azure-openai' ? `:${this.resolveAzureApiVersion(config)}` : '';
+    const key = `${config.provider}:${config.endpoint}:${config.model}${apiVersionSegment}`;
     
     if (this.models.has(key)) {
       logger.debug({ service: 'LangChainAIService', method: 'getModel' }, `Using cached model: ${key}`);
@@ -448,21 +452,8 @@ export class LangChainAIService {
 
     if (config.provider === 'azure-openai') {
       logger.info({ service: 'LangChainAIService', method: 'getModel' }, `Creating Azure OpenAI model: ${config.model}`);
-      const proxyEnv = this.getProxyEnv();
-
-      // Mirror AIService: ensure proxy environment variables are set before
-      // constructing HTTP clients so underlying libraries pick them up.
-      // Set both uppercase and lowercase variants and always set the keys
-      // (use empty string when unset) to match AIService child-process env.
-      process.env.HTTPS_PROXY = proxyEnv.HTTPS_PROXY;
-      process.env.https_proxy = proxyEnv.HTTPS_PROXY;
-      process.env.HTTP_PROXY = proxyEnv.HTTP_PROXY;
-      process.env.http_proxy = proxyEnv.HTTP_PROXY;
-      process.env.NO_PROXY = proxyEnv.NO_PROXY;
-      process.env.no_proxy = proxyEnv.NO_PROXY;
-
-      // Resolve API key using unified resolver (explicit → stored → env)
       const resolvedKey = await this.credentialResolver.resolveApiKey({
+
         provider: config.provider,
         explicitKey: config.apiKey as string | undefined,
         useStoredCredentials: true,
@@ -473,36 +464,30 @@ export class LangChainAIService {
         throw new Error('No API key found for Azure OpenAI. Please configure credentials in settings.');
       }
 
-      // Azure OpenAI configuration
-      // Azure uses api-key header for auth, NOT the apiKey parameter
-      // Keep configuration similar to Ollama for consistency
+      const apiVersion = this.resolveAzureApiVersion(config);
+
+      const proxyAwareFetch = this.getProxyAwareFetch(config.endpoint);
+
       model = new ChatOpenAI({
+        apiKey: resolvedKey,
         modelName: config.model,
-        temperature: 0.7,
+        temperature: 1,
         maxTokens: 4000,
         timeout: 60000,
         maxRetries: 2,
         configuration: {
           baseURL: `${config.endpoint.replace(/\/$/, '')}/openai/deployments/${config.model}`,
           defaultQuery: {
-            'api-version': '2024-02-15-preview',
+            'api-version': apiVersion,
           },
           defaultHeaders: {
             'api-key': resolvedKey,
           },
+          fetch: proxyAwareFetch,
         },
       });
     } else if (config.provider === 'ollama') {
       logger.info({ service: 'LangChainAIService', method: 'getModel' }, `Creating Ollama model: ${config.model}`);
-      
-      const proxyEnv = this.getProxyEnv();
-      // Same proxy parity as above
-      process.env.HTTPS_PROXY = proxyEnv.HTTPS_PROXY;
-      process.env.https_proxy = proxyEnv.HTTPS_PROXY;
-      process.env.HTTP_PROXY = proxyEnv.HTTP_PROXY;
-      process.env.http_proxy = proxyEnv.HTTP_PROXY;
-      process.env.NO_PROXY = proxyEnv.NO_PROXY;
-      process.env.no_proxy = proxyEnv.NO_PROXY;
 
       // Ollama doesn't require an API key, but LangChain's ChatOpenAI expects one
       // Pass a dummy key to satisfy the library (Ollama ignores it)
@@ -515,6 +500,7 @@ export class LangChainAIService {
         },
         modelName: config.model,
         temperature: 0.7,
+
       }) as unknown as BaseChatModel;
     } else {
       throw new Error(`Unknown provider: ${config.provider}. Supported: azure-openai, ollama`);
@@ -523,6 +509,7 @@ export class LangChainAIService {
     this.models.set(key, model);
     return model;
   }
+
 
   /**
    * Extract Azure instance name from endpoint URL.
@@ -543,6 +530,7 @@ export class LangChainAIService {
    * 
    * Validates that the provider is accessible and credentials are correct by
    * sending a simple test message and verifying the response.
+
    * 
    * @param options - Connection test options
    * @returns Success message confirming connection
@@ -732,6 +720,11 @@ export class LangChainAIService {
 
     const model = await this.getModel(options.config);
 
+    // Bind tools if provided (cast to any to bypass TypeScript limitations with bind())
+    const modelWithTools = options.tools && options.tools.length > 0
+      ? (model as any).bind({ tools: options.tools })
+      : model;
+
     // Build message history
     const messages: BaseMessage[] = [
       new SystemMessage(this.buildSystemPrompt(options.contextSnapshot))
@@ -751,19 +744,159 @@ export class LangChainAIService {
 
     logger.info(
       { service: 'LangChainAIService', method: 'assistStream' },
-      `Starting stream with ${messages.length} messages`
+      `Starting stream with ${messages.length} messages, tools: ${options.tools?.length || 0}`
     );
 
     try {
-      const stream = await model.stream(messages);
+      const stream = await modelWithTools.stream(messages);
       let tokenCount = 0;
+      const toolCalls: Array<{ id: string; name: string; args: Record<string, unknown> }> = [];
 
+      const normalizeChunkContent = (raw: unknown): string => {
+        if (typeof raw === 'string') {
+          return raw;
+        }
+        if (Array.isArray(raw)) {
+          // TODO: Replace with SDK-native helper once available to avoid manual normalization.
+          return raw
+            .map((part) => {
+              if (typeof part === 'string') {
+                return part;
+              }
+              if (part && typeof part === 'object' && 'text' in part) {
+                const value = (part as { text?: unknown }).text;
+                return typeof value === 'string' ? value : '';
+              }
+              return '';
+            })
+            .join('');
+        }
+        return '';
+      };
+
+      // Process streaming chunks
       for await (const chunk of stream) {
-        if (chunk.content) {
-          const content = typeof chunk.content === 'string' 
-            ? chunk.content 
-            : JSON.stringify(chunk.content);
+        // Check for tool calls in the chunk
+        const chunkData = chunk as any;
+        
+        if (chunkData.additional_kwargs?.tool_calls) {
+          // Model is requesting tool invocations
+          const calls = chunkData.additional_kwargs.tool_calls;
           
+          for (const call of calls) {
+            // Parse tool call arguments
+            let args: Record<string, unknown> = {};
+            try {
+              args = typeof call.function.arguments === 'string'
+                ? JSON.parse(call.function.arguments)
+                : call.function.arguments;
+            } catch (parseError) {
+              logger.error(
+                { service: 'LangChainAIService', method: 'assistStream' },
+                new Error(`Failed to parse tool arguments: ${call.function.arguments}`)
+              );
+              continue;
+            }
+            
+            toolCalls.push({
+              id: call.id,
+              name: call.function.name,
+              args
+            });
+            
+            logger.info(
+              { service: 'LangChainAIService', method: 'assistStream' },
+              `Tool call requested: ${call.function.name}`
+            );
+            
+            // Yield special marker for tool invocation (UI can display it)
+            yield `\n[Tool: ${call.function.name}]\n`;
+          }
+          continue;
+        }
+        
+        // Normal content chunk
+        const content = normalizeChunkContent(chunkData.content);
+        if (!content) {
+          continue;
+        }
+        tokenCount++;
+        yield content;
+      }
+
+      // If tools were called, execute them and continue conversation
+      if (toolCalls.length > 0 && options.tools) {
+        logger.info(
+          { service: 'LangChainAIService', method: 'assistStream' },
+          `Executing ${toolCalls.length} tool calls`
+        );
+        
+        // Execute each tool and collect results
+        const toolMessages: ToolMessage[] = [];
+        
+        for (const toolCall of toolCalls) {
+          try {
+            // Find the tool by name (convert back from snake_case)
+            const tool = options.tools.find(t => t.name === toolCall.name);
+            
+            if (!tool) {
+              throw new Error(`Tool not found: ${toolCall.name}`);
+            }
+            
+            // Execute the tool
+            const result = await tool.func(toolCall.args);
+            
+            logger.debug(
+              { service: 'LangChainAIService', method: 'assistStream' },
+              `Tool ${toolCall.name} executed successfully`
+            );
+            
+            // Create tool result message
+            toolMessages.push(
+              new ToolMessage({
+                content: result,
+                tool_call_id: toolCall.id
+              })
+            );
+            
+            // Yield result marker for UI
+            yield `\n[Tool Result: ${toolCall.name}]\n`;
+            
+          } catch (toolError) {
+            const errorMsg = toolError instanceof Error ? toolError.message : String(toolError);
+            logger.error(
+              { service: 'LangChainAIService', method: 'assistStream' },
+              new Error(`Tool execution failed for ${toolCall.name}: ${errorMsg}`)
+            );
+            
+            // Send error as tool result so model can handle it
+            toolMessages.push(
+              new ToolMessage({
+                content: `Error: ${errorMsg}`,
+                tool_call_id: toolCall.id
+              })
+            );
+            
+            yield `\n[Tool Error: ${toolCall.name}]\n`;
+          }
+        }
+        
+        // Add tool messages to conversation and request final response
+        messages.push(...toolMessages);
+        
+        logger.info(
+          { service: 'LangChainAIService', method: 'assistStream' },
+          'Requesting final response from model with tool results'
+        );
+        
+        // Stream the model's synthesis of tool results
+        const finalStream = await modelWithTools.stream(messages);
+        
+        for await (const chunk of finalStream) {
+          const content = normalizeChunkContent((chunk as { content?: unknown }).content);
+          if (!content) {
+            continue;
+          }
           tokenCount++;
           yield content;
         }
@@ -771,7 +904,7 @@ export class LangChainAIService {
 
       logger.info(
         { service: 'LangChainAIService', method: 'assistStream' },
-        `Stream completed: ${tokenCount} tokens`
+        `Stream completed: ${tokenCount} tokens, ${toolCalls.length} tool calls`
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -782,6 +915,37 @@ export class LangChainAIService {
         const credMsg = 'No API key found for provider azure-openai. Please save credentials or set OPENAI_API_KEY/AZURE_OPENAI_KEY.';
         logger.error({ service: 'LangChainAIService', method: 'assistStream' }, new Error(credMsg));
         throw new Error(credMsg);
+      }
+
+      if (this.shouldFallbackToNonStreaming(error)) {
+        logger.warn(
+          { service: 'LangChainAIService', method: 'assistStream' },
+          'Streaming failed; attempting non-streaming completion.'
+        );
+
+        try {
+          const fallbackContent = await this.tryNonStreamingCompletion(options.config, messages, model);
+
+          if (fallbackContent) {
+            yield fallbackContent;
+            logger.info(
+              { service: 'LangChainAIService', method: 'assistStream' },
+              'Fallback completion succeeded after streaming failure.'
+            );
+            return;
+          }
+
+          logger.warn(
+            { service: 'LangChainAIService', method: 'assistStream' },
+            'Fallback completion returned no content.'
+          );
+        } catch (fallbackError) {
+          const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+          logger.error(
+            { service: 'LangChainAIService', method: 'assistStream' },
+            new Error(`Fallback completion failed: ${fallbackMessage}`)
+          );
+        }
       }
 
       logger.error(
@@ -816,10 +980,14 @@ Generate only the entity data in JSON format matching the schema. Do not include
    */
   private buildSystemPrompt(contextSnapshot: any): string {
     const summary = this.buildRepositorySummary(contextSnapshot);
+    const focusContext = this.buildFocusContext(contextSnapshot);
+    const retrievalContext = this.buildRetrievalContext(contextSnapshot);
 
     return `You are an AI assistant for a context repository used in spec-driven software development.
 
 ${summary}
+${focusContext}
+${retrievalContext}
 
 Your role is to:
 - Answer questions about entities, relationships, and dependencies
@@ -830,6 +998,7 @@ Your role is to:
 
 When answering:
 - Reference specific entity IDs when relevant (e.g., FEAT-001, US-042)
+- Use information from the focus entities and relevant entities provided above
 - Explain relationships between entities clearly
 - Suggest next steps or follow-up questions
 - Be concise but informative
@@ -870,10 +1039,314 @@ If you don't have enough information, ask clarifying questions.`;
   }
 
   /**
+   * Build focus context from explicitly mentioned entities.
+   * These are entities directly referenced in the user's question by ID.
+   */
+  private buildFocusContext(contextSnapshot: any): string {
+    if (!contextSnapshot?.focusEntities || !Array.isArray(contextSnapshot.focusEntities) || contextSnapshot.focusEntities.length === 0) {
+      return '';
+    }
+
+    const parts: string[] = ['\nFocus Entities (mentioned in your question):'];
+    
+    contextSnapshot.focusEntities.forEach((entity: any) => {
+      parts.push(`\n- ${entity.id}${entity.title ? ` - ${entity.title}` : ''}`);
+      if (entity.status) {
+        parts.push(`  Status: ${entity.status}`);
+      }
+      if (entity.objective) {
+        parts.push(`  Objective: ${entity.objective}`);
+      }
+    });
+
+    return parts.join('\n');
+  }
+
+  /**
+   * Build retrieval context from semantic search results.
+   * Includes the most relevant entities found via RAG for the current question.
+   * 
+   * TODO(TOKEN-OPTIMIZATION): Consider limiting retrieval results or truncating excerpts
+   * based on model's token limits. Current implementation includes all results.
+   */
+  private buildRetrievalContext(contextSnapshot: any): string {
+    if (!contextSnapshot?.retrieval || !Array.isArray(contextSnapshot.retrieval) || contextSnapshot.retrieval.length === 0) {
+      return '';
+    }
+
+    const parts: string[] = ['\nMost Relevant Entities (from semantic search):'];
+    
+    contextSnapshot.retrieval.forEach((doc: any, index: number) => {
+      parts.push(`\n${index + 1}. ${doc.id}${doc.title ? ` - ${doc.title}` : ''} (${doc.type})`);
+      if (doc.excerpt) {
+        parts.push(`   ${doc.excerpt}`);
+      }
+      if (doc.relevance) {
+        parts.push(`   Relevance: ${doc.relevance}%`);
+      }
+    });
+
+    return parts.join('\n');
+  }
+
+  /**
    * Clear cached models (useful for testing or configuration changes).
    */
   clearCache(): void {
     this.models.clear();
     logger.info({ service: 'LangChainAIService', method: 'clearCache' }, 'Model cache cleared');
+  }
+
+  private extractMessageContent(message: BaseMessage): string {
+    const { content } = message;
+
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    if (Array.isArray(content)) {
+      // TODO: Replace with a message content utility once LangChain exposes a stable helper.
+      return content
+        .map((part) => {
+          if (typeof part === 'string') {
+            return part;
+          }
+          if (part && typeof part === 'object' && 'text' in part) {
+            const value = (part as { text?: unknown }).text;
+            return typeof value === 'string' ? value : '';
+          }
+          return '';
+        })
+        .join('');
+    }
+
+    return '';
+  }
+
+  private shouldFallbackToNonStreaming(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    const message = error.message.toLowerCase();
+    const causeMessage = error.cause instanceof Error ? error.cause.message.toLowerCase() : '';
+
+    if (message.includes('connect timeout') || message.includes('request timed out')) {
+      return true;
+    }
+
+    if (causeMessage.includes('connect timeout') || causeMessage.includes('request timed out')) {
+      return true;
+    }
+
+    if (message.includes('stream') && message.includes('not supported')) {
+      return true;
+    }
+
+    // TODO: Expand fallback detection to leverage telemetry codes once available.
+    return false;
+  }
+
+  private async tryNonStreamingCompletion(
+    config: AIConfig,
+    messages: BaseMessage[],
+    model: BaseChatModel
+  ): Promise<string | null> {
+    if (config.provider === 'azure-openai') {
+      return await this.invokeAzureChatCompletion(config, messages);
+    }
+
+    const response = await model.invoke(messages);
+    return this.extractMessageContent(response) || null;
+  }
+
+  private async invokeAzureChatCompletion(config: AIConfig, messages: BaseMessage[]): Promise<string | null> {
+    const resolvedKey = await this.credentialResolver.resolveApiKey({
+      provider: config.provider,
+      explicitKey: config.apiKey as string | undefined,
+      useStoredCredentials: true,
+      useEnvironmentVars: true
+    });
+
+    if (!resolvedKey) {
+      throw new Error('No API key found for Azure OpenAI. Please configure credentials in settings.');
+    }
+
+    const apiVersion = this.resolveAzureApiVersion(config);
+    const url = `${config.endpoint.replace(/\/$/, '')}/openai/deployments/${config.model}/chat/completions?api-version=${encodeURIComponent(apiVersion)}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+    const fetchFn = this.getProxyAwareFetch(url);
+
+    const payload = {
+      messages: this.transformMessagesForAzure(messages),
+      temperature: 0.7,
+      max_tokens: 4000
+    };
+
+    try {
+      const response = await fetchFn(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': resolvedKey
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Azure OpenAI returned ${response.status}: ${errorText.slice(0, 500)}`);
+      }
+
+      const result = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+
+      const content = result.choices?.[0]?.message?.content;
+      if (typeof content === 'string' && content.trim()) {
+        return content;
+      }
+
+      // TODO: Handle tool/function call responses once we surface them in the UI.
+      return null;
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('Request timed out while waiting for Azure OpenAI response');
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  private transformMessagesForAzure(messages: BaseMessage[]): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
+    return messages.map((message) => {
+      const content = this.extractMessageContent(message);
+      let role: 'system' | 'user' | 'assistant' = 'user';
+
+      if (message instanceof SystemMessage) {
+        role = 'system';
+      } else if (message instanceof AIMessage) {
+        role = 'assistant';
+      } else if (message instanceof HumanMessage) {
+        role = 'user';
+      }
+
+      return {
+        role,
+        content
+      };
+    });
+  }
+
+  private getProxyAwareFetch(targetUrl: string): typeof fetch {
+    const fetchImpl: typeof fetch | undefined = (globalThis as { fetch?: typeof fetch }).fetch?.bind(globalThis);
+    if (!fetchImpl) {
+      // TODO: Provide a ponyfill if we ever run on runtimes without global fetch support.
+      throw new Error('Fetch API is not available in this runtime');
+    }
+
+    const proxyUrl = this.resolveProxyUrl();
+    if (!proxyUrl || this.shouldBypassProxy(targetUrl)) {
+      return fetchImpl;
+    }
+
+    const dispatcherPromise = this.getProxyDispatcher(proxyUrl);
+
+    return async (input: RequestInfo | URL, init?: RequestInit) => {
+      const dispatcher = await dispatcherPromise;
+      if (!dispatcher) {
+        return fetchImpl(input, init);
+      }
+
+      const finalInit: RequestInit & { dispatcher?: Dispatcher } = { ...(init ?? {}) };
+      if (!finalInit.dispatcher) {
+        finalInit.dispatcher = dispatcher;
+      }
+
+      return fetchImpl(input, finalInit);
+    };
+  }
+
+  private resolveProxyUrl(): string | null {
+    return (
+      process.env.HTTPS_PROXY ||
+      process.env.https_proxy ||
+      process.env.HTTP_PROXY ||
+      process.env.http_proxy ||
+      null
+    );
+  }
+
+  private shouldBypassProxy(targetUrl: string): boolean {
+    const rawNoProxy = [process.env.NO_PROXY, process.env.no_proxy, process.env.AI_PROXY_BYPASS]
+      .filter(Boolean)
+      .join(',');
+
+    if (!rawNoProxy) {
+      return false;
+    }
+
+    let host: string | null = null;
+    try {
+      host = new URL(targetUrl).hostname.toLowerCase();
+    } catch {
+      return false;
+    }
+
+    return rawNoProxy
+      .split(',')
+      .map((entry) => entry.trim().toLowerCase())
+      .filter(Boolean)
+      // TODO: Add back support for '!defaults' sentinel once we reintroduce the shared proxy bypass list helper.
+      .some((pattern) => this.hostMatchesPattern(host!, pattern));
+  }
+
+  private hostMatchesPattern(host: string, pattern: string): boolean {
+    if (pattern === '*') {
+      return true;
+    }
+
+    const [patternHost, patternPort] = pattern.split(':');
+    const [hostNameOnly, hostPort] = host.split(':');
+
+    if (patternPort && hostPort && patternPort === hostPort && patternHost === hostNameOnly) {
+      return true;
+    }
+
+    const normalizedPattern = patternHost.startsWith('.') ? patternHost.slice(1) : patternHost;
+
+    return hostNameOnly === normalizedPattern || hostNameOnly.endsWith(`.${normalizedPattern}`);
+  }
+
+  private getProxyDispatcher(proxyUrl: string): Promise<Dispatcher | null> {
+    if (!this.proxyDispatchers.has(proxyUrl)) {
+      const dispatcherPromise: Promise<Dispatcher | null> = import('undici')
+        .then((mod) => {
+          const ProxyAgentCtor = (mod as { ProxyAgent?: new (url: string) => Dispatcher }).ProxyAgent;
+          if (typeof ProxyAgentCtor !== 'function') {
+            logger.warn(
+              { service: 'LangChainAIService', method: 'getProxyDispatcher' },
+              'ProxyAgent not available in undici; falling back to direct fetch.'
+            );
+            return null;
+          }
+          return new ProxyAgentCtor(proxyUrl);
+        })
+        .catch((err) => {
+          logger.warn(
+            { service: 'LangChainAIService', method: 'getProxyDispatcher', proxyUrl },
+            `Failed to create proxy agent: ${err instanceof Error ? err.message : String(err)}`
+          );
+          return null;
+        });
+
+      this.proxyDispatchers.set(proxyUrl, dispatcherPromise);
+    }
+
+    return this.proxyDispatchers.get(proxyUrl)!;
   }
 }

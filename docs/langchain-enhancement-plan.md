@@ -802,7 +802,7 @@ export class ContextRAGService {
   constructor(private config: AIConfig) {
     this.embeddings = new OpenAIEmbeddings({
       azureOpenAIApiKey: config.apiKey,
-      azureOpenAIApiDeploymentName: 'text-embedding-ada-002',
+      azureOpenAIApiDeploymentName: 'text-embedding-3-small',
       azureOpenAIApiInstanceName: extractInstanceName(config.endpoint)
     });
   }

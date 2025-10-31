@@ -103,6 +103,16 @@ describe('ToolOrchestrator pipeline integration', () => {
         lastModified: new Date().toISOString(),
         truncated: false
       }),
+      // RAG tool stubs
+      searchContextRepository: vi.fn().mockResolvedValue({ results: [], count: 0 }),
+      getEntityDetails: vi.fn().mockResolvedValue({}),
+      findSimilarEntities: vi.fn().mockResolvedValue({ results: [], count: 0 }),
+      getAIConfig: vi.fn().mockResolvedValue({
+        provider: 'azure-openai',
+        endpoint: 'https://test.openai.azure.com',
+        model: 'gpt-4',
+        enabled: true
+      }),
       clock
     };
 
