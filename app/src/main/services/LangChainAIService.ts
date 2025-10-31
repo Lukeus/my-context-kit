@@ -837,7 +837,6 @@ export class LangChainAIService {
         for (const toolCall of toolCalls) {
           try {
             // Find the tool by name (convert back from snake_case)
-            const toolId = toolCall.name.replace(/_/g, '.');
             const tool = options.tools.find(t => t.name === toolCall.name);
             
             if (!tool) {
