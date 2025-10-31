@@ -86,6 +86,10 @@ pnpm start
 * **Graph visibility**: Cytoscape graph in app; stale items highlighted
 * **Tests where it matters**: unit tests for pipelines; snapshot tests for prompt output if needed
 
+### Context Kit Planning References
+- [Context Kit System Implementation Plan](docs/context-kit-system-implementation-plan.md)
+- [Context Kit System Delivery Specification](docs/context-kit-system-delivery-spec.md)
+
 ---
 
 ## Module Resolution & Package Management (Critical)
