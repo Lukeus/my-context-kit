@@ -106,12 +106,24 @@ class ContextKitMigrator {
     const schemaTemplates = this.getSchemaTemplates();
     for (const [filename, content] of Object.entries(schemaTemplates)) {
       const targetPath = join(contextKitPath, 'schemas', filename);
-      if (!existsSync(targetPath)) {
-        if (!this.options.dryRun) {
-          writeFileSync(targetPath, content);
+      if (!this.options.dryRun) {
+        try {
+          // Use 'wx' flag to create file exclusively (fails if exists)
+          writeFileSync(targetPath, content, { flag: 'wx' });
+          this.result.filesCreated.push(targetPath);
+          console.log(`  ✓ Created schema: ${filename}`);
+        } catch (error: any) {
+          if (error.code !== 'EEXIST') {
+            throw error;
+          }
+          // File already exists, skip silently
         }
-        this.result.filesCreated.push(targetPath);
-        console.log(`  ✓ Created schema: ${filename}`);
+      } else {
+        // Dry run: check if file exists
+        if (!existsSync(targetPath)) {
+          this.result.filesCreated.push(targetPath);
+          console.log(`  ✓ Created schema: ${filename}`);
+        }
       }
     }
 
@@ -230,10 +242,17 @@ class ContextKitMigrator {
     };
 
     const projectPath = join(contextKitPath, 'project.yml');
-    if (!existsSync(projectPath)) {
-      if (!this.options.dryRun) {
-        writeFileSync(projectPath, stringifyYAML(projectYAML));
+    if (!this.options.dryRun) {
+      try {
+        writeFileSync(projectPath, stringifyYAML(projectYAML), { flag: 'wx' });
+        this.result.filesCreated.push(projectPath);
+        console.log(`  ✓ Created project.yml`);
+      } catch (error: any) {
+        if (error.code !== 'EEXIST') {
+          throw error;
+        }
       }
+    } else if (!existsSync(projectPath)) {
       this.result.filesCreated.push(projectPath);
       console.log(`  ✓ Created project.yml`);
     }
@@ -252,10 +271,17 @@ class ContextKitMigrator {
     };
 
     const stackPath = join(contextKitPath, 'stack.yml');
-    if (!existsSync(stackPath)) {
-      if (!this.options.dryRun) {
-        writeFileSync(stackPath, stringifyYAML(stackYAML));
+    if (!this.options.dryRun) {
+      try {
+        writeFileSync(stackPath, stringifyYAML(stackYAML), { flag: 'wx' });
+        this.result.filesCreated.push(stackPath);
+        console.log(`  ✓ Created stack.yml`);
+      } catch (error: any) {
+        if (error.code !== 'EEXIST') {
+          throw error;
+        }
       }
+    } else if (!existsSync(stackPath)) {
       this.result.filesCreated.push(stackPath);
       console.log(`  ✓ Created stack.yml`);
     }
@@ -267,10 +293,17 @@ class ContextKitMigrator {
     };
 
     const domainsPath = join(contextKitPath, 'domains.yml');
-    if (!existsSync(domainsPath)) {
-      if (!this.options.dryRun) {
-        writeFileSync(domainsPath, stringifyYAML(domainsYAML));
+    if (!this.options.dryRun) {
+      try {
+        writeFileSync(domainsPath, stringifyYAML(domainsYAML), { flag: 'wx' });
+        this.result.filesCreated.push(domainsPath);
+        console.log(`  ✓ Created domains.yml`);
+      } catch (error: any) {
+        if (error.code !== 'EEXIST') {
+          throw error;
+        }
       }
+    } else if (!existsSync(domainsPath)) {
       this.result.filesCreated.push(domainsPath);
       console.log(`  ✓ Created domains.yml`);
     }
@@ -293,10 +326,17 @@ class ContextKitMigrator {
     };
 
     const promptsPath = join(contextKitPath, 'prompts.yml');
-    if (!existsSync(promptsPath)) {
-      if (!this.options.dryRun) {
-        writeFileSync(promptsPath, stringifyYAML(promptsYAML));
+    if (!this.options.dryRun) {
+      try {
+        writeFileSync(promptsPath, stringifyYAML(promptsYAML), { flag: 'wx' });
+        this.result.filesCreated.push(promptsPath);
+        console.log(`  ✓ Created prompts.yml`);
+      } catch (error: any) {
+        if (error.code !== 'EEXIST') {
+          throw error;
+        }
       }
+    } else if (!existsSync(promptsPath)) {
       this.result.filesCreated.push(promptsPath);
       console.log(`  ✓ Created prompts.yml`);
     }
