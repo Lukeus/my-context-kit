@@ -654,7 +654,6 @@ async function buildContextSnapshot(repoDir: string, question: string): Promise<
           const { LangChainAIService } = await import('../../services/LangChainAIService');
           const aiService = new LangChainAIService();
           const repoConfig = await aiService.getConfig(repoDir);
-          const embeddingModel = (repoConfig as any).embeddingModel || repoConfig.model;
           const embService = new ContextEmbeddingService({
             provider: repoConfig.provider,
             endpoint: repoConfig.endpoint,
