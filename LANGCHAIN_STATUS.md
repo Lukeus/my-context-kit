@@ -147,7 +147,7 @@ console.log(result.entity); // Valid Feature object
 
 1. **Document Embedding**
    - Index all YAML entities with embeddings
-   - Use OpenAI text-embedding-ada-002 or local model
+   - Use OpenAI text-embedding-3-small or local model
    - Store in vector database (Chroma, Pinecone, or in-memory)
 
 2. **Retrieval Chain**

@@ -3,17 +3,60 @@ import { toErrorMessage } from '../../utils/errorHandler';
 import { LangChainAIService } from '../../services/LangChainAIService';
 import { AICredentialResolver } from '../../services/AICredentialResolver';
 import { EnhancedLangChainService } from '../../services/EnhancedLangChainService';
+import { ContextService } from '../../services/ContextService';
 import { getSchemaForEntityType } from '../../schemas/entitySchemas';
+import { convertToLangChainTools } from '../../services/convertToLangChainTools';
+import { RAG_TOOLS } from '../../services/ragToolDescriptors';
+import { ToolOrchestrator } from '../../services/toolOrchestrator';
+import { loadProviderConfiguration } from '../../services/providerConfig';
+import { createTelemetryWriter } from '../../services/telemetryWriter';
+import { readContextFile } from '../../services/tools/readContextFile';
+import { searchContextRepository } from '../../services/tools/searchContextRepository';
+import { getEntityDetails } from '../../services/tools/getEntityDetails';
+import { findSimilarEntities } from '../../services/tools/findSimilarEntities';
 import type { TestConnectionOptions } from '../../services/LangChainAIService';
 import { successWith, error } from '../types';
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 import { logger } from '../../utils/logger';
+import type { PipelineRunOptions, PipelineRunResult } from '../../services/toolOrchestrator';
 
 const langchainService = new LangChainAIService();
 const enhancedService = new EnhancedLangChainService();
 const credentialResolver = new AICredentialResolver();
+
+/**
+ * Stub for pipeline execution - delegates to appropriate pipeline runner
+ * TODO: Implement proper pipeline execution or import from shared location
+ */
+async function runContextPipeline(options: PipelineRunOptions): Promise<PipelineRunResult> {
+  // For now, return a success stub - full pipeline execution will be added later
+  logger.warn(
+    { service: 'langchain.handlers', method: 'runContextPipeline' },
+    `Pipeline execution not yet implemented for ${options.pipeline}`
+  );
+  return {
+    status: 'succeeded',
+    artifacts: [],
+    output: { message: 'Pipeline stub - not yet implemented' }
+  };
+}
+
+// Create orchestrator for tool execution
+const telemetryWriter = createTelemetryWriter();
+const toolOrchestrator = new ToolOrchestrator({
+  loadConfiguration: loadProviderConfiguration,
+  runPipeline: runContextPipeline,
+  readContextFile,
+  searchContextRepository,
+  getEntityDetails,
+  findSimilarEntities,
+  getAIConfig: async (repoPath: string) => {
+    return langchainService.getConfig(repoPath);
+  },
+  telemetryWriter,
+});
 
 // Track active streams for cancellation
 const activeStreams = new Map<string, boolean>();
@@ -192,8 +235,32 @@ export function registerLangChainAIHandlers(): void {
         );
       }
 
+      // If caller did not supply a context snapshot, build a lightweight one so the assistant can see entity IDs.
+      // This avoids the assistant claiming entities don't exist (e.g., FEAT-001) simply because names were never in system prompt.
+      const effectiveSnapshot = contextSnapshot && typeof contextSnapshot === 'object'
+        ? contextSnapshot
+        : await buildContextSnapshot(dir, question);
+
       const streamId = randomUUID();
       activeStreams.set(streamId, true);
+
+      // Convert RAG tools to LangChain format with orchestrator execution
+      const langchainTools = convertToLangChainTools(RAG_TOOLS, async (toolId, parameters) => {
+        // Execute tool through orchestrator
+        const result = await toolOrchestrator.executeTool({
+          sessionId: streamId, // Use stream ID as session ID for telemetry
+          provider: config.provider as 'azure-openai' | 'ollama',
+          toolId,
+          repoPath: dir,
+          parameters
+        });
+        
+        if (!result.ok) {
+          throw new Error(result.error || 'Tool execution failed');
+        }
+        
+        return result.result || {};
+      });
 
       // Start streaming in background
       void (async () => {
@@ -202,7 +269,8 @@ export function registerLangChainAIHandlers(): void {
             config,
             question,
             conversationHistory: conversationHistory || [],
-            contextSnapshot: contextSnapshot || {}
+            contextSnapshot: effectiveSnapshot || {},
+            tools: langchainTools
           });
 
           for await (const token of stream) {
@@ -527,6 +595,99 @@ export function registerLangChainAIHandlers(): void {
       return error(toErrorMessage(err, 'Workflow execution failed'));
     }
   });
+}
+
+/**
+ * Build a minimal context snapshot for the assistant.
+ * Includes lists of entities (IDs + titles + status) and an optional focusEntity if the question references a specific ID.
+ * NOTE: This is intentionally lightweight to control token usage. Future enhancement: incorporate embeddings RAG results.
+ */
+async function buildContextSnapshot(repoDir: string, question: string): Promise<any> { // TODO: Define strong type for snapshot
+  try {
+    const contextService = new ContextService(repoDir);
+    const entityTypes = ['feature', 'userstory', 'spec', 'task', 'service', 'package'];
+    const data: Record<string, any[]> = {};
+    for (const type of entityTypes) {
+      try {
+        const entities = await contextService.listEntities(type);
+        data[type === 'userstory' ? 'userStories' : type + 's'] = entities.map((e: any) => ({
+          id: e.id,
+          title: e.title,
+          status: e.status,
+          objective: (e as any).objective || undefined
+        }));
+      } catch (innerErr) {
+        // Log but continue
+        logger.debug({ service: 'langchain.handlers', method: 'buildContextSnapshot', type }, `Failed to load ${type} entities: ${innerErr instanceof Error ? innerErr.message : String(innerErr)}`);
+      }
+    }
+
+    // Detect focus entity references in the user's question (e.g., FEAT-001, SPEC-123, US-042, T-001)
+    const idMatches = question.match(/\b(?:FEAT|SPEC|US|T|SERVICE|PKG)-\d{3,}\b/gi) || [];
+    const uniqueIds = Array.from(new Set(idMatches.map(m => m.toUpperCase())));
+    let focus: any[] = [];
+    if (uniqueIds.length) {
+      focus = uniqueIds.map(id => {
+        for (const key of Object.keys(data)) {
+          const found = (data[key] || []).find((e: any) => e.id === id);
+          if (found) return found;
+        }
+        return { id, missing: true }; // mark missing so assistant can request details instead of assuming none exist
+      });
+    }
+
+    return {
+      generatedAt: new Date().toISOString(),
+      features: data.features || [],
+      userStories: data.userStories || [],
+      specs: data.specs || [],
+      tasks: data.tasks || [],
+      services: data.services || [],
+      packages: data.packages || [],
+      focusEntities: focus,
+      // Lightweight retrieval (keyword-based) from persisted index if available.
+      // TODO(RAG): Replace with true embedding similarity by invoking ContextEmbeddingService.similaritySearch.
+      retrieval: await (async () => {
+        try {
+          // Load persisted index and run semantic similarity if possible
+          const { ContextEmbeddingService } = await import('../../services/ContextEmbeddingService');
+          const { LangChainAIService } = await import('../../services/LangChainAIService');
+          const aiService = new LangChainAIService();
+          const repoConfig = await aiService.getConfig(repoDir);
+          const embeddingModel = (repoConfig as any).embeddingModel || repoConfig.model;
+          const embService = new ContextEmbeddingService({
+            provider: repoConfig.provider,
+            endpoint: repoConfig.endpoint,
+            model: repoConfig.model,
+            apiKey: (repoConfig as any).apiKey || ''
+          } as any);
+          const loaded = await embService.loadIndex(repoDir);
+          if (!loaded) return [];
+          let docs: any[] = [];
+          try {
+            const similar = await embService.similaritySearch(question, 5);
+            docs = similar.map(doc => ({
+              id: doc.metadata.id,
+              title: doc.metadata.title,
+              type: doc.metadata.type,
+              relevance: 85, // Fixed score for semantic retrieval results
+              excerpt: doc.pageContent.substring(0,140)+'...'
+            }));
+            logger.info({ service: 'langchain.handlers', method: 'snapshotRetrieval', repo: repoDir }, `Semantic retrieval returned ${docs.length} docs`);
+          } catch (simErr) {
+            logger.debug({ service: 'langchain.handlers', method: 'buildContextSnapshot' }, `Semantic similarity failed: ${simErr instanceof Error ? simErr.message : String(simErr)}`);
+            return [];
+          }
+          return docs;
+        } catch (err) {
+          return [];
+        }
+      })()
+    };
+  } catch (err) {
+    logger.debug({ service: 'langchain.handlers', method: 'buildContextSnapshot' }, `Snapshot build failed: ${err instanceof Error ? err.message : String(err)}`);
+    return {};
+  }
 }
 
 /**

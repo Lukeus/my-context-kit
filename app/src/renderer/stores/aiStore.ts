@@ -616,6 +616,8 @@ export const useAIStore = defineStore('ai', () => {
     return true;
   }
 
+  // NOTE: Migration: non-streaming ask now internally uses LangChain streaming and aggregates tokens.
+  // TODO(Unification): After full migration to assistantStore, remove this helper or delegate entirely.
   async function ask(question: string, options: AskOptions) {
     await initialize();
 
@@ -675,37 +677,57 @@ export const useAIStore = defineStore('ai', () => {
     });
 
     try {
-      const result = await window.api.ai.assist(repoPath, trimmedQuestion, options.mode, options.focusId) as AssistantResponse;
+      // Reuse streaming endpoint but collect all tokens to simulate non-streaming call.
+      const modePrefix = options.mode === 'improvement'
+        ? 'You are in improvement mode. Provide actionable improvement suggestions first, then the answer. '
+        : options.mode === 'clarification'
+          ? 'You are in clarification mode. Ask for any missing details before answering. '
+          : '';
+      const effectiveQuestion = modePrefix + trimmedQuestion;
 
-      if (!result.ok) {
-        error.value = result.error || 'Assistant request failed.';
-        updateAssistantMessage(assistantMessageId, {
-          content: result.error || 'Assistant request failed.',
-          suggestions: [],
-          clarifications: result.error ? [result.error] : [],
-          followUps: [],
-          references: [],
-          edits: []
-        });
-        return;
+      const startRes = await window.api.langchain.assistStreamStart(repoPath, effectiveQuestion, [], undefined);
+      if (!startRes.ok || !startRes.streamId) {
+        throw new Error(startRes.error || 'Failed to start assistant');
       }
 
-      lastSnapshot.value = result.snapshot ?? null;
-      recordUsage(result.usage);
+      const streamId = startRes.streamId;
+      let buffer = '';
+      let offEndRef: (() => void) | null = null;
+      const offToken = window.api.langchain.onAssistStreamToken((payload: any) => {
+        if (payload.streamId !== streamId) return;
+        if (payload.type === 'token' && typeof payload.token === 'string') {
+          buffer += payload.token;
+        }
+      });
+      offEndRef = window.api.langchain.onAssistStreamEnd((payload: any) => {
+        if (payload.streamId !== streamId) return;
+        // Parse structured payload if JSON present.
+        const parsed = safeParseAssistantJson(buffer);
+        const answer = parsed?.answer || buffer || 'No answer returned.';
+        const improvements = sanitizeSuggestions(resolveList<AssistantSuggestion>(parsed?.improvements || [], parsed?.improvements));
+        const clarifications = sanitizeStrings(resolveList<string>(parsed?.clarifications || [], parsed?.clarifications));
+        const followUps = sanitizeStrings(resolveList<string>(parsed?.followUps || [], parsed?.followUps));
+        const references = sanitizeReferences(resolveList<AssistantReference>(parsed?.references || [], parsed?.references));
+        const edits = sanitizeEdits(resolveList<AssistantEdit>(parsed?.edits || [], parsed?.edits));
+        const finalContent = summarizeAssistantData({
+          answer,
+          improvements,
+          clarifications,
+          followUps
+        }) || answer;
 
-      updateAssistantMessage(assistantMessageId, {
-        content: result.answer || 'No direct answer returned.',
-        suggestions: Array.isArray(result.improvements) ? result.improvements : [],
-        clarifications: Array.isArray(result.clarifications) ? result.clarifications : [],
-        followUps: Array.isArray(result.followUps) ? result.followUps : [],
-        references: Array.isArray(result.references) ? result.references : [],
-        edits: Array.isArray(result.edits)
-          ? result.edits.map(edit => ({
-              ...edit,
-              status: 'pending'
-            }))
-          : [],
-        logprobs: result.logprobs || null
+        updateAssistantMessage(assistantMessageId, {
+          content: finalContent,
+          suggestions: improvements,
+          clarifications,
+          followUps,
+          references,
+          edits,
+          logprobs: null
+        });
+        isLoading.value = false;
+        offToken();
+        if (offEndRef) offEndRef();
       });
     } catch (err: any) {
       const message = err?.message || 'Assistant request failed. Please check the console for details.';
@@ -723,6 +745,8 @@ export const useAIStore = defineStore('ai', () => {
     }
   }
 
+  // NOTE: Migration: streaming now routed through LangChain handler which builds context snapshot.
+  // TODO(Unification): Remove legacy ai:assistStreamStart usage entirely after UI migrates to assistantStore.
   async function askStream(question: string, options: AskOptions) {
     await initialize();
 
@@ -781,7 +805,16 @@ export const useAIStore = defineStore('ai', () => {
     });
 
     try {
-      const startRes = await window.api.ai.assistStreamStart(repoPath, trimmedQuestion, options.mode, options.focusId);
+      // Map legacy mode into a prompt modifier. We keep user content separate so structured parsing still works.
+      const modePrefix = options.mode === 'improvement'
+        ? 'You are in improvement mode. Provide actionable improvement suggestions first, then the answer. '
+        : options.mode === 'clarification'
+          ? 'You are in clarification mode. Ask for any missing details before answering. '
+          : '';
+      const effectiveQuestion = modePrefix + trimmedQuestion;
+
+      // Use new LangChain streaming IPC which auto-injects context snapshot and resolves credentials.
+      const startRes = await window.api.langchain.assistStreamStart(repoPath, effectiveQuestion, [], undefined);
       if (!startRes.ok || !startRes.streamId) {
         throw new Error(startRes.error || 'Failed to start streaming');
       }
@@ -790,104 +823,48 @@ export const useAIStore = defineStore('ai', () => {
       let placeholderShown = false;
 
       let offEndRef: (() => void) | null = null;
-      const offEvent = window.api.ai.onAssistStreamEvent((payload: any) => {
+      const offEvent = window.api.langchain.onAssistStreamToken((payload: any) => {
         if (payload.streamId !== activeStreamId.value) return;
-        if (payload.type === 'delta' && typeof payload.data === 'string') {
-          pendingContent += payload.data;
+        if (payload.type === 'token' && typeof payload.token === 'string') {
+          pendingContent += payload.token;
           if (!placeholderShown) {
             placeholderShown = true;
-            updateAssistantMessage(assistantMessageId, {
-              content: 'Generating response…'
-            });
-          }
-        } else if (payload.type === 'final' && payload.result) {
-          const result = payload.result as AssistantResponse;
-          const parsedFromAnswer = looksLikeStructuredPayload(result.answer)
-            ? safeParseAssistantJson(result.answer)
-            : null;
-          const parsedFromBuffer = safeParseAssistantJson(pendingContent);
-          const fallbackStructured = parsedFromAnswer ?? parsedFromBuffer;
-
-          const resolvedAnswer = resolveAnswer(result.answer, fallbackStructured?.answer as (string | undefined));
-          const resolvedImprovements = resolveList<AssistantSuggestion>(
-            result.improvements,
-            fallbackStructured?.improvements as AssistantSuggestion[] | undefined
-          );
-          const resolvedClarifications = resolveList<string>(
-            result.clarifications,
-            fallbackStructured?.clarifications as string[] | undefined
-          );
-          const resolvedFollowUps = resolveList<string>(
-            result.followUps,
-            fallbackStructured?.followUps as string[] | undefined
-          );
-          const resolvedReferences = resolveList<AssistantReference>(
-            result.references,
-            fallbackStructured?.references as AssistantReference[] | undefined
-          );
-          const resolvedEdits = resolveList<AssistantEdit>(
-            result.edits,
-            fallbackStructured?.edits as AssistantEdit[] | undefined
-          );
-
-          const normalizedImprovements = sanitizeSuggestions(resolvedImprovements);
-          const normalizedClarifications = sanitizeStrings(resolvedClarifications);
-          const normalizedFollowUps = sanitizeStrings(resolvedFollowUps);
-          const normalizedReferences = sanitizeReferences(resolvedReferences);
-          const normalizedEdits = sanitizeEdits(resolvedEdits);
-
-          let finalContent = summarizeAssistantData({
-            answer: resolvedAnswer,
-            improvements: normalizedImprovements,
-            clarifications: normalizedClarifications,
-            followUps: normalizedFollowUps
-          });
-
-          if (result.ok === false) {
-            finalContent = result.error?.trim()
-              || finalContent
-              || sanitizeRawSnippet(pendingContent)
-              || 'Assistant request failed.';
-          } else if (!finalContent) {
-            finalContent = sanitizeRawSnippet(pendingContent) || 'Assistant returned no readable content.';
-          }
-
-          updateAssistantMessage(assistantMessageId, {
-            content: finalContent,
-            suggestions: normalizedImprovements,
-            clarifications: normalizedClarifications,
-            followUps: normalizedFollowUps,
-            references: normalizedReferences,
-            edits: normalizedEdits,
-            logprobs: result.logprobs || null
-          });
-          lastSnapshot.value = result.snapshot ?? null;
-          recordUsage(result.usage);
-        } else if (payload.type === 'error') {
-          const message = payload.error || 'Assistant stream failed.';
-          error.value = message;
-          updateAssistantMessage(assistantMessageId, {
-            content: message,
-            clarifications: [message]
-          });
-          isLoading.value = false;
-          activeStreamId.value = null;
-          offEvent();
-          if (offEndRef) {
-            offEndRef();
-            offEndRef = null;
+            updateAssistantMessage(assistantMessageId, { content: 'Generating response…' });
           }
         }
       });
-      offEndRef = window.api.ai.onAssistStreamEnd((payload: any) => {
+      offEndRef = window.api.langchain.onAssistStreamEnd((payload: any) => {
         if (payload.streamId !== activeStreamId.value) return;
+        // Finalize
+        const parsedStructured = safeParseAssistantJson(pendingContent);
+        const answer = parsedStructured?.answer || pendingContent;
+        const improvements = sanitizeSuggestions(resolveList<AssistantSuggestion>(parsedStructured?.improvements || [], parsedStructured?.improvements));
+        const clarifications = sanitizeStrings(resolveList<string>(parsedStructured?.clarifications || [], parsedStructured?.clarifications));
+        const followUps = sanitizeStrings(resolveList<string>(parsedStructured?.followUps || [], parsedStructured?.followUps));
+        const references = sanitizeReferences(resolveList<AssistantReference>(parsedStructured?.references || [], parsedStructured?.references));
+        const edits = sanitizeEdits(resolveList<AssistantEdit>(parsedStructured?.edits || [], parsedStructured?.edits));
+
+        const finalContent = summarizeAssistantData({
+          answer,
+          improvements,
+          clarifications,
+          followUps
+        }) || answer || 'Assistant returned no readable content.';
+
+        updateAssistantMessage(assistantMessageId, {
+          content: finalContent,
+          suggestions: improvements,
+          clarifications,
+          followUps,
+          references,
+          edits,
+          logprobs: null
+        });
         isLoading.value = false;
         activeStreamId.value = null;
         offEvent();
-        if (offEndRef) {
-          offEndRef();
-          offEndRef = null;
-        }
+        if (offEndRef) offEndRef();
+        offEndRef = null;
       });
     } catch (err: any) {
       const message = err?.message || 'Assistant stream failed. Please check the console for details.';
@@ -973,6 +950,11 @@ export const useAIStore = defineStore('ai', () => {
     });
   }
 
+  function addAssistantMessage(content: string) {
+    // Compatibility helper so legacy components can append assistant messages without constructing payloads manually.
+    addAssistantInfo(content);
+  }
+
   function clearConversation() {
     conversation.value = [];
     lastSnapshot.value = null;
@@ -1056,6 +1038,7 @@ export const useAIStore = defineStore('ai', () => {
     acknowledgeError,
     applyEdit,
     addAssistantInfo,
+    addAssistantMessage,
     // new exported helpers for other components to use instead of mutating conversation directly
     appendMessage,
     updateAssistantMessage,

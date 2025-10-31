@@ -1,5 +1,8 @@
+// Reverted imports to supported specifiers for installed LangChain version.
+// TODO(LangChainUpgrade): When bumping LangChain, reassess package entry points.
 import { OpenAIEmbeddings } from '@langchain/openai';
-import type { Document } from '@langchain/core/documents';
+import { Document } from '@langchain/core/documents';
+import { createProxyAwareFetch } from '../utils/proxyFetch';
 
 type EmbeddingVector = number[];
 
@@ -23,6 +26,7 @@ import path from 'node:path';
 import { ContextService } from './ContextService';
 import { logger } from '../utils/logger';
 import type { AIConfig } from './LangChainAIService';
+import { AICredentialResolver } from './AICredentialResolver';
 
 export interface EmbeddingMetadata {
   id: string;
@@ -47,10 +51,10 @@ function mapChatModelToEmbeddingModel(chatModel?: string, provider?: string): st
     return 'nomic-embed-text';
   }
   
-  // For Azure OpenAI, use text-embedding-ada-002 deployment (most common)
+  // For Azure OpenAI, use text-embedding-3-small deployment (newer generation model)
   // Users should set embeddingModel explicitly in config if using a different deployment
   if (provider === 'azure-openai') {
-    return 'text-embedding-ada-002';
+    return 'text-embedding-3-small';
   }
   
   const m = chatModel.toLowerCase();
@@ -93,33 +97,54 @@ export class ContextEmbeddingService {
   private embeddingHttp5xx = 0;
   private lastEmbeddingError?: string;
   private indexed = false;
+  private credentialResolver = new AICredentialResolver();
 
   constructor(private config: AIConfig) {
-    // Embedding model: prefer explicit embeddingModel, else map chat model -> embedding, else default
-    const defaultEmbeddingModel = config.provider === 'ollama' 
-      ? 'nomic-embed-text' 
+    // Embedding model selection
+    const defaultEmbeddingModel = config.provider === 'ollama'
+      ? 'nomic-embed-text'
       : config.provider === 'azure-openai'
-      ? 'text-embedding-ada-002'
-      : 'text-embedding-3-small';
+        ? 'text-embedding-3-small'
+        : 'text-embedding-3-small';
+
     this.embeddingModelName = (config.embeddingModel as string)
       || mapChatModelToEmbeddingModel(config.model as string, config.provider)
       || defaultEmbeddingModel;
 
-    // For Ollama, provide a dummy API key since it doesn't need one
-    const apiKey = config.provider === 'ollama' 
-      ? 'ollama-does-not-need-a-key' 
-      : config.apiKey;
+    // NOTE: API key may not be present in config (stored separately); we resolve lazily on first embed.
+    // We create a temporary embeddings instance with possibly missing key; will rebuild if needed.
+    this.embeddings = this.createEmbeddingsClient(config, this.embeddingModelName, config.apiKey);
+  }
 
-    this.embeddings = new OpenAIEmbeddings({
-      apiKey: apiKey,
+  private resolveAzureApiVersion(): string {
+    const explicit = typeof this.config.apiVersion === 'string' && this.config.apiVersion.trim()
+      ? this.config.apiVersion.trim() : '';
+    if (explicit) return explicit;
+    const envVersion = process.env.AZURE_OPENAI_API_VERSION?.trim();
+    return envVersion || '2024-12-01-preview';
+  }
+
+  private createEmbeddingsClient(config: AIConfig, embeddingModelName: string, apiKey?: string): OpenAIEmbeddings {
+    const resolvedVersion = this.resolveAzureApiVersion();
+    const baseDeploymentUrl = `${config.endpoint.replace(/\/$/, '')}/openai/deployments/${encodeURIComponent(embeddingModelName)}`;
+    const fetchTarget = config.provider === 'azure-openai'
+      ? baseDeploymentUrl
+      : config.endpoint;
+    const fetchFn = createProxyAwareFetch(fetchTarget);
+    const finalKey = apiKey || (config.provider === 'ollama' ? 'ollama-does-not-need-a-key' : '');
+    logger.debug({ service: 'ContextEmbeddingService', method: 'createEmbeddingsClient' }, `Creating embeddings client: deployment=${embeddingModelName}, baseURL=${baseDeploymentUrl}, apiVersion=${resolvedVersion}`);
+    return new OpenAIEmbeddings({
+      apiKey: finalKey,
       configuration: config.provider === 'azure-openai' ? {
-        baseURL: `${config.endpoint}/openai/deployments/${encodeURIComponent(this.embeddingModelName)}`,
-        defaultQuery: { 'api-version': '2024-12-01-preview' },
-        defaultHeaders: { 'api-key': config.apiKey || '' }
+        baseURL: baseDeploymentUrl,
+        defaultQuery: { 'api-version': resolvedVersion },
+        defaultHeaders: { 'api-key': apiKey || '' },
+        fetch: fetchFn
       } : config.provider === 'ollama' ? {
         baseURL: config.endpoint.endsWith('/v1') ? config.endpoint : `${config.endpoint.replace(/\/$/, '')}/v1`,
+        fetch: fetchFn
       } : undefined,
-      modelName: this.embeddingModelName,
+      modelName: embeddingModelName
     });
   }
 
@@ -138,6 +163,23 @@ export class ContextEmbeddingService {
     return logger.logServiceCall(
       { service: 'ContextEmbeddingService', method: 'indexRepository', repoPath },
       async () => {
+        // Validate embedding deployment before bulk indexing
+        if (this.config.provider === 'azure-openai') {
+          if (this.embeddingModelName === this.config.model) {
+            throw new Error(`Embedding deployment name (${this.embeddingModelName}) must differ from chat model (${this.config.model}). Set ai.embeddingModel to your Azure embedding deployment name (e.g., text-embedding-3-small).`);
+          }
+          logger.info({ service: 'ContextEmbeddingService', method: 'indexRepository' }, `Testing embedding deployment: ${this.embeddingModelName}`);
+          try {
+            await this.embeddings.embedQuery('validation test');
+            logger.info({ service: 'ContextEmbeddingService', method: 'indexRepository' }, `Embedding deployment test succeeded`);
+          } catch (testErr: any) {
+            const msg = testErr?.message || String(testErr);
+            if (msg.includes('404') || msg.includes('does not exist')) {
+              throw new Error(`Embedding deployment '${this.embeddingModelName}' not found in Azure (HTTP 404). Verify deployment exists in Azure portal and name matches exactly (case-sensitive).`);
+            }
+            throw new Error(`Embedding deployment test failed: ${msg}`);
+          }
+        }
         const contextService = new ContextService(repoPath);
         // List all entities - get all types
         const entityTypes = ['feature', 'userstory', 'spec', 'task', 'service', 'package', 'governance'];
@@ -258,6 +300,22 @@ export class ContextEmbeddingService {
               logger.debug({ service: 'ContextEmbeddingService', method: 'indexRepository', batch: bi, attempt },
                 `Requesting embeddings for batch ${bi + 1}/${batches.length} (size=${batch.length}, attempt=${attempt})`
               );
+
+              // Lazily resolve missing API key for Azure before first real network call
+              if (this.config.provider === 'azure-openai' && (!this.config.apiKey || this.config.apiKey.length < 10)) {
+                const resolved = await this.credentialResolver.resolveApiKey({
+                  provider: 'azure-openai',
+                  useStoredCredentials: true,
+                  useEnvironmentVars: true
+                });
+                if (!resolved) {
+                  throw new Error('No API key available for Azure OpenAI embeddings.');
+                }
+                // Rebuild embeddings client with resolved key
+                this.config.apiKey = resolved;
+                this.embeddings = this.createEmbeddingsClient(this.config, this.embeddingModelName, resolved);
+                logger.debug({ service: 'ContextEmbeddingService', method: 'indexRepository' }, 'Rebuilt embeddings client with resolved API key');
+              }
 
               const embedPromise = this.embeddings.embedDocuments(batch);
               const result = await Promise.race<EmbeddingVector[]>([
@@ -401,6 +459,13 @@ export class ContextEmbeddingService {
       { service: 'ContextEmbeddingService', method: 'search', query, limit },
       async () => {
         // Generate embedding for query
+        // Resolve key if needed for Azure queries
+        if (this.config.provider === 'azure-openai' && (!this.config.apiKey || this.config.apiKey.length < 10)) {
+          const resolved = await this.credentialResolver.resolveApiKey({ provider: 'azure-openai', useStoredCredentials: true, useEnvironmentVars: true });
+          if (!resolved) throw new Error('No API key available for Azure OpenAI embeddings.');
+          this.config.apiKey = resolved;
+          this.embeddings = this.createEmbeddingsClient(this.config, this.embeddingModelName, resolved);
+        }
         const queryEmbedding = await this.embeddings.embedQuery(query);
 
         // Calculate similarities
@@ -441,6 +506,12 @@ export class ContextEmbeddingService {
       throw new Error('Repository not indexed. Call indexRepository() first.');
     }
 
+    if (this.config.provider === 'azure-openai' && (!this.config.apiKey || this.config.apiKey.length < 10)) {
+      const resolved = await this.credentialResolver.resolveApiKey({ provider: 'azure-openai', useStoredCredentials: true, useEnvironmentVars: true });
+      if (!resolved) throw new Error('No API key available for Azure OpenAI embeddings.');
+      this.config.apiKey = resolved;
+      this.embeddings = this.createEmbeddingsClient(this.config, this.embeddingModelName, resolved);
+    }
     const queryEmbedding = await this.embeddings.embedQuery(query);
 
     const results = this.documents
@@ -494,5 +565,86 @@ export class ContextEmbeddingService {
       embeddingHttp5xx: this.embeddingHttp5xx,
       lastEmbeddingError: this.lastEmbeddingError
     };
+  }
+
+  /**
+   * Persist the current in-memory index to disk.
+   * @param repoPath Repository root path
+   */
+  async saveIndex(repoPath: string): Promise<void> {
+    if (!this.indexed || this.documents.length === 0) {
+      return; // Nothing to persist
+    }
+    try {
+      const { mkdir, writeFile } = await import('node:fs/promises');
+      const path = await import('node:path');
+      const crypto = await import('node:crypto');
+      const dir = path.join(repoPath, '.context', '.rag');
+      await mkdir(dir, { recursive: true });
+      const file = path.join(dir, 'vector-index.json');
+      const checksumSource = this.documents.map(d => `${d.doc.metadata.id}:${d.doc.pageContent}`).join('|');
+      const checksum = crypto.createHash('sha256').update(checksumSource).digest('hex');
+      const payload = {
+        version: 1,
+        embeddingModel: this.embeddingModelName,
+        provider: this.config.provider,
+        docCount: this.documents.length,
+        checksum,
+        documents: this.documents.map(d => ({
+          id: d.doc.metadata.id,
+          title: d.doc.metadata.title,
+          type: d.doc.metadata.type,
+          content: d.doc.pageContent,
+          embedding: d.embedding
+        }))
+      };
+      await writeFile(file, JSON.stringify(payload), 'utf-8');
+      logger.info({ service: 'ContextEmbeddingService', method: 'saveIndex', file }, `Persisted ${payload.docCount} documents`);
+    } catch (err) {
+      logger.warn({ service: 'ContextEmbeddingService', method: 'saveIndex' }, `Failed to persist index: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /**
+   * Load a previously persisted index if present.
+   * @param repoPath Repository root path
+   */
+  async loadIndex(repoPath: string): Promise<boolean> {
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const path = await import('node:path');
+      const crypto = await import('node:crypto');
+      const file = path.join(repoPath, '.context', '.rag', 'vector-index.json');
+      const raw = await readFile(file, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.documents)) return false;
+      this.documents = parsed.documents.map((item: any) => ({
+        doc: new Document({
+          pageContent: item.content,
+          metadata: {
+            id: item.id,
+            title: item.title,
+            type: item.type,
+            tokenCount: item.content.length // approximate
+          }
+        }),
+        embedding: item.embedding
+      }));
+      this.indexed = this.documents.length > 0;
+      // Validate checksum if present
+      if (parsed.checksum) {
+        const checksumSource = this.documents.map(d => `${d.doc.metadata.id}:${d.doc.pageContent}`).join('|');
+        const actual = crypto.createHash('sha256').update(checksumSource).digest('hex');
+        if (actual !== parsed.checksum) {
+          logger.warn({ service: 'ContextEmbeddingService', method: 'loadIndex' }, `Checksum mismatch. Expected ${parsed.checksum} got ${actual}`);
+        }
+      }
+      logger.info({ service: 'ContextEmbeddingService', method: 'loadIndex', file }, `Loaded persisted index with ${this.documents.length} documents`);
+      return this.indexed;
+    } catch (err) {
+      // Silence if file not found
+      logger.debug({ service: 'ContextEmbeddingService', method: 'loadIndex' }, `No persisted index loaded: ${err instanceof Error ? err.message : String(err)}`);
+      return false;
+    }
   }
 }

@@ -7,6 +7,10 @@ import type {
   ToolInvocationStatus
 } from '@shared/assistant/types';
 import type { ReadContextFileOptions, ReadContextFileResult } from './tools/readContextFile';
+import type { SearchContextRepositoryOptions, SearchContextRepositoryResult } from './tools/searchContextRepository';
+import type { GetEntityDetailsOptions, GetEntityDetailsResult } from './tools/getEntityDetails';
+import type { FindSimilarEntitiesOptions, FindSimilarEntitiesResult } from './tools/findSimilarEntities';
+import type { AIConfig } from './LangChainAIService';
 
 export interface PipelineRunOptions {
   repoPath: string;
@@ -46,6 +50,10 @@ export interface ToolOrchestratorDependencies {
   loadConfiguration: () => ProviderConfigurationResult;
   runPipeline: (options: PipelineRunOptions) => Promise<PipelineRunResult>;
   readContextFile: (options: ReadContextFileOptions) => Promise<ReadContextFileResult>;
+  searchContextRepository: (options: SearchContextRepositoryOptions) => Promise<SearchContextRepositoryResult>;
+  getEntityDetails: (options: GetEntityDetailsOptions) => Promise<GetEntityDetailsResult>;
+  findSimilarEntities: (options: FindSimilarEntitiesOptions) => Promise<FindSimilarEntitiesResult>;
+  getAIConfig: (repoPath: string) => Promise<AIConfig>;
   telemetryWriter: TelemetryWriter;
   clock?: () => Date;
 }
@@ -69,6 +77,10 @@ export class ToolOrchestrator {
   private readonly loadConfiguration: () => ProviderConfigurationResult;
   private readonly runPipeline: (options: PipelineRunOptions) => Promise<PipelineRunResult>;
   private readonly readContextFile: (options: ReadContextFileOptions) => Promise<ReadContextFileResult>;
+  private readonly searchContextRepository: (options: SearchContextRepositoryOptions) => Promise<SearchContextRepositoryResult>;
+  private readonly getEntityDetails: (options: GetEntityDetailsOptions) => Promise<GetEntityDetailsResult>;
+  private readonly findSimilarEntities: (options: FindSimilarEntitiesOptions) => Promise<FindSimilarEntitiesResult>;
+  private readonly getAIConfig: (repoPath: string) => Promise<AIConfig>;
   private readonly telemetryWriter: TelemetryWriter;
   private readonly clock: () => Date;
 
@@ -85,6 +97,22 @@ export class ToolOrchestrator {
       throw new Error('ToolOrchestrator requires a readContextFile dependency.');
     }
 
+    if (!deps?.searchContextRepository) {
+      throw new Error('ToolOrchestrator requires a searchContextRepository dependency.');
+    }
+
+    if (!deps?.getEntityDetails) {
+      throw new Error('ToolOrchestrator requires a getEntityDetails dependency.');
+    }
+
+    if (!deps?.findSimilarEntities) {
+      throw new Error('ToolOrchestrator requires a findSimilarEntities dependency.');
+    }
+
+    if (!deps?.getAIConfig) {
+      throw new Error('ToolOrchestrator requires a getAIConfig dependency.');
+    }
+
     if (!deps?.telemetryWriter) {
       throw new Error('ToolOrchestrator requires a telemetryWriter dependency.');
     }
@@ -92,6 +120,10 @@ export class ToolOrchestrator {
     this.loadConfiguration = deps.loadConfiguration;
     this.runPipeline = deps.runPipeline;
     this.readContextFile = deps.readContextFile;
+    this.searchContextRepository = deps.searchContextRepository;
+    this.getEntityDetails = deps.getEntityDetails;
+    this.findSimilarEntities = deps.findSimilarEntities;
+    this.getAIConfig = deps.getAIConfig;
     this.telemetryWriter = deps.telemetryWriter;
     this.clock = deps.clock ?? (() => new Date());
   }
@@ -109,6 +141,12 @@ export class ToolOrchestrator {
         return this.executePipelineTool(options);
       case 'context.read':
         return this.executeContextReadTool(options);
+      case 'rag.search':
+        return this.executeRAGSearchTool(options);
+      case 'rag.getEntity':
+        return this.executeGetEntityTool(options);
+      case 'rag.findSimilar':
+        return this.executeFindSimilarTool(options);
       default:
         throw new Error(`Tool ${tool.id} is not implemented yet.`);
     }
@@ -332,5 +370,218 @@ export class ToolOrchestrator {
       throw new Error('encoding parameter must be a string when provided.');
     }
     return raw.trim() as BufferEncoding;
+  }
+
+  // RAG Tool Execution Methods
+
+  private async executeRAGSearchTool(options: ExecuteToolOptions): Promise<ToolExecutionResult> {
+    const query = this.extractSearchQuery(options.parameters.query);
+    const limit = this.extractOptionalNumber(options.parameters.limit, 10, 1, 20);
+    const requestedAt = this.nowIso();
+
+    const pendingRecord = await this.telemetryWriter.startInvocation({
+      sessionId: options.sessionId,
+      provider: options.provider,
+      toolId: options.toolId,
+      parameters: options.parameters,
+      requestedAt
+    });
+
+    try {
+      const config = await this.getAIConfig(options.repoPath);
+      const searchResult = await this.searchContextRepository({
+        repoPath: options.repoPath,
+        query,
+        limit,
+        config
+      });
+
+      const finishedAt = this.nowIso();
+      const telemetry = await this.telemetryWriter.completeInvocation(pendingRecord.id, {
+        status: 'succeeded',
+        finishedAt,
+        resultSummary: `Found ${searchResult.count} relevant entities for query: "${query}"`,
+        metadata: {
+          query,
+          count: searchResult.count,
+          repoPath: options.repoPath
+        }
+      });
+
+      return {
+        ok: true,
+        result: searchResult as unknown as Record<string, unknown>,
+        telemetry
+      };
+    } catch (error: unknown) {
+      const finishedAt = this.nowIso();
+      const message = error instanceof Error ? error.message : 'Unknown search error.';
+
+      let telemetry: ToolInvocationRecord | undefined;
+      try {
+        telemetry = await this.telemetryWriter.completeInvocation(pendingRecord.id, {
+          status: 'failed',
+          finishedAt,
+          resultSummary: message,
+          metadata: { query, repoPath: options.repoPath, error: message }
+        });
+      } catch {
+        // swallow telemetry failures
+      }
+
+      return {
+        ok: false,
+        error: message,
+        telemetry
+      };
+    }
+  }
+
+  private async executeGetEntityTool(options: ExecuteToolOptions): Promise<ToolExecutionResult> {
+    const entityId = this.extractEntityId(options.parameters.entityId);
+    const requestedAt = this.nowIso();
+
+    const pendingRecord = await this.telemetryWriter.startInvocation({
+      sessionId: options.sessionId,
+      provider: options.provider,
+      toolId: options.toolId,
+      parameters: options.parameters,
+      requestedAt
+    });
+
+    try {
+      const entityDetails = await this.getEntityDetails({
+        repoPath: options.repoPath,
+        entityId
+      });
+
+      const finishedAt = this.nowIso();
+      const telemetry = await this.telemetryWriter.completeInvocation(pendingRecord.id, {
+        status: 'succeeded',
+        finishedAt,
+        resultSummary: `Retrieved details for ${entityId}${entityDetails.title ? ` (${entityDetails.title})` : ''}`,
+        metadata: {
+          entityId,
+          type: entityDetails.type,
+          repoPath: options.repoPath
+        }
+      });
+
+      return {
+        ok: true,
+        result: entityDetails as unknown as Record<string, unknown>,
+        telemetry
+      };
+    } catch (error: unknown) {
+      const finishedAt = this.nowIso();
+      const message = error instanceof Error ? error.message : 'Unknown entity retrieval error.';
+
+      let telemetry: ToolInvocationRecord | undefined;
+      try {
+        telemetry = await this.telemetryWriter.completeInvocation(pendingRecord.id, {
+          status: 'failed',
+          finishedAt,
+          resultSummary: message,
+          metadata: { entityId, repoPath: options.repoPath, error: message }
+        });
+      } catch {
+        // swallow telemetry failures
+      }
+
+      return {
+        ok: false,
+        error: message,
+        telemetry
+      };
+    }
+  }
+
+  private async executeFindSimilarTool(options: ExecuteToolOptions): Promise<ToolExecutionResult> {
+    const entityId = this.extractEntityId(options.parameters.entityId);
+    const limit = this.extractOptionalNumber(options.parameters.limit, 5, 1, 15);
+    const requestedAt = this.nowIso();
+
+    const pendingRecord = await this.telemetryWriter.startInvocation({
+      sessionId: options.sessionId,
+      provider: options.provider,
+      toolId: options.toolId,
+      parameters: options.parameters,
+      requestedAt
+    });
+
+    try {
+      const config = await this.getAIConfig(options.repoPath);
+      const similarResult = await this.findSimilarEntities({
+        repoPath: options.repoPath,
+        entityId,
+        limit,
+        config
+      });
+
+      const finishedAt = this.nowIso();
+      const telemetry = await this.telemetryWriter.completeInvocation(pendingRecord.id, {
+        status: 'succeeded',
+        finishedAt,
+        resultSummary: `Found ${similarResult.count} entities similar to ${entityId}`,
+        metadata: {
+          entityId,
+          count: similarResult.count,
+          repoPath: options.repoPath
+        }
+      });
+
+      return {
+        ok: true,
+        result: similarResult as unknown as Record<string, unknown>,
+        telemetry
+      };
+    } catch (error: unknown) {
+      const finishedAt = this.nowIso();
+      const message = error instanceof Error ? error.message : 'Unknown similarity search error.';
+
+      let telemetry: ToolInvocationRecord | undefined;
+      try {
+        telemetry = await this.telemetryWriter.completeInvocation(pendingRecord.id, {
+          status: 'failed',
+          finishedAt,
+          resultSummary: message,
+          metadata: { entityId, repoPath: options.repoPath, error: message }
+        });
+      } catch {
+        // swallow telemetry failures
+      }
+
+      return {
+        ok: false,
+        error: message,
+        telemetry
+      };
+    }
+  }
+
+  // Helper extraction methods for RAG tools
+
+  private extractSearchQuery(raw: unknown): string {
+    if (typeof raw !== 'string' || raw.trim().length === 0) {
+      throw new Error('query parameter must be a non-empty string.');
+    }
+    return raw.trim();
+  }
+
+  private extractEntityId(raw: unknown): string {
+    if (typeof raw !== 'string' || raw.trim().length === 0) {
+      throw new Error('entityId parameter must be a non-empty string.');
+    }
+    return raw.trim().toUpperCase();
+  }
+
+  private extractOptionalNumber(raw: unknown, defaultValue: number, min: number, max: number): number {
+    if (raw === undefined || raw === null) {
+      return defaultValue;
+    }
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+      throw new Error(`Expected a finite number, got ${typeof raw}`);
+    }
+    return Math.max(min, Math.min(max, Math.floor(raw)));
   }
 }

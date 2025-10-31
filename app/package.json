@@ -28,7 +28,7 @@
   "keywords": [],
   "author": {
     "name": "Luke Adams",
-    "email": "Luke.Adams@atkinsglobal.com"
+    "email": "Luke.Adams@intel.com"
   },
   "license": "MIT",
   "devDependencies": {
@@ -84,6 +84,8 @@
     "execa": "^9.6.0",
     "faiss-node": "^0.5.1",
     "handlebars": "^4.7.8",
+    "https-proxy-agent": "^6.2.1",
+    "undici": "^6.19.8",
     "isomorphic-git": "^1.34.2",
     "langchain": "^1.0.2",
     "marked": "^16.4.1",
