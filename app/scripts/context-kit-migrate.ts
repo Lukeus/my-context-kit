@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseYAML, stringify as stringifyYAML } from 'yaml';
+import { stringify as stringifyYAML } from 'yaml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
