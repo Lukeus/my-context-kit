@@ -13,9 +13,9 @@ These gaps frame the core implementation tracks: repository schema migration, Py
 
 ## Workstream Overview
 1. **Repository Contract & Migration** – Define `.context-kit/` schema, migrate loaders, and provide compatibility tooling.
-2. **Python Context Kit Service** – Build the FastAPI + LangChain runtime that consumes `.context-kit/` and exposes the four REST endpoints.
-3. **Electron Bridge & IPC** – Extend the preload bridge, main-process services, and renderer stores/components to call the Python service and display outputs.
-4. **RAG & Spec Lifecycle** – Persist spec logs, implement promptification, and wire generated artifacts back into the context repo UX.
+2. **Python Context Kit Service** – Build the FastAPI + LangChain runtime that consumes `.context-kit/` and exposes the four REST endpoints while standardizing on `uv` for virtual environment management.
+3. **Electron Bridge & IPC** – Extend the preload bridge, main-process services, and renderer stores/components to call the Python service and display outputs with Material 3-compliant Vue components.
+4. **RAG & Spec Lifecycle** – Persist spec logs, implement promptification, and wire generated artifacts back into the context repo UX with Material 3 design patterns applied to new screens and controls.
 5. **Multi-Repo Switching & UX Enhancements** – Allow users to register repos, switch contexts, and review historic specs within the app.
 6. **Testing, Packaging, and Observability** – Ensure coverage, end-to-end testing, logging, and release automation are in place.
 
@@ -28,28 +28,30 @@ These gaps frame the core implementation tracks: repository schema migration, Py
 - Document schema in `docs/` and provide CLI helper under `scripts/` to initialize or migrate repos.
 
 ### 2. Python Context Kit Service
-- Scaffold a `context-kit-service/` package (Poetry or pdm) with FastAPI, LangChain, and storage adapters for `.context-kit/`.
+- Scaffold a `context-kit-service/` package using `uv` to create and manage the virtual environment that hosts FastAPI, LangChain, and storage adapters for `.context-kit/`.
 - Implement `/context/inspect`, `/spec/generate`, `/spec/promptify`, and `/codegen/from-spec` endpoints with request validation, streaming support, and error surfaces aligned with Electron expectations.
 - Introduce `.context-kit/spec-log/` writers that persist generated specs and prompts as JSON, matching the spec format.
-- Containerize (uvicorn + packaging) and expose service bootstrap commands for Electron to spawn/monitor.
+- Containerize (uvicorn + packaging) and expose service bootstrap commands for Electron to spawn/monitor, including `uv` bootstrap steps for fresh machines.
 
 ### 3. Electron Bridge & IPC Integration
-- Extend `app/src/main/services/` with a `ContextKitServiceClient` that manages the Python process lifecycle (spawn, health checks, shutdown).
+- Extend `app/src/main/services/` with a `ContextKitServiceClient` that manages the Python process lifecycle (spawn, health checks, shutdown) and disposes of the `uv` environment when the Electron app quits.
 - Add IPC handlers under `app/src/main/ipc/` to forward renderer requests to the Python service, handling streaming responses and error propagation.
 - Update preload bridge (`app/src/preload/`) with type-safe APIs for inspecting context, triggering spec generation, and retrieving prompt sets.
-- Enhance Pinia stores (`assistantStore`, new `specStore`) to orchestrate multi-step workflows, manage session IDs, and track service state.
+- Enhance Pinia stores (`assistantStore`, new `specStore`) to orchestrate multi-step workflows, manage session IDs, and track service state using Material 3-aligned surface, typography, and spacing tokens.
+
+The `ContextKitServiceClient` is responsible for provisioning a per-session `uv` virtual environment in a deterministic location (e.g., `~/.context-kit/uv-env`). When Electron receives `before-quit`, the client will stop the FastAPI subprocess, invoke `uv pip freeze` telemetry for diagnostics, and call `uv venv remove <path>` (or delete the directory) so the interpreter, caches, and sockets are reclaimed, eliminating lingering processes or file descriptor leaks.
 
 ### 4. RAG & Spec Lifecycle Integration
-- Replace current prompt generation pipeline with service-backed promptify flows; map Python responses into existing Vue components.
-- Surface `.context-kit/rag.jsonl` entries in the UI, providing inspection and refresh tooling.
-- Add UX to browse `spec-log/`, open individual specs, and launch code generation targets that feed downstream Git workflows.
+- Replace current prompt generation pipeline with service-backed promptify flows; map Python responses into existing Vue components while ensuring all new controls follow Material 3 guidelines (e.g., filled buttons, elevated cards, adaptive color roles).
+- Surface `.context-kit/rag.jsonl` entries in the UI, providing inspection and refresh tooling through Material 3 data tables and supporting components.
+- Add UX to browse `spec-log/`, open individual specs, and launch code generation targets that feed downstream Git workflows with Material 3 navigation patterns (navigation rail or tabs, headline typography).
 - Ensure generated files are written into the repo via existing Git service utilities, with diffs displayed in the Git panel.
 
 ### 5. Multi-Repo Switching & UX Enhancements
-- Implement a repository registry (persisted under app config) allowing users to select active repos and store `.context-kit/` metadata.
-- Update onboarding flow to validate `.context-kit/` presence and optionally bootstrap from templates.
-- Introduce dashboards summarizing stack/domain info pulled from the new schema, and integrate assistant tooling with repo-scoped context.
-- Add guardrails for agent/tool execution when the Python service is unavailable, including retry and graceful degradation messages.
+- Implement a repository registry (persisted under app config) allowing users to select active repos and store `.context-kit/` metadata via Material 3 navigation patterns.
+- Update onboarding flow to validate `.context-kit/` presence and optionally bootstrap from templates, using Material 3 dialog, stepper, and form components for consistency.
+- Introduce dashboards summarizing stack/domain info pulled from the new schema, and integrate assistant tooling with repo-scoped context using Material 3 surfaces, typography, and color theming.
+- Add guardrails for agent/tool execution when the Python service is unavailable, including retry and graceful degradation messages that follow Material 3 snackbar and banner behavior.
 
 ### 6. Testing, Packaging, and Observability
 - Write unit tests for schema loaders, IPC handlers, and Pinia stores; add integration tests that mock the Python endpoints.
@@ -69,6 +71,7 @@ Each milestone should be merged behind feature flags where feasible to enable in
 
 ## Risk Mitigation
 - **Process Orchestration**: Wrap Python service lifecycle in a watchdog to restart on crash and provide status indicators in the UI.
+- **Environment Lifecycle**: Couple `app.on('before-quit')` and crash handlers to gracefully stop the FastAPI process and invoke `uv venv remove` (or delete the managed directory) so temporary environments are cleaned up and file handles released.
 - **Schema Drift**: Enforce versioning in `project.yml` and require migrations when the schema changes.
 - **Provider Limits**: Implement configurable retry/backoff in both Python and Electron layers to handle Azure OpenAI quota issues.
 - **Security & Credentials**: Reuse existing secure credential storage and avoid logging sensitive tokens in service telemetry.
