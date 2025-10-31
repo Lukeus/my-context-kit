@@ -23,5 +23,9 @@
     "e2e/**/*",
     "vitest.config.ts",
     "playwright.config.ts"
+  ],
+  "exclude": [
+    "scripts/**/*",
+    "src/main/scripts/**/*"
   ]
 }

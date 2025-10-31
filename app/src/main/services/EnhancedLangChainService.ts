@@ -424,7 +424,7 @@ Provide a detailed impact analysis with explanations, effort estimate, risks, an
             id: targetNode.id,
             type: targetNode.kind,
             relationship: edge.rel,
-            suggestedAction: this.suggestActionForRelationship(edge.rel, targetNode.kind)
+            suggestedAction: this.suggestActionForRelationship(edge.rel)
           });
         }
       }
@@ -435,7 +435,7 @@ Provide a detailed impact analysis with explanations, effort estimate, risks, an
             id: sourceNode.id,
             type: sourceNode.kind,
             relationship: `inverse_${edge.rel}`,
-            suggestedAction: this.suggestActionForRelationship(`inverse_${edge.rel}`, sourceNode.kind)
+            suggestedAction: this.suggestActionForRelationship(`inverse_${edge.rel}`)
           });
         }
       }
@@ -447,7 +447,7 @@ Provide a detailed impact analysis with explanations, effort estimate, risks, an
   /**
    * Suggest action based on relationship type
    */
-  private suggestActionForRelationship(relationship: string, _entityType: string): string {
+  private suggestActionForRelationship(relationship: string): string {
     const actionMap: Record<string, string> = {
       'has_userstory': 'Review and update acceptance criteria',
       'has_spec': 'Mark as needs-review',

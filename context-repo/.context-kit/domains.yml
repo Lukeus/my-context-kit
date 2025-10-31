@@ -1,0 +1,98 @@
+version: "1.0.0"
+
+domains:
+  - id: context-management
+    name: Context Management
+    type: core
+    description: Core domain for managing context repositories, entities, and relationships
+    owner: "@lukeu"
+    boundaries:
+      entities:
+        - Feature
+        - UserStory
+        - Specification
+        - Task
+        - Service
+        - Package
+      services:
+        - ContextService
+        - ContextBuilderService
+      apis:
+        - context:validate
+        - context:build-graph
+        - context:calculate-impact
+    dependencies: []
+    ubiquitousLanguage:
+      entity: "A YAML document representing a feature, story, spec, task, service, or package"
+      relationship: "A link between entities defining dependencies or traceability"
+      validation: "Schema-based verification of entity structure and consistency"
+
+  - id: ai-orchestration
+    name: AI Orchestration
+    type: core
+    description: AI-powered assistance for context generation, improvement, and code generation
+    owner: "@lukeu"
+    boundaries:
+      entities:
+        - AssistantSession
+        - Prompt
+        - SpecLog
+      services:
+        - AssistantSessionManager
+        - ContextKitServiceClient
+      apis:
+        - ai:assist
+        - ai:stream
+        - context-kit:inspect
+        - context-kit:spec-generate
+        - context-kit:promptify
+        - context-kit:codegen
+    dependencies:
+      - context-management
+    ubiquitousLanguage:
+      inspect: "Analyze and summarize context repository structure and entities"
+      spec-generate: "Create technical specifications from natural language requirements"
+      promptify: "Convert specifications into agent-ready prompts for code generation"
+      codegen: "Generate code artifacts from specifications"
+
+  - id: git-integration
+    name: Git Integration
+    type: supporting
+    description: Version control operations, change tracking, and PR workflows
+    owner: "@lukeu"
+    boundaries:
+      entities:
+        - GitRepository
+        - Branch
+        - Commit
+      services:
+        - GitService
+      apis:
+        - git:status
+        - git:commit
+        - git:branch
+    dependencies:
+      - context-management
+    ubiquitousLanguage:
+      diff: "Comparison of entity versions or file changes"
+      staging: "Preparing changes for commit"
+      
+  - id: ui-presentation
+    name: UI Presentation
+    type: supporting
+    description: Desktop UI for visualizing and interacting with context entities
+    owner: "@lukeu"
+    boundaries:
+      entities:
+        - ContextTree
+        - GraphView
+        - EditorPanel
+      services: []
+      apis: []
+    dependencies:
+      - context-management
+      - ai-orchestration
+      - git-integration
+    ubiquitousLanguage:
+      surface: "Material 3 design component representing a visual boundary"
+      navigation-rail: "Side navigation pattern for switching between major sections"

@@ -202,18 +202,19 @@ function looksLikeStructuredPayload(value: string | undefined | null) {
   return trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.startsWith('```');
 }
 
-function resolveAnswer(...candidates: Array<string | undefined | null>) {
-  for (const candidate of candidates) {
-    if (typeof candidate !== 'string') {
-      continue;
-    }
-    const trimmed = candidate.trim();
-    if (trimmed.length > 0 && !looksLikeStructuredPayload(trimmed)) {
-      return trimmed;
-    }
-  }
-  return '';
-}
+// Helper to resolve answer from candidates - reserved for future use
+// function resolveAnswer(...candidates: Array<string | undefined | null>) {
+//   for (const candidate of candidates) {
+//     if (typeof candidate !== 'string') {
+//       continue;
+//     }
+//     const trimmed = candidate.trim();
+//     if (trimmed.length > 0 && !looksLikeStructuredPayload(trimmed)) {
+//       return trimmed;
+//     }
+//   }
+//   return '';
+// }
 
 function resolveList<T>(primary?: T[] | null, fallback?: T[] | null): T[] {
   if (Array.isArray(primary) && primary.length > 0) {
@@ -309,28 +310,29 @@ function summarizeAssistantData(data: Partial<AssistantResponse>) {
   return segments.join('\n\n').trim();
 }
 
-function sanitizeRawSnippet(raw: string) {
-  if (!raw) {
-    return '';
-  }
-
-  const cleaned = raw
-    .replace(/```(?:json)?/gi, '')
-    .replace(/```/g, '')
-    .trim();
-
-  if (!cleaned) {
-    return '';
-  }
-
-  const lines = cleaned.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  if (lines.length === 0) {
-    return '';
-  }
-
-  const snippet = lines.slice(0, 6).join('\n');
-  return lines.length > 6 ? `${snippet}\n…` : snippet;
-}
+// Helper to sanitize raw snippets - reserved for future use
+// function sanitizeRawSnippet(raw: string) {
+//   if (!raw) {
+//     return '';
+//   }
+//
+//   const cleaned = raw
+//     .replace(/```(?:json)?/gi, '')
+//     .replace(/```/g, '')
+//     .trim();
+//
+//   if (!cleaned) {
+//     return '';
+//   }
+//
+//   const lines = cleaned.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+//   if (lines.length === 0) {
+//     return '';
+//   }
+//
+//   const snippet = lines.slice(0, 6).join('\n');
+//   return lines.length > 6 ? `${snippet}\n…` : snippet;
+// }
 
 function sanitizeSuggestions(list: unknown): AssistantSuggestion[] {
   if (!Array.isArray(list)) {
@@ -472,18 +474,19 @@ export const useAIStore = defineStore('ai', () => {
     return generateId(prefix);
   }
 
-  function recordUsage(usage?: AssistantUsageSummary) {
-    if (!usage) {
-      return;
-    }
-
-    usageHistory.value.push({
-      timestamp: new Date().toISOString(),
-      promptTokens: usage.prompt_tokens ?? 0,
-      completionTokens: usage.completion_tokens ?? 0,
-      totalTokens: usage.total_tokens ?? (usage.prompt_tokens ?? 0) + (usage.completion_tokens ?? 0)
-    });
-  }
+  // Helper to record usage - reserved for future use
+  // function recordUsage(usage?: AssistantUsageSummary) {
+  //   if (!usage) {
+  //     return;
+  //   }
+  //
+  //   usageHistory.value.push({
+  //     timestamp: new Date().toISOString(),
+  //     promptTokens: usage.prompt_tokens ?? 0,
+  //     completionTokens: usage.completion_tokens ?? 0,
+  //     totalTokens: usage.total_tokens ?? (usage.prompt_tokens ?? 0) + (usage.completion_tokens ?? 0)
+  //   });
+  // }
 
   function findLatestAssistantWithPendingEdits() {
     for (let i = conversation.value.length - 1; i >= 0; i -= 1) {

@@ -1,0 +1,32 @@
+{
+  "name": "@context-kit/service",
+  "version": "0.1.0",
+  "description": "Python FastAPI service for Context Kit pipeline orchestration",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "uv venv && uv pip install -e .",
+    "setup:dev": "uv venv && uv pip install -e .[dev]",
+    "start": "uv run uvicorn context_kit_service.main:app --host 127.0.0.1 --port 8000",
+    "dev": "uv run uvicorn context_kit_service.main:app --host 127.0.0.1 --port 8000 --reload",
+    "test": "uv run pytest",
+    "test:cov": "uv run pytest --cov=src/context_kit_service --cov-report=html",
+    "lint": "uv run ruff check .",
+    "lint:fix": "uv run ruff check --fix .",
+    "format": "uv run ruff format .",
+    "typecheck": "uv run mypy src/context_kit_service",
+    "clean": "Remove-Item -Recurse -Force .venv,dist,*.egg-info,.pytest_cache,.coverage,htmlcov -ErrorAction SilentlyContinue",
+    "freeze": "uv pip freeze",
+    "health": "node -e \"require('http').get('http://127.0.0.1:8000/health', r => r.on('data', d => console.log(d.toString())))\"",
+    "bootstrap": "pwsh -Command \"if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { Write-Host 'Installing uv...'; irm https://astral.sh/uv/install.ps1 | iex } else { Write-Host 'uv already installed' }\""
+  },
+  "keywords": [
+    "context-kit",
+    "fastapi",
+    "langchain",
+    "python",
+    "service"
+  ],
+  "author": "Luke Adams <Luke.Adams@intel.com>",
+  "license": "MIT"
+}

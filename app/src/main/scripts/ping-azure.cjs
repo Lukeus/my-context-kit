@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable */
 // Lightweight ping script for Azure OpenAI deployments (CommonJS)
 // Usage: node ping-azure.cjs <endpoint> <model> <apiKey>
 const https = require('https');
@@ -35,7 +36,7 @@ async function run() {
   const proxy = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy || '';
   if (proxy) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const proxyMod = require('https-proxy-agent');
       // Support different module shapes (constructor or factory)
       let AgentCtor = proxyMod && (proxyMod.HttpsProxyAgent || proxyMod.default || proxyMod);

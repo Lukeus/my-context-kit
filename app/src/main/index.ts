@@ -63,11 +63,14 @@ const createWindow = (): void => {
   });
 };
 
-// Register all IPC handlers
-registerAllHandlers();
-
 // App lifecycle
-app.on('ready', createWindow);
+app.on('ready', () => {
+  // Register all IPC handlers first
+  void registerAllHandlers().then(() => {
+    // Then create the window
+    createWindow();
+  });
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

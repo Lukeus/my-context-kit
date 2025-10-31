@@ -233,14 +233,14 @@ export const useLangChainStore = defineStore('langchain', () => {
   async function cancelStream(streamId: string): Promise<void> {
     // Defensive: if we don't have the stream tracked locally, treat as success
     if (!activeStreams[streamId]) {
-      try { console.log('[LangChainStore] cancelStream called for unknown streamId, ignoring', { streamId }); } catch {}
+      try { console.log('[LangChainStore] cancelStream called for unknown streamId, ignoring', { streamId }); } catch { /* ignore logging failures */ }
       return;
     }
 
     const result = await window.api.langchain.assistStreamCancel(streamId);
     // If the backend reports stream not found, we consider it a successful cancellation
     if (!result.ok && result.error && result.error.toLowerCase().includes('stream not found')) {
-      try { console.log('[LangChainStore] assistStreamCancel: backend reports stream not found; treating as cancelled', { streamId }); } catch {}
+      try { console.log('[LangChainStore] assistStreamCancel: backend reports stream not found; treating as cancelled', { streamId }); } catch { /* ignore logging failures */ }
       delete activeStreams[streamId];
       return;
     }
@@ -262,7 +262,7 @@ export const useLangChainStore = defineStore('langchain', () => {
         stream.firstTokenTime = Date.now();
       }
       stream.tokenCount++;
-      try { console.log('[LangChainStore] recordStreamToken', { streamId, tokenCount: stream.tokenCount }); } catch {}
+      try { console.log('[LangChainStore] recordStreamToken', { streamId, tokenCount: stream.tokenCount }); } catch { /* ignore logging failures */ }
     }
   }
 
@@ -280,7 +280,7 @@ export const useLangChainStore = defineStore('langchain', () => {
       setTimeout(() => {
         delete activeStreams[streamId];
       }, 5000);
-      try { console.log('[LangChainStore] completeStream', { streamId, totalTime }); } catch {}
+      try { console.log('[LangChainStore] completeStream', { streamId, totalTime }); } catch { /* ignore logging failures */ }
     }
   }
 
@@ -296,7 +296,7 @@ export const useLangChainStore = defineStore('langchain', () => {
     // Reset cache metrics
     metrics.cacheHits = 0;
     metrics.cacheMisses = 0;
-    try { console.log('[LangChainStore] clearCache, metrics reset', metrics); } catch {}
+    try { console.log('[LangChainStore] clearCache, metrics reset', metrics); } catch { /* ignore logging failures */ }
   }
 
   /**
@@ -316,7 +316,7 @@ export const useLangChainStore = defineStore('langchain', () => {
     metrics.averageResponseTime = (prevTotal + responseTime) / metrics.totalRequests;
 
     metrics.lastRequestTimestamp = Date.now();
-    try { console.log('[LangChainStore] recordRequest', { success, responseTime, metrics }); } catch {}
+    try { console.log('[LangChainStore] recordRequest', { success, responseTime, metrics }); } catch { /* ignore logging failures */ }
   }
 
   /**

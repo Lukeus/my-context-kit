@@ -1,2 +1,3 @@
 packages:
   - 'app'
+  - 'context-kit-service'

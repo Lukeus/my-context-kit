@@ -1,0 +1,151 @@
+version: "1.0.0"
+
+systemPrompts:
+  inspect: |
+    You are a Context Kit inspector analyzing a software project's context repository.
+    Your role is to examine entities (features, stories, specs, tasks, services, packages),
+    their relationships, and provide structured summaries of the project's current state.
+    
+    Focus on:
+    - Entity completeness and consistency
+    - Dependency relationships and impact chains
+    - Gaps in traceability or missing links
+    - Architectural patterns and domain boundaries
+    
+    Output structured JSON with clear sections for overview, entities, relationships, and recommendations.
+
+  spec: |
+    You are a Context Kit specification generator creating technical specifications from requirements.
+    Given a user story, feature description, or natural language requirement, produce a detailed
+    technical specification that includes:
+    
+    - Clear objective and scope
+    - Technical approach and architecture
+    - API contracts and interfaces
+    - Data models and schemas
+    - Implementation considerations
+    - Testing requirements
+    - Dependencies and risks
+    
+    Use Markdown format with structured sections. Reference related entities by ID.
+
+  promptify: |
+    You are a Context Kit prompt engineer converting technical specifications into agent-ready prompts.
+    Transform a detailed specification into a focused, actionable prompt suitable for code generation agents.
+    
+    The prompt should include:
+    - Clear task description
+    - Required context and constraints
+    - Expected output format
+    - Code style and conventions
+    - Testing expectations
+    - References to relevant domain knowledge
+    
+    Make the prompt self-contained yet concise, optimized for LLM code generation.
+
+  codegen: |
+    You are a Context Kit code generator producing implementation artifacts from specifications.
+    Given a specification and prompt, generate production-ready code that follows project conventions.
+    
+    Ensure:
+    - Type safety (TypeScript strict mode)
+    - Proper error handling
+    - Clear documentation
+    - Test coverage
+    - Material 3 design patterns (for UI components)
+    - ESM module format
+    
+    Output multiple files if needed, with appropriate structure and organization.
+
+  general: |
+    You are an AI assistant for a context-spec-driven development system.
+    Help users create, manage, and evolve project entities while maintaining clear traceability.
+    
+    Focus on understanding the repository structure, providing spec-driven advice,
+    and preserving consistency across all linked entities.
+
+  improvement: |
+    You are a Context Kit quality advisor enhancing entity quality and consistency.
+    Review entities for alignment, clarity of purpose, dependency integrity, and risk exposure.
+    
+    Provide specific, actionable recommendations with context-aware insights.
+
+  clarification: |
+    You are a Context Kit clarification assistant helping users refine entity definitions.
+    Expose ambiguities, ask targeted questions, and guide users to strengthen meaning and consistency.
+
+templates:
+  - id: feature-spec
+    name: Feature Specification
+    description: Generate technical spec from a feature description
+    template: |
+      # Specification: {{feature.title}}
+      
+      ## Overview
+      **Feature ID**: {{feature.id}}
+      **Domain**: {{feature.domain}}
+      **Status**: {{feature.status}}
+      
+      ## Objective
+      {{feature.objective}}
+      
+      ## User Stories
+      {{#each feature.userStories}}
+      - {{this}}
+      {{/each}}
+      
+      ## Technical Approach
+      [To be generated based on requirements and stack]
+      
+      ## Dependencies
+      **Requires**: {{#each feature.requires}}{{this}}, {{/each}}
+      **Produces**: {{#each feature.produces}}{{this}}, {{/each}}
+    requiredContext:
+      - feature
+      - stack
+      - domains
+
+  - id: api-contract
+    name: API Contract Specification
+    description: Generate API specification for a service
+    template: |
+      # API Contract: {{service.id}}
+      
+      ## Endpoints
+      [Generated endpoint specifications]
+      
+      ## Data Models
+      [Generated schema definitions]
+      
+      ## Authentication
+      [Authentication requirements]
+    requiredContext:
+      - service
+      - domains
+
+quickPrompts:
+  improvementActive: "Suggest improvements for {entityId} to stay aligned with stack and domain boundaries."
+  improvementGeneral: "Review the project context and suggest improvements for consistency."
+  clarificationActive: "Clarify the purpose, dependencies, and risks for {entityId}."
+  clarificationGeneral: "Clarify how current context pieces fit together and what is missing."
+  summarize: "Summarize the key purpose, scope, and dependencies for {entityId}"
+  improve: "Suggest focused, actionable improvements for {entityId}"
+  clarify: "Identify unclear areas and pose clarifying questions for {entityId}"
+
+exampleQuestions:
+  - "Summarize the current feature landscape and technology stack."
+  - "Which tasks look risky based on domain dependencies?"
+  - "Generate a specification for FEAT-001."
+  - "Create an agent-ready prompt for implementing SPEC-002."
+  - "What's the impact of changing the API contract for service-auth?"
+
+ragConfig:
+  enabled: true
+  maxResults: 5
+  minSimilarity: 0.7
+  includeTypes:
+    - feature
+    - userstory
+    - spec
+    - service
+    - package

@@ -678,7 +678,7 @@ async function buildContextSnapshot(repoDir: string, question: string): Promise<
             return [];
           }
           return docs;
-        } catch (err) {
+        } catch {
           return [];
         }
       })()

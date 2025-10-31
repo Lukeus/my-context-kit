@@ -7,7 +7,6 @@ import { AIService } from '../../services/AIService';
 import type { WritableAIConfig, TestConnectionOptions } from '../../services/LangChainAIService';
 import { getSchemaForEntityType } from '../../schemas/entitySchemas';
 import { successWith, error } from '../types';
-import { randomUUID } from 'node:crypto';
 
 const aiService = new LangChainAIService();
 const aiDiagnostic = new AIService();
@@ -90,7 +89,7 @@ export function registerAIHandlers(): void {
           incoming.provider = incoming.provider || config.provider;
           incoming.endpoint = incoming.endpoint || config.endpoint;
           incoming.model = incoming.model || config.model;
-        } catch (cfgErr) {
+        } catch {
           // Ignore config read errors here; we'll validate below and return
           // a helpful error if provider remains missing.
         }
@@ -106,7 +105,7 @@ export function registerAIHandlers(): void {
             const stored = await aiDiagnostic.getStoredCredentials(incoming.provider);
             if (stored) incoming.apiKey = stored;
           }
-        } catch (credErr) {
+        } catch {
           // Non-fatal; we'll surface a clearer error if credentials are required later
         }
       }
@@ -186,8 +185,8 @@ export function registerAIHandlers(): void {
   //   ...
   // });
 
-  // Track active streams for cancellation
-  const activeStreams = new Map<string, boolean>();
+  // Track active streams for cancellation (reserved for future streaming implementation)
+  // const activeStreams = new Map<string, boolean>();
 
   // AI Assistance (streaming) - Now using LangChain streaming
   // Legacy streaming assist handler deprecated (migrated to LangChain). Kept commented for reference.

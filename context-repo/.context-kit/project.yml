@@ -1,0 +1,18 @@
+version: "1.0.0"
+id: my-context-kit
+name: Context-Sync
+type: monorepo
+description: Desktop app for managing GitHub context repositories for spec-driven development
+
+repository:
+  url: https://github.com/lukeu/my-context-kit
+  branch: main
+
+team:
+  owner: "@lukeu"
+  maintainers:
+    - "@lukeu"
+
+metadata:
+  created: "2025-10-31"
+  lastModified: "2025-10-31"
