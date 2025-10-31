@@ -135,7 +135,7 @@ export class AIService {
       // If a proxy is configured, create an agent and pass it to fetch so
       // requests tunnel through the corporate proxy. This keeps behavior
       // consistent with execa-launched child processes.
-      let fetchOptions: any = {
+      const fetchOptions: any = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,10 +161,10 @@ export class AIService {
             if (typeof AgentCtor === 'function') {
               try {
                 agent = new AgentCtor(proxyUrl);
-              } catch (ctorErr) {
+              } catch {
                 agent = AgentCtor(proxyUrl);
               }
-              fetchOptions.agent = agent;
+              (fetchOptions as any).agent = agent;
             } else {
               logger.warn({ service: 'AIService', method: 'pingEndpoint' }, 'https-proxy-agent export is not a constructor');
             }
@@ -181,7 +181,7 @@ export class AIService {
       let text = '';
       try {
         text = await resp.text();
-      } catch (e) {
+      } catch {
         text = '<failed to read body>';
       }
 

@@ -1,0 +1,59 @@
+version: "1.0.0"
+
+runtime:
+  language: typescript
+  version: ">=22.0.0"
+  packageManager: pnpm
+
+frameworks:
+  - name: Electron
+    version: "39.0.0"
+    category: desktop
+    purpose: Cross-platform desktop application framework
+  
+  - name: Vue
+    version: "^3.5.22"
+    category: frontend
+    purpose: Progressive JavaScript framework for UI
+  
+  - name: Pinia
+    version: "^3.0.3"
+    category: frontend
+    purpose: State management for Vue applications
+  
+  - name: Tailwind CSS
+    version: "^4.1.16"
+    category: frontend
+    purpose: Utility-first CSS framework
+  
+  - name: Vite
+    version: "7.1.12"
+    category: build
+    purpose: Next generation frontend build tool
+  
+  - name: FastAPI
+    version: latest
+    category: backend
+    purpose: Python service orchestration for Context Kit pipeline
+  
+  - name: LangChain
+    version: "^1.0.2"
+    category: ml
+    purpose: AI orchestration and prompt engineering
+
+services:
+  - name: Azure OpenAI
+    type: ml-provider
+    endpoint: https://fceai.azure-api.net
+    authentication: api-key
+  
+  - name: Context Kit Python Service
+    type: api
+    endpoint: http://localhost:8000
+    authentication: none
+
+tools:
+  linter: eslint
+  formatter: eslint
+  bundler: vite
+  testRunner: vitest

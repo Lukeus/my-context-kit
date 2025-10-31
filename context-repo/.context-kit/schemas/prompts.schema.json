@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://context-kit.dev/schemas/prompts.schema.json",
+  "title": "Prompts Schema",
+  "description": "Defines AI prompt templates, system prompts, and prompt generation configuration for Context Kit",
+  "type": "object",
+  "required": ["version", "systemPrompts"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version for migration compatibility",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "systemPrompts": {
+      "type": "object",
+      "description": "System-level prompts for different interaction modes",
+      "properties": {
+        "inspect": {
+          "type": "string",
+          "description": "Prompt for context inspection mode"
+        },
+        "spec": {
+          "type": "string",
+          "description": "Prompt for specification generation mode"
+        },
+        "promptify": {
+          "type": "string",
+          "description": "Prompt for converting specs to agent-ready prompts"
+        },
+        "codegen": {
+          "type": "string",
+          "description": "Prompt for code generation from specs"
+        },
+        "general": {
+          "type": "string",
+          "description": "General-purpose system prompt"
+        },
+        "improvement": {
+          "type": "string",
+          "description": "Prompt for suggesting improvements"
+        },
+        "clarification": {
+          "type": "string",
+          "description": "Prompt for clarifying ambiguities"
+        }
+      }
+    },
+    "templates": {
+      "type": "array",
+      "description": "Prompt templates with placeholders",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "template"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "template": {
+            "type": "string",
+            "description": "Handlebars template string"
+          },
+          "requiredContext": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Required context keys for template rendering"
+          },
+          "exampleOutput": {
+            "type": "string",
+            "description": "Example of rendered output"
+          }
+        }
+      }
+    },
+    "quickPrompts": {
+      "type": "object",
+      "description": "Short prompt templates for common actions",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "exampleQuestions": {
+      "type": "array",
+      "description": "Example questions to guide users",
+      "items": {"type": "string"}
+    },
+    "ragConfig": {
+      "type": "object",
+      "description": "RAG (Retrieval-Augmented Generation) configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "maxResults": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 5
+        },
+        "minSimilarity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.7
+        },
+        "includeTypes": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Entity types to include in RAG retrieval"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -790,7 +790,7 @@ export class LangChainAIService {
               args = typeof call.function.arguments === 'string'
                 ? JSON.parse(call.function.arguments)
                 : call.function.arguments;
-            } catch (parseError) {
+            } catch {
               logger.error(
                 { service: 'LangChainAIService', method: 'assistStream' },
                 new Error(`Failed to parse tool arguments: ${call.function.arguments}`)

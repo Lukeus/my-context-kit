@@ -1,7 +1,6 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { z } from 'zod';
 import type { ToolDescriptor } from '@shared/assistant/types';
-import { logger } from '../utils/logger';
 
 /**
  * Convert our ToolDescriptor format to LangChain's DynamicStructuredTool format.
@@ -25,14 +24,8 @@ export function convertToLangChainTools(
       description: tool.description,
       schema,
       func: async (input: Record<string, unknown>) => {
-        try {          
-          const result = await executor(tool.id, input);
-          
-          return JSON.stringify(result);
-        } catch (error) {
-
-          throw error;
-        }
+        const result = await executor(tool.id, input);
+        return JSON.stringify(result);
       }
     });
   });
