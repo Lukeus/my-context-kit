@@ -681,15 +681,22 @@ Be helpful, educational, and precise. Always output valid YAML.`;
       throw new Error('API key required for semantic search with Azure OpenAI');
     }
 
+    const embeddingDeployment = config.embeddingModel?.trim();
+    if (!embeddingDeployment) {
+      throw new Error('Embedding model deployment is not configured. Set "embeddingModel" in ai-config.json.');
+    }
+
+    const embeddingApiVersion = (config.embeddingApiVersion && config.embeddingApiVersion.trim()) || this.resolveAzureApiVersion(config);
+
     const embeddings = new OpenAIEmbeddings({
       apiKey,
       configuration: {
-        baseURL: `${config.endpoint}/openai/deployments/${config.embeddingModel || 'text-embedding-ada-002'}`,
+        baseURL: `${config.endpoint.replace(/\/$/, '')}/openai/deployments/${embeddingDeployment}`,
         defaultHeaders: {
           'api-key': apiKey
         },
         defaultQuery: {
-          'api-version': '2024-02-01'
+          'api-version': embeddingApiVersion
         }
       }
     });
@@ -798,6 +805,23 @@ Explain in one sentence why this entity is relevant to the query.`;
 
     const response = await model.invoke([new HumanMessage(prompt)]);
     return typeof response.content === 'string' ? response.content : '';
+  }
+
+  /**
+   * Resolve the Azure OpenAI API version using config fallback logic.
+   */
+  private resolveAzureApiVersion(config: AIConfig): string {
+    const explicit = typeof config.apiVersion === 'string' ? config.apiVersion.trim() : '';
+    if (explicit) {
+      return explicit;
+    }
+
+    const envVersion = process.env.AZURE_OPENAI_API_VERSION?.trim();
+    if (envVersion) {
+      return envVersion;
+    }
+
+    return '2024-12-01-preview';
   }
 
   /**
@@ -911,7 +935,7 @@ Output your response as JSON:
         }
       },
       modelName: config.model,
-      temperature: 0.7,
+      temperature: 1,
       maxTokens: 4000,
       timeout: 60000,
       maxRetries: 2

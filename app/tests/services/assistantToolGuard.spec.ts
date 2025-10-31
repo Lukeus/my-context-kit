@@ -81,6 +81,15 @@ describe('ToolOrchestrator guard rails', () => {
         lastModified: new Date().toISOString(),
         truncated: false
       }),
+      searchContextRepository: vi.fn().mockResolvedValue({ results: [], count: 0 }),
+      getEntityDetails: vi.fn().mockResolvedValue({}),
+      findSimilarEntities: vi.fn().mockResolvedValue({ results: [], count: 0 }),
+      getAIConfig: vi.fn().mockResolvedValue({
+        provider: 'azure-openai',
+        endpoint: 'https://test.openai.azure.com',
+        model: 'gpt-4',
+        enabled: true
+      }),
       clock: () => new Date('2025-10-28T15:45:00.000Z')
     };
 
@@ -140,6 +149,15 @@ describe('ToolOrchestrator guard rails', () => {
         size: 0,
         lastModified: new Date().toISOString(),
         truncated: false
+      }),
+      searchContextRepository: vi.fn().mockResolvedValue({ results: [], count: 0 }),
+      getEntityDetails: vi.fn().mockResolvedValue({}),
+      findSimilarEntities: vi.fn().mockResolvedValue({ results: [], count: 0 }),
+      getAIConfig: vi.fn().mockResolvedValue({
+        provider: 'azure-openai',
+        endpoint: 'https://test.openai.azure.com',
+        model: 'gpt-4',
+        enabled: true
       }),
       clock: () => new Date('2025-10-28T15:50:00.000Z')
     };

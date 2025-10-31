@@ -19,6 +19,7 @@ export interface AIConfig {
   endpoint: string;
   model: string;
   enabled: boolean;
+  apiVersion?: string;
   [key: string]: unknown;
 }
 
@@ -62,6 +63,13 @@ export interface AIStreamProcess {
   process: ReturnType<typeof execa>;
 }
 
+interface ProxySettings {
+  useProxy: boolean;
+  httpsProxy: string;
+  httpProxy: string;
+  noProxy: string;
+}
+
 /**
  * Service for AI operations (configuration, credentials, generation, assistance)
  */
@@ -99,6 +107,95 @@ export class AIService {
         model: 'llama2',
         enabled: false
       };
+    }
+  }
+
+  /**
+   * Diagnostic: Ping the Azure OpenAI deployment endpoint with a minimal request.
+   * Returns HTTP status, body (truncated), and timing information or a detailed error.
+   */
+  async pingEndpoint(options: { endpoint: string; model: string; apiKey?: string; apiVersion?: string; timeoutMs?: number }): Promise<{ ok: boolean; status?: number; body?: string; durationMs?: number; error?: string }> {
+    const { endpoint, model, apiKey, apiVersion, timeoutMs = 30000 } = options;
+    const resolvedApiVersion = (apiVersion && apiVersion.trim()) || process.env.AZURE_OPENAI_API_VERSION || '2024-12-01-preview';
+    const uri = `${endpoint.replace(/\/$/, '')}/openai/deployments/${model}/chat/completions?api-version=${resolvedApiVersion}`;
+
+    const start = Date.now();
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+
+      const proxySettings = this.determineProxySettings(endpoint);
+
+      const activeFetch = globalThis.fetch?.bind(globalThis);
+      if (!activeFetch) {
+        // TODO: Provide a polyfill fallback if we ever support runtimes without native fetch.
+        throw new Error('Fetch API is not available in this runtime');
+      }
+
+      // If a proxy is configured, create an agent and pass it to fetch so
+      // requests tunnel through the corporate proxy. This keeps behavior
+      // consistent with execa-launched child processes.
+      let fetchOptions: any = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': apiKey || ''
+        },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Ping' }], max_tokens: 1 }),
+        signal: controller.signal
+      };
+
+      if (proxySettings.useProxy) {
+        const proxyUrl = proxySettings.httpsProxy || proxySettings.httpProxy;
+        if (!proxyUrl) {
+          logger.debug({ service: 'AIService', method: 'pingEndpoint' }, 'Proxy requested but no proxy URL found after normalization. Skipping proxy agent.');
+        }
+
+        if (proxyUrl) {
+          try {
+            // Dynamically require to avoid module system mismatches in ESM project
+            // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+            const proxyMod = require('https-proxy-agent');
+            const AgentCtor = proxyMod && (proxyMod.HttpsProxyAgent || proxyMod.default || proxyMod);
+            let agent;
+            if (typeof AgentCtor === 'function') {
+              try {
+                agent = new AgentCtor(proxyUrl);
+              } catch (ctorErr) {
+                agent = AgentCtor(proxyUrl);
+              }
+              fetchOptions.agent = agent;
+            } else {
+              logger.warn({ service: 'AIService', method: 'pingEndpoint' }, 'https-proxy-agent export is not a constructor');
+            }
+          } catch (e) {
+            logger.warn({ service: 'AIService', method: 'pingEndpoint' }, `https-proxy-agent not available: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+      }
+
+      const resp = await activeFetch(uri, fetchOptions);
+
+      clearTimeout(id);
+      const durationMs = Date.now() - start;
+      let text = '';
+      try {
+        text = await resp.text();
+      } catch (e) {
+        text = '<failed to read body>';
+      }
+
+      return {
+        ok: resp.ok,
+        status: resp.status,
+        body: text.length > 2000 ? text.slice(0, 2000) + '...[truncated]' : text,
+        durationMs
+      };
+    } catch (err) {
+      const durationMs = Date.now() - start;
+      const message = err instanceof Error ? err.message : String(err);
+      logger.warn({ service: 'AIService', method: 'pingEndpoint' }, `Ping failed: ${message}`);
+      return { ok: false, error: message, durationMs };
     }
   }
 
@@ -300,7 +397,9 @@ export class AIService {
           if (!apiKey && useStoredKey) {
             throw new Error('No API key found');
           }
-          // Azure test would go here
+          // Azure test would go here. For lightweight checks we just validate
+          // that an API key is present when requested and return a success
+          // message. For network-level diagnostics use pingEndpoint().
           return `Azure OpenAI model ${model} configuration saved`;
         }
 
@@ -365,14 +464,10 @@ export class AIService {
           userPrompt
         ];
 
+        const proxySettings = this.determineProxySettings(config.endpoint);
         const result = await execa('node', args, {
           cwd: dir,
-          env: {
-            ...process.env,
-            HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || '',
-            HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || '',
-            NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || ''
-          }
+          env: this.buildChildProcessEnv(proxySettings)
         });
 
         return JSON.parse(result.stdout);
@@ -439,14 +534,10 @@ export class AIService {
       encodedOptions
     ];
 
+    const proxySettings = this.determineProxySettings(config.endpoint);
     const result = await execa('node', args, {
       cwd: dir,
-      env: {
-        ...process.env,
-        HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || '',
-        HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || '',
-        NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || ''
-      }
+      env: this.buildChildProcessEnv(proxySettings)
     });
 
     return JSON.parse(result.stdout);
@@ -519,15 +610,11 @@ export class AIService {
       '--stream'
     ];
 
+    const proxySettings = this.determineProxySettings(config.endpoint);
     performance.mark(`ai-stream-${streamId}-start`);
     const child = execa('node', args, {
       cwd: dir,
-      env: {
-        ...process.env,
-        HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || '',
-        HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || '',
-        NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || ''
-      }
+      env: this.buildChildProcessEnv(proxySettings)
     });
 
     this.streamProcesses.set(streamId, child);
@@ -725,5 +812,172 @@ export class AIService {
 
     // Note: Edit summaries can be tracked via telemetry service if activity logging is required.
     // Currently not persisted to maintain lightweight edit operations.
+  }
+
+  // ============================================================================
+  // Proxy helpers
+  // ============================================================================
+
+  private getProxyBypassHosts(): string[] {
+    const defaults: string[] = [];
+    const rawEnv = process.env.AI_PROXY_BYPASS || '';
+    const tokens = rawEnv
+      .split(',')
+      .map((entry) => entry.trim().toLowerCase())
+      .filter(Boolean);
+
+    const disableDefaults = tokens.includes('!defaults');
+    const fromEnv = tokens.filter((entry) => entry !== '!defaults');
+
+    const merged = new Set<string>();
+    if (!disableDefaults) {
+      for (const host of defaults) {
+        merged.add(host.toLowerCase());
+      }
+    }
+    for (const host of fromEnv) {
+      merged.add(host);
+    }
+    return Array.from(merged);
+  }
+
+  private combineNoProxyPatterns(base: string): string {
+    const patterns = base
+      ? base
+          .split(',')
+          .map((entry) => entry.trim().toLowerCase())
+          .filter(Boolean)
+      : [];
+    for (const host of this.getProxyBypassHosts()) {
+      if (!patterns.includes(host)) {
+        patterns.push(host);
+      }
+    }
+    return patterns.join(',');
+  }
+
+  private extractHost(endpoint: string): string | null {
+    try {
+      const url = new URL(endpoint);
+      return url.hostname.toLowerCase();
+    } catch {
+      return null;
+    }
+  }
+
+  private hostMatchesNoProxy(host: string, patterns: string): boolean {
+    if (!patterns) return false;
+
+    const hostLower = host.toLowerCase();
+    const entries = patterns
+      .split(',')
+      .map((entry) => entry.trim().toLowerCase())
+      .filter(Boolean);
+
+    for (const entry of entries) {
+      if (entry === '*') {
+        return true;
+      }
+
+      const [patternHost, patternPort] = entry.split(':');
+      const [hostNameOnly, hostPort] = hostLower.split(':');
+
+      if (patternPort && hostPort && patternPort === hostPort && patternHost === hostNameOnly) {
+        return true;
+      }
+
+      const normalizedPattern = patternHost.startsWith('.') ? patternHost.slice(1) : patternHost;
+
+      if (hostNameOnly === normalizedPattern) {
+        return true;
+      }
+
+      if (hostNameOnly.endsWith(`.${normalizedPattern}`)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private determineProxySettings(endpoint: string): ProxySettings {
+    const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy || '';
+    const httpProxy = process.env.HTTP_PROXY || process.env.http_proxy || '';
+    const baseNoProxy = process.env.NO_PROXY || process.env.no_proxy || '';
+    const combinedNoProxy = this.combineNoProxyPatterns(baseNoProxy);
+
+    if (process.env.AI_DISABLE_PROXY === 'true') {
+      logger.debug({ service: 'AIService', method: 'determineProxySettings' }, 'AI_DISABLE_PROXY flag set; bypassing proxies for AI requests.');
+      return {
+        useProxy: false,
+        httpsProxy: '',
+        httpProxy: '',
+        noProxy: combinedNoProxy
+      };
+    }
+
+    if (!httpsProxy && !httpProxy) {
+      return {
+        useProxy: false,
+        httpsProxy: '',
+        httpProxy: '',
+        noProxy: combinedNoProxy
+      };
+    }
+
+    const host = this.extractHost(endpoint);
+    if (host && combinedNoProxy && this.hostMatchesNoProxy(host, combinedNoProxy)) {
+      logger.debug({ service: 'AIService', method: 'determineProxySettings' }, `Bypassing proxy for ${host} due to effective NO_PROXY settings (${combinedNoProxy})`);
+      return {
+        useProxy: false,
+        httpsProxy: '',
+        httpProxy: '',
+        noProxy: combinedNoProxy
+      };
+    }
+
+    return {
+      useProxy: true,
+      httpsProxy,
+      httpProxy,
+      noProxy: combinedNoProxy
+    };
+  }
+
+  private buildChildProcessEnv(settings: ProxySettings): NodeJS.ProcessEnv {
+    const env: NodeJS.ProcessEnv = { ...process.env };
+
+    if (settings.useProxy) {
+      if (settings.httpsProxy) {
+        env.HTTPS_PROXY = settings.httpsProxy;
+        env.https_proxy = settings.httpsProxy;
+      } else {
+        env.HTTPS_PROXY = undefined;
+        env.https_proxy = undefined;
+      }
+
+      if (settings.httpProxy) {
+        env.HTTP_PROXY = settings.httpProxy;
+        env.http_proxy = settings.httpProxy;
+      } else {
+        env.HTTP_PROXY = undefined;
+        env.http_proxy = undefined;
+      }
+    } else {
+      env.HTTPS_PROXY = undefined;
+      env.https_proxy = undefined;
+      env.HTTP_PROXY = undefined;
+      env.http_proxy = undefined;
+    }
+
+    if (settings.noProxy) {
+      env.NO_PROXY = settings.noProxy;
+      env.no_proxy = settings.noProxy;
+    } else {
+      env.NO_PROXY = undefined;
+      env.no_proxy = undefined;
+    }
+
+    return env;
   }
 }
