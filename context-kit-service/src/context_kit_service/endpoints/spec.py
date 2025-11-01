@@ -78,7 +78,7 @@ async def generate_spec(request: SpecGenerateRequest) -> SpecGenerateResponse:
             related_entities=request.entity_ids,
         )
 
-        return SpecGenerateResponse(
+        response = SpecGenerateResponse(
             spec_id=spec_id,
             spec_content=spec_content,
             related_entities=request.entity_ids,
@@ -86,6 +86,9 @@ async def generate_spec(request: SpecGenerateRequest) -> SpecGenerateResponse:
             log_entry_id=log_entry_id,
             duration_ms=duration_ms,
         )
+        
+        # Convert to dict to ensure JSON serializability across IPC boundary
+        return response.model_dump()
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate specification: {str(e)}")
