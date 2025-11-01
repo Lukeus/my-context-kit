@@ -22,7 +22,7 @@ class SpecGenerateRequest(BaseModel):
 
     repo_path: str = Field(..., description="Path to the context repository")
     entity_ids: list[str] = Field(..., description="Entity IDs to generate spec from")
-    user_prompt: str = Field(..., description="User's natural language requirement")
+    user_prompt: str = Field(..., min_length=1, description="User's natural language requirement")
     template_id: str | None = Field(default=None, description="Template to use for generation")
     include_rag: bool = Field(default=True, description="Include RAG context in generation")
     llm_config: dict[str, Any] | None = Field(

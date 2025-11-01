@@ -3,12 +3,14 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useContextStore } from '../stores/contextStore';
 import { useImpactStore } from '../stores/impactStore';
 import { useBuilderStore } from '../stores/builderStore';
+import { useStatusColors } from '../composables/useStatusColors';
 
 const emit = defineEmits<{ 'ask-about-entity': [string] }>();
 
 const contextStore = useContextStore();
 const impactStore = useImpactStore();
 const builderStore = useBuilderStore();
+const { getStatusDotClasses } = useStatusColors();
 
 // Local state
 const searchQuery = ref('');
@@ -104,22 +106,12 @@ function askAI(entityId: string) {
 function getStatusColor(status: string | undefined, type: string): string {
   if (!status) {
     if (type === 'governance') {
-      return 'bg-indigo-500';
+      return 'bg-primary-500';
     }
-    return 'bg-gray-400';
+    return 'bg-secondary-400';
   }
   
-  const statusColors: Record<string, string> = {
-    'proposed': 'bg-blue-400',
-    'in-progress': 'bg-yellow-400',
-    'doing': 'bg-yellow-400',
-    'done': 'bg-green-400',
-    'blocked': 'bg-red-400',
-    'needs-review': 'bg-orange-400',
-    'todo': 'bg-gray-400'
-  };
-
-  return statusColors[status] || 'bg-gray-400';
+  return getStatusDotClasses(status);
 }
 
 function isEntityStale(entityId: string): boolean {

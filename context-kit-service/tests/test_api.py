@@ -1,5 +1,6 @@
 """Integration tests for FastAPI endpoints."""
 
+import os
 from pathlib import Path
 
 import pytest
@@ -76,6 +77,11 @@ class TestInspectEndpoint:
 class TestSpecGenerateEndpoint:
     """Tests for specification generation endpoint."""
 
+    @pytest.mark.skipif(
+        not os.getenv("AZURE_OPENAI_API_KEY")
+        or os.getenv("AZURE_OPENAI_API_KEY").startswith("test-"),
+        reason="Requires valid Azure OpenAI API key",
+    )
     @pytest.mark.asyncio
     async def test_spec_generate_endpoint(self, temp_repo: Path) -> None:
         """Test spec generation endpoint."""
@@ -101,6 +107,11 @@ class TestSpecGenerateEndpoint:
 class TestPromptifyEndpoint:
     """Tests for promptify endpoint."""
 
+    @pytest.mark.skipif(
+        not os.getenv("AZURE_OPENAI_API_KEY")
+        or os.getenv("AZURE_OPENAI_API_KEY").startswith("test-"),
+        reason="Requires valid Azure OpenAI API key",
+    )
     @pytest.mark.asyncio
     async def test_promptify_endpoint(self, temp_repo: Path) -> None:
         """Test promptify endpoint."""
@@ -125,6 +136,11 @@ class TestPromptifyEndpoint:
 class TestCodegenEndpoint:
     """Tests for code generation endpoint."""
 
+    @pytest.mark.skipif(
+        not os.getenv("AZURE_OPENAI_API_KEY")
+        or os.getenv("AZURE_OPENAI_API_KEY").startswith("test-"),
+        reason="Requires valid Azure OpenAI API key",
+    )
     @pytest.mark.asyncio
     async def test_codegen_endpoint(self, temp_repo: Path) -> None:
         """Test code generation endpoint."""

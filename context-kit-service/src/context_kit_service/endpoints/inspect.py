@@ -34,10 +34,14 @@ async def inspect_context(request: InspectRequest) -> InspectResponse:
     if not repo_path.exists():
         raise HTTPException(status_code=404, detail=f"Repository not found: {request.repo_path}")
 
-    context_path = repo_path / ".context"
-    if not context_path.exists():
+    # Check for contexts directory (where entities are stored)
+    contexts_path = repo_path / "contexts"
+    context_kit_path = repo_path / ".context-kit"
+
+    if not contexts_path.exists() and not context_kit_path.exists():
         raise HTTPException(
-            status_code=404, detail=f"No .context directory found in: {request.repo_path}"
+            status_code=404,
+            detail=f"No contexts or .context-kit directory found in: {request.repo_path}",
         )
 
     try:
