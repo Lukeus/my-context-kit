@@ -841,10 +841,10 @@ async function handleRemoveRepo(id: string) {
                   v-if="contextKitStore.serviceStatus"
                   class="px-2 py-0.5 rounded-m3-full cursor-pointer transition-colors"
                   :class="contextKitStore.isServiceHealthy 
-                    ? 'bg-green-600/20 text-green-200 hover:bg-green-600/30' 
+                    ? 'bg-success-600/20 text-success-200 hover:bg-success-600/30' 
                     : contextKitStore.isServiceRunning
-                    ? 'bg-yellow-600/20 text-yellow-200 hover:bg-yellow-600/30'
-                    : 'bg-red-600/20 text-red-200 hover:bg-red-600/30'"
+                    ? 'bg-warning-600/20 text-warning-200 hover:bg-warning-600/30'
+                    : 'bg-error-600/20 text-error-200 hover:bg-error-600/30'"
                   :title="contextKitStore.isServiceHealthy ? 'Context Kit: Healthy' : contextKitStore.isServiceRunning ? 'Context Kit: Degraded' : 'Context Kit: Offline'"
                   @click="activeNavId = 'contextkit'"
                 >
@@ -875,7 +875,7 @@ async function handleRemoveRepo(id: string) {
             </div>
             
             <!-- Changes Count Badge -->
-            <div v-if="gitStore.status && totalChanges > 0" class="flex items-center gap-1 px-2 py-0.5 bg-yellow-400 text-yellow-900 rounded-m3-full text-xs font-semibold shadow-sm">
+            <div v-if="gitStore.status && totalChanges > 0" class="flex items-center gap-1 px-2 py-0.5 bg-warning-400 text-warning-900 rounded-m3-full text-xs font-semibold shadow-sm">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
@@ -965,7 +965,7 @@ async function handleRemoveRepo(id: string) {
 
     <div
       v-if="!isRepoConfigured"
-      class="bg-yellow-50 border-b border-yellow-200 text-yellow-800 text-sm px-6 py-3 flex items-center gap-2"
+      class="bg-warning-50 border-b border-warning-200 text-warning-800 text-sm px-6 py-3 flex items-center gap-2"
     >
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14a2 2 0 001.74-3l-7.07-12a2 2 0 00-3.48 0l-7.07 12a2 2 0 001.74 3z" />

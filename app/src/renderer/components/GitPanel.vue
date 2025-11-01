@@ -2,9 +2,11 @@
 import { ref, onMounted, computed } from 'vue';
 import { useGitStore } from '../stores/gitStore';
 import { useImpactStore } from '../stores/impactStore';
+import { useStatusColors } from '../composables/useStatusColors';
 
 const gitStore = useGitStore();
 const impactStore = useImpactStore();
+const { getFileStatusClasses } = useStatusColors();
 
 const activeTab = ref<'status' | 'commit' | 'branches' | 'pr'>('status');
 const commitMessage = ref('');
@@ -157,14 +159,6 @@ function getFileStatus(file: string): string {
   return '?';
 }
 
-function getFileStatusColor(file: string): string {
-  const status = getFileStatus(file);
-  if (status === 'M') return 'text-yellow-600 bg-yellow-100';
-  if (status === 'A') return 'text-green-600 bg-green-100';
-  if (status === 'D') return 'text-red-600 bg-red-100';
-  if (status === 'R') return 'text-blue-600 bg-blue-100';
-  return 'text-gray-600 bg-gray-100';
-}
 
 async function handleRevertFile(file: string) {
   const confirmed = confirm(`Are you sure you want to revert changes to ${file}? This cannot be undone.`);
@@ -289,7 +283,7 @@ onMounted(async () => {
       <!-- Status Tab -->
       <div v-if="activeTab === 'status'" class="space-y-4">
         <div v-if="!gitStore.hasUncommittedChanges" class="text-center py-8 text-secondary-500">
-          <svg class="w-16 h-16 mx-auto mb-3 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-16 h-16 mx-auto mb-3 text-success-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <p class="font-medium">Working directory clean</p>
@@ -311,7 +305,7 @@ onMounted(async () => {
             >
               <span
                 class="px-2 py-1 text-xs font-bold font-mono rounded-m3-md shadow-elevation-1"
-                :class="getFileStatusColor(file)"
+                :class="getFileStatusClasses(getFileStatus(file))"
               >
                 {{ getFileStatus(file) }}
               </span>
