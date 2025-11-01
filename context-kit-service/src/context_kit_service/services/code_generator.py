@@ -2,7 +2,6 @@
 
 import os
 import re
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -34,29 +33,50 @@ class CodeGenerator:
     def llm(self) -> ChatOpenAI | AzureChatOpenAI:
         """Lazy-initialize LLM on first use."""
         if self._llm is None:
-            # Try to get API key from environment first
+            # Get API key from environment (passed from Electron app)
             api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_API_KEY")
-
-            # If not in env, try Windows Credential Manager (for Azure OpenAI)
-            if not api_key and os.name == "nt":
-                api_key = self._get_azure_key_from_credential_manager()
 
             if not api_key:
                 raise ValueError(
-                    "No API key found. Please configure Azure OpenAI in the AI Settings modal."
+                    "No API key found. Please configure Azure OpenAI in the AI Settings modal.\n"
+                    "The Electron app will pass credentials to the Python service automatically."
                 )
 
             # Check if using Azure OpenAI
             azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
             if azure_endpoint:
                 # Use Azure OpenAI
-                self._llm = AzureChatOpenAI(
-                    azure_endpoint=azure_endpoint,
-                    api_key=SecretStr(api_key),
-                    api_version="2024-02-15-preview",
-                    azure_deployment=self.model_config.get("model", "gpt-4"),
-                    temperature=self.model_config.get("temperature", 0.3),
+                # Read deployment name from env var or model_config, default to gpt-4
+                deployment_name = (
+                    os.getenv("AZURE_OPENAI_DEPLOYMENT")
+                    or os.getenv("MODEL_NAME")
+                    or self.model_config.get("model", "gpt-4")
                 )
+                
+                # Check if using Azure API Management (APIM)
+                # APIM URLs typically contain "azure-api.net" instead of "openai.azure.com"
+                is_apim = "azure-api.net" in azure_endpoint
+                
+                if is_apim:
+                    # For APIM, the API key is actually the subscription key
+                    # Use it in default_headers instead
+                    self._llm = AzureChatOpenAI(
+                        azure_endpoint=azure_endpoint,
+                        api_key=SecretStr(api_key),
+                        api_version="2024-02-15-preview",
+                        azure_deployment=deployment_name,
+                        temperature=self.model_config.get("temperature", 0.3),
+                        default_headers={"Ocp-Apim-Subscription-Key": api_key},
+                    )
+                else:
+                    # Standard Azure OpenAI
+                    self._llm = AzureChatOpenAI(
+                        azure_endpoint=azure_endpoint,
+                        api_key=SecretStr(api_key),
+                        api_version="2024-02-15-preview",
+                        azure_deployment=deployment_name,
+                        temperature=self.model_config.get("temperature", 0.3),
+                    )
             else:
                 # Use standard OpenAI
                 self._llm = ChatOpenAI(
@@ -65,27 +85,6 @@ class CodeGenerator:
                     api_key=SecretStr(api_key),
                 )
         return self._llm
-
-    def _get_azure_key_from_credential_manager(self) -> str | None:
-        """Try to retrieve Azure OpenAI key from Windows Credential Manager."""
-        try:
-            result = subprocess.run(
-                ["cmdkey", "/list:azure-openai"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            if result.returncode == 0:
-                # Use PowerShell to read the credential (Windows only workaround)
-                # Note: cmdkey doesn't support reading passwords directly for security
-                # In production, consider using keyring library instead
-                print("Info: Azure OpenAI key found in Credential Manager")
-                return "credential-manager-key"  # Placeholder - actual reading is complex
-        except Exception as e:
-            print(f"Warning: Could not read from Credential Manager: {e}")
-
-        return None
 
     async def generate(
         self,

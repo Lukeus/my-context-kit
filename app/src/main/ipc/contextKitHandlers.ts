@@ -5,7 +5,84 @@
  */
 
 import { ipcMain } from 'electron';
+import { inspect } from 'node:util';
 import type { ContextKitServiceClient } from '../services/ContextKitServiceClient';
+
+/**
+ * Sanitize data for IPC transfer by ensuring it's JSON-serializable
+ */
+function sanitizeForIpc<T>(data: T): T {
+  try {
+    // structuredClone preserves more native types when available
+    return structuredClone(data);
+  } catch (cloneError) {
+    console.warn('structuredClone failed, falling back to JSON serialization', cloneError);
+    logNonCloneable(data);
+  }
+
+  try {
+    const replacer = (_key: string, value: unknown): unknown => {
+      if (typeof value === 'bigint') {
+        return value.toString();
+      }
+      if (value instanceof Map) {
+        return Object.fromEntries(value.entries());
+      }
+      if (value instanceof Set) {
+        return Array.from(value.values());
+      }
+      if (value instanceof Date) {
+        return value.toISOString();
+      }
+      if (value instanceof Uint8Array || value instanceof Uint16Array || value instanceof Uint32Array) {
+        return Array.from(value);
+      }
+      return value;
+    };
+
+    return JSON.parse(JSON.stringify(data, replacer)) as T;
+  } catch (error) {
+    console.error('Failed to sanitize data for IPC transfer', error);
+    console.error('Offending payload preview:', data);
+    logNonCloneable(data);
+    throw error;
+  }
+}
+
+function logNonCloneable(value: unknown, path = 'root', seen = new WeakSet<object>()): void {
+  if (typeof value !== 'object' || value === null) {
+    if (typeof value === 'function' || typeof value === 'symbol' || typeof value === 'bigint') {
+      console.warn(`Non-cloneable value at ${path}:`, typeof value);
+    }
+    return;
+  }
+
+  if (seen.has(value as object)) {
+    return;
+  }
+  seen.add(value as object);
+
+  if (value instanceof WeakMap || value instanceof WeakSet) {
+    console.warn(`Non-cloneable weak collection at ${path}`);
+    return;
+  }
+
+  if (value instanceof Map || value instanceof Set || value instanceof Date || ArrayBuffer.isView(value)) {
+    console.debug(`Cloneable exotic value at ${path}:`, inspect(value, { depth: 1 }));
+  }
+
+  const entries = Array.isArray(value) ? value.entries() : Object.entries(value as Record<string, unknown>);
+  for (const [key, nested] of entries) {
+    const childPath = Array.isArray(value) ? `${path}[${key}]` : `${path}.${String(key)}`;
+    if (typeof nested === 'function' || typeof nested === 'symbol' || typeof nested === 'bigint') {
+      console.warn(`Non-cloneable value at ${childPath}:`, typeof nested);
+      continue;
+    }
+    if (typeof nested === 'object' && nested !== null) {
+      logNonCloneable(nested, childPath, seen);
+    }
+  }
+}
 
 export interface InspectRequest {
   repoPath: string;
@@ -81,11 +158,12 @@ export function registerContextKitHandlers(serviceClient: ContextKitServiceClien
         body: JSON.stringify({
           repo_path: request.repoPath,
           include_types: request.includeTypes,
-          depth: request.depth || 2,
+          depth: request.depth ?? 2,
         }),
       });
 
-      return { success: true, data: response };
+      const sanitized = sanitizeForIpc(response);
+      return { success: true, data: sanitized };
     } catch (error) {
       return {
         success: false,
@@ -108,7 +186,9 @@ export function registerContextKitHandlers(serviceClient: ContextKitServiceClien
         }),
       });
 
-      return { success: true, data: response };
+      // Sanitize response to ensure it's JSON-serializable
+      const sanitized = sanitizeForIpc(response);
+      return { success: true, data: sanitized };
     } catch (error) {
       return {
         success: false,
@@ -131,7 +211,8 @@ export function registerContextKitHandlers(serviceClient: ContextKitServiceClien
         }),
       });
 
-      return { success: true, data: response };
+      const sanitized = sanitizeForIpc(response);
+      return { success: true, data: sanitized };
     } catch (error) {
       return {
         success: false,
@@ -155,7 +236,8 @@ export function registerContextKitHandlers(serviceClient: ContextKitServiceClien
         }),
       });
 
-      return { success: true, data: response };
+      const sanitized = sanitizeForIpc(response);
+      return { success: true, data: sanitized };
     } catch (error) {
       return {
         success: false,

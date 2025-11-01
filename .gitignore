@@ -60,3 +60,11 @@ coverage/
 *.tmp
 tmp/
 temp/
+
+# Python virtual environments and caches
+.venv/
+context-kit-service/.venv/
+__pycache__/
+*.py[cod]
+.python-version
+.pytest_cache/
