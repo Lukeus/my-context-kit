@@ -14,19 +14,19 @@ onMounted(async () => {
 });
 
 const statusColor = computed(() => {
-  if (!ragStore.isIndexed.value) return 'text-warning-600';
+  if (!ragStore.isIndexed) return 'text-warning-600';
   return ragStore.settings.enabled ? 'text-success-600' : 'text-secondary-600';
 });
 
 const statusIcon = computed(() => {
   if (ragStore.indexing.inProgress) return '⏳';
-  if (!ragStore.isIndexed.value) return '⚠️';
+  if (!ragStore.isIndexed) return '⚠️';
   return ragStore.settings.enabled ? '✅' : '⭕';
 });
 
 const statusText = computed(() => {
   if (ragStore.indexing.inProgress) return 'Indexing...';
-  if (!ragStore.isIndexed.value) return 'Not Indexed';
+  if (!ragStore.isIndexed) return 'Not Indexed';
   return ragStore.settings.enabled ? 'Enabled & Ready' : 'Disabled';
 });
 

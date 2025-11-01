@@ -95,7 +95,7 @@ async def generate_code(request: CodegenRequest) -> CodegenResponse:
             for artifact in artifacts
         ]
 
-        return CodegenResponse(
+        response = CodegenResponse(
             spec_id=request.spec_id,
             artifacts=code_artifacts,
             summary=summary,
@@ -103,6 +103,9 @@ async def generate_code(request: CodegenRequest) -> CodegenResponse:
             log_entry_id=log_entry_id,
             duration_ms=duration_ms,
         )
+        
+        # Convert to dict to ensure JSON serializability across IPC boundary
+        return response.model_dump()
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate code: {str(e)}")

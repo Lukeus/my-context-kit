@@ -96,6 +96,9 @@ class TestSpecGenerateEndpoint:
                 },
             )
 
+        if response.status_code != 200:
+            print(f"\n❌ Response status: {response.status_code}")
+            print(f"Response body: {response.text}")
         assert response.status_code == 200
         data = response.json()
         assert "spec_id" in data
