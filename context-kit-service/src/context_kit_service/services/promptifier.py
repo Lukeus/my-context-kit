@@ -25,10 +25,10 @@ class Promptifier:
         """
         # Get agent-specific template
         template = self._get_agent_template(target_agent)
-        
+
         # Build context summary
         context_summary = self._build_context_summary(context_entities)
-        
+
         # Format the prompt
         prompt = template.format(
             spec_id=spec_id,
@@ -36,32 +36,32 @@ class Promptifier:
             context_summary=context_summary,
             context_count=len(context_entities),
         )
-        
+
         metadata = {
             "target_agent": target_agent,
             "context_entities_count": len(context_entities),
             "prompt_length": len(prompt),
         }
-        
+
         return prompt, metadata
-    
+
     def _build_context_summary(self, entities: list[dict[str, Any]]) -> str:
         """Build a summary of context entities."""
         if not entities:
             return "No additional context entities."
-        
+
         lines = []
         for entity in entities:
             entity_id = entity.get("id", "unknown")
             entity_type = entity.get("_type", "unknown")
             title = entity.get("title", entity.get("objective", ""))
-            
+
             lines.append(f"- {entity_type.upper()}: {entity_id}")
             if title:
                 lines.append(f"  {title}")
-        
+
         return "\n".join(lines)
-    
+
     def _get_agent_template(self, target_agent: str) -> str:
         """Get prompt template for specific agent type."""
         templates = {
@@ -199,5 +199,5 @@ Aim for >80% code coverage with meaningful tests (not just coverage for coverage
 Generate test files with all necessary setup, fixtures, and assertions.
 """,
         }
-        
+
         return templates.get(target_agent, templates["codegen"])

@@ -23,9 +23,9 @@ const emit = defineEmits<{
 const colorClasses = computed(() => {
   switch (props.type) {
     case 'success':
-      return 'bg-green-700 text-white border-green-600';
+      return 'bg-success-700 text-white border-success-600';
     case 'warning':
-      return 'bg-tertiary-700 text-white border-tertiary-600';
+      return 'bg-warning-700 text-white border-warning-600';
     case 'error':
       return 'bg-error-700 text-white border-error-600';
     default:
