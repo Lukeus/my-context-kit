@@ -13,6 +13,7 @@ import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
+import { AICredentialResolver } from './AICredentialResolver';
 
 export interface ServiceStatus {
   running: boolean;
@@ -101,6 +102,18 @@ export class ContextKitServiceClient {
       // Setup virtual environment if needed
       await this.ensureVirtualEnvironment();
 
+      // Resolve Azure OpenAI credentials from Electron's secure storage
+      const credentialResolver = new AICredentialResolver();
+      const azureApiKey = await credentialResolver.resolveApiKey({
+        provider: 'azure-openai',
+        useStoredCredentials: true,
+        useEnvironmentVars: true,
+      });
+
+      // Get endpoint from environment (user configures this in AI Settings)
+      const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+      const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || process.env.MODEL_NAME;
+
       // Start the service using pnpm (which uses uv)
       this.process = spawn(
         'pnpm',
@@ -113,6 +126,10 @@ export class ContextKitServiceClient {
             ...process.env,
             PORT: String(this.config.port),
             HOST: this.config.host,
+            // Pass Azure OpenAI credentials from Electron's secure storage to Python service
+            ...(azureApiKey && { AZURE_OPENAI_API_KEY: azureApiKey }),
+            ...(azureEndpoint && { AZURE_OPENAI_ENDPOINT: azureEndpoint }),
+            ...(azureDeployment && { AZURE_OPENAI_DEPLOYMENT: azureDeployment }),
           },
         }
       );
@@ -309,31 +326,15 @@ export class ContextKitServiceClient {
    */
   private async ensureVirtualEnvironment(): Promise<void> {
     const venvPath = this.config.uvEnvPath || join(this.config.pythonServicePath, '.venv');
-    const { execa } = await import('execa');
 
+    // Check if venv exists - if it does, assume it's valid to avoid unnecessary reinstalls
     if (existsSync(venvPath)) {
       console.log('✓ Virtual environment exists');
-      
-      // Verify dependencies are installed by checking for langchain_core
-      try {
-        await execa(
-          'uv',
-          ['run', 'python', '-c', 'import langchain_core'],
-          {
-            cwd: this.config.pythonServicePath,
-            shell: true,
-            timeout: 5000,
-          }
-        );
-        console.log('✓ Dependencies verified');
-        return;
-      } catch {
-        console.log('⚠️ Dependencies missing, reinstalling...');
-        // Fall through to reinstall
-      }
+      return;
     }
 
     console.log('Setting up virtual environment...');
+    const { execa } = await import('execa');
 
     // Run pnpm setup to create venv and install dependencies
     const setupProcess = execa(

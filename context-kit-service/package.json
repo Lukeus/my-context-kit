@@ -9,6 +9,8 @@
     "setup:dev": "uv venv && uv pip install -e .[dev]",
     "start": "uv run uvicorn context_kit_service.main:app --host 127.0.0.1 --port 8000",
     "dev": "uv run uvicorn context_kit_service.main:app --host 127.0.0.1 --port 8000 --reload",
+    "stop-service": "pwsh -Command \"Get-Process -Name python,uvicorn -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*context-kit-service*' } | Stop-Process -Force; Start-Sleep -Milliseconds 500\"",
+    "pretest": "pnpm run stop-service",
     "test": "uv run pytest",
     "test:cov": "uv run pytest --cov=src/context_kit_service --cov-report=html",
     "lint": "uv run ruff check .",

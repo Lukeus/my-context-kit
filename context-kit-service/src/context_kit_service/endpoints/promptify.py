@@ -76,7 +76,7 @@ async def promptify_spec(request: PromptifyRequest) -> PromptifyResponse:
             related_entities=[request.spec_id],
         )
 
-        return PromptifyResponse(
+        response = PromptifyResponse(
             spec_id=request.spec_id,
             prompt=prompt,
             context_included=[e.get("id") for e in context_entities],
@@ -84,6 +84,9 @@ async def promptify_spec(request: PromptifyRequest) -> PromptifyResponse:
             log_entry_id=log_entry_id,
             duration_ms=duration_ms,
         )
+        
+        # Convert to dict to ensure JSON serializability across IPC boundary
+        return response.model_dump()
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to promptify specification: {str(e)}")

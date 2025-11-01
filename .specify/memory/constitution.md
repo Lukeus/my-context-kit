@@ -1,13 +1,11 @@
 <!--
 Sync Impact Report
-Version change: 1.0.0 → 1.0.1
+Version change: 1.1.0 → 1.2.0
 Modified principles: none
 Added sections:
-- UI Design System (PATCH: clarification of Material 3 implementation)
+- AI Orchestration & Assistant Architecture (MINOR: redefines canonical stack around Python LangChain sidecar)
 Removed sections: none
-Rationale: Clarifies that Intel-inspired color palette is an approved deviation from
-standard Material 3 color system while maintaining M3 elevation, typography, and
-component patterns. Closes constitutional compliance gap identified in code review.
+Rationale: The JavaScript LangChain layer is being decommissioned in favor of the Python FastAPI sidecar. The constitution now requires all AI orchestration to route through the Python service so duplicate stacks cannot regress into production.
 Templates: no changes required
 Follow-up TODOs: none
 -->
@@ -49,6 +47,14 @@ releases remain auditable, and security reviews MUST cover any new integrations 
 - Tailwind CSS, Material 3 design patterns, Vue 3 Composition API, and Pinia are mandatory in the renderer; deviations require constitutional amendments.
 - C4 diagrams under `context-repo/c4/` MUST be updated in lock-step with architecture-affecting changes and reviewed in PRs.
 
+## AI Orchestration & Assistant Architecture
+
+- The Python `context-kit-service` sidecar (FastAPI + LangChain for Python) is the canonical orchestration boundary; Electron processes MUST call AI providers only through its versioned HTTP APIs.
+- TypeScript code MUST remove direct `@langchain/*` dependencies; any remaining modules MUST be marked with `// TODO(langchain-js-removal):` and kept behind feature flags until deleted.
+- Assistant flows MUST use `assistantStore` for session state while delegating tool execution to the Python service; legacy `aiStore` entry points MAY NOT gain new features and MUST emit deprecation warnings until removal.
+- Retrieval-augmented generation indexes MUST be built by deterministic Python pipelines checked into `context-repo/.context/pipelines/`; cached artifacts MUST be reproducible from Git commits.
+- The sidecar MUST maintain parity across Azure OpenAI and local providers, stream intermediate tool steps, and emit telemetry records that the renderer logs for observability.
+
 ## UI Design System
 
 ### Material 3 Implementation
@@ -81,4 +87,4 @@ The UI follows Material 3 design patterns with an **Intel-inspired color palette
 - Ratification and amendment dates MUST stay in ISO format; every change includes a Sync Impact Report comment.
 - Compliance checks belong in PR templates and planning artifacts; reviewers MUST verify gates before approving.
 
-**Version**: 1.0.1 | **Ratified**: 2025-10-28 | **Last Amended**: 2025-10-29
+**Version**: 1.2.0 | **Ratified**: 2025-10-28 | **Last Amended**: 2025-11-01
