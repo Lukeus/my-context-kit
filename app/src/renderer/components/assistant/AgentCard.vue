@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { AgentProfile, AgentComplexity } from '@shared/agents/types';
+import { useStatusColors } from '../../composables/useStatusColors';
 
 interface Props {
   agent: AgentProfile;
@@ -21,13 +22,10 @@ const emit = defineEmits<{
   duplicate: [agent: AgentProfile];
 }>();
 
+const { getComplexityClasses } = useStatusColors();
+
 function getComplexityColor(complexity?: AgentComplexity): string {
-  switch (complexity) {
-    case 'basic': return 'bg-green-100 text-green-700';
-    case 'intermediate': return 'bg-yellow-100 text-yellow-700';
-    case 'advanced': return 'bg-red-100 text-red-700';
-    default: return 'bg-secondary-100 text-secondary-700';
-  }
+  return getComplexityClasses(complexity);
 }
 
 const isBuiltIn = computed(() => props.agent.metadata.isBuiltIn);

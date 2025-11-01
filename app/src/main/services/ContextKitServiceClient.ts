@@ -199,10 +199,10 @@ export class ContextKitServiceClient {
     this.status.running = false;
     this.status.healthy = false;
 
-    // Clean up virtual environment
-    await this.cleanupVirtualEnvironment();
+    // Note: We intentionally don't clean up the virtual environment
+    // to preserve installed dependencies between runs
 
-    console.log('✅ Context Kit Service stopped');
+    console.log('✓ Context Kit Service stopped');
   }
 
   /**
@@ -309,25 +309,51 @@ export class ContextKitServiceClient {
    */
   private async ensureVirtualEnvironment(): Promise<void> {
     const venvPath = this.config.uvEnvPath || join(this.config.pythonServicePath, '.venv');
+    const { execa } = await import('execa');
 
     if (existsSync(venvPath)) {
       console.log('✓ Virtual environment exists');
-      return;
+      
+      // Verify dependencies are installed by checking for langchain_core
+      try {
+        await execa(
+          'uv',
+          ['run', 'python', '-c', 'import langchain_core'],
+          {
+            cwd: this.config.pythonServicePath,
+            shell: true,
+            timeout: 5000,
+          }
+        );
+        console.log('✓ Dependencies verified');
+        return;
+      } catch {
+        console.log('⚠️ Dependencies missing, reinstalling...');
+        // Fall through to reinstall
+      }
     }
 
     console.log('Setting up virtual environment...');
-    const { execa } = await import('execa');
 
     // Run pnpm setup to create venv and install dependencies
-    await execa(
+    const setupProcess = execa(
       'pnpm',
       ['run', 'setup:dev'],
       {
         cwd: this.config.pythonServicePath,
         shell: true,
-        stdio: 'inherit',
       }
     );
+
+    // Stream output to console
+    setupProcess.stdout?.on('data', (data: Buffer) => {
+      console.log(`[Setup] ${data.toString().trim()}`);
+    });
+    setupProcess.stderr?.on('data', (data: Buffer) => {
+      console.log(`[Setup] ${data.toString().trim()}`);
+    });
+
+    await setupProcess;
 
     console.log('✓ Virtual environment ready');
   }

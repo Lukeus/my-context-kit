@@ -2,10 +2,12 @@
 import { ref, computed } from 'vue';
 import { useImpactStore } from '../stores/impactStore';
 import { useContextStore } from '../stores/contextStore';
+import { useStatusColors } from '../composables/useStatusColors';
 import PromptModal from './PromptModal.vue';
 
 const impactStore = useImpactStore();
 const contextStore = useContextStore();
+const { getStatusDotClasses, getSeverityClasses, getSeverityIcon } = useStatusColors();
 
 const activeTab = ref<'overview' | 'issues' | 'stale' | 'diff'>('overview');
 const selectedDiffEntityId = ref<string | null>(null);
@@ -85,47 +87,22 @@ function selectEntity(entityId: string) {
 }
 
 function getIssueTypeBadgeColor(type: string): string {
-  const colors: Record<string, string> = {
-    'needs-review': 'bg-tertiary-100 text-tertiary-800 border-tertiary-300',
-    'not-found': 'bg-error-100 text-error-800 border-error-300',
-    'warning': 'bg-tertiary-100 text-tertiary-800 border-tertiary-300',
-    'error': 'bg-error-100 text-error-800 border-error-300'
+  const typeToSeverity: Record<string, string> = {
+    'needs-review': 'warning',
+    'not-found': 'error',
+    'warning': 'warning',
+    'error': 'error'
   };
-  return colors[type] || 'bg-surface-variant text-secondary-700 border-secondary-300';
+  return getSeverityClasses(typeToSeverity[type] || 'info');
 }
 
 function getSeverityBadgeColor(severity?: string): string {
-  const colors: Record<string, string> = {
-    'error': 'bg-error-50 text-error-700 border-error-300',
-    'warning': 'bg-tertiary-50 text-tertiary-700 border-tertiary-300',
-    'info': 'bg-primary-50 text-primary-700 border-primary-300'
-  };
-  return colors[severity || 'warning'] || 'bg-tertiary-50 text-tertiary-700 border-tertiary-300';
-}
-
-function getSeverityIcon(severity?: string): string {
-  const icons: Record<string, string> = {
-    'error': '⚠️',
-    'warning': '⚡',
-    'info': 'ℹ️'
-  };
-  return icons[severity || 'warning'] || '⚡';
+  return getSeverityClasses(severity);
 }
 
 function getStatusColor(status?: string): string {
-  if (!status) return 'bg-gray-400';
-  
-  const statusColors: Record<string, string> = {
-    'proposed': 'bg-blue-400',
-    'in-progress': 'bg-yellow-400',
-    'doing': 'bg-yellow-400',
-    'done': 'bg-green-400',
-    'blocked': 'bg-red-400',
-    'needs-review': 'bg-orange-400',
-    'todo': 'bg-gray-400'
-  };
-  
-  return statusColors[status] || 'bg-gray-400';
+  if (!status) return 'bg-secondary-400';
+  return getStatusDotClasses(status);
 }
 
 function resolveIssue(issue: any) {
@@ -212,11 +189,11 @@ function isIssueResolved(issue: any): boolean {
           <span 
             v-if="impactStore.unresolvedCount > 0"
             class="px-2 py-0.5 text-xs font-bold rounded-m3-md-full"
-            :class="activeTab === 'issues' ? 'bg-primary text-white' : 'bg-tertiary-500 text-white'"
+            :class="activeTab === 'issues' ? 'bg-primary text-white' : 'bg-warning-500 text-white'"
           >
             {{ impactStore.unresolvedCount }}
           </span>
-          <span v-else class="text-xs text-gray-400">({{ impactStore.issuesCount }})</span>
+          <span v-else class="text-xs text-secondary-400">({{ impactStore.issuesCount }})</span>
         </button>
         <button
           @click="activeTab = 'stale'"
@@ -233,55 +210,55 @@ function isIssueResolved(issue: any): boolean {
         <div v-if="activeTab === 'overview'" class="space-y-4">
           <!-- Summary stats -->
           <div class="grid grid-cols-2 gap-3">
-            <div class="p-3 bg-blue-50 rounded-m3-md-lg">
-              <div class="text-2xl font-bold text-blue-900">{{ impactedCount }}</div>
-              <div class="text-xs text-blue-700">Entities Impacted</div>
+            <div class="p-3 bg-info-50 rounded-m3-md-lg">
+              <div class="text-2xl font-bold text-info-900">{{ impactedCount }}</div>
+              <div class="text-xs text-info-700">Entities Impacted</div>
             </div>
-            <div class="p-3 bg-orange-50 rounded-m3-md-lg">
-              <div class="text-2xl font-bold text-orange-900">{{ staleCount }}</div>
-              <div class="text-xs text-orange-700">Stale Items</div>
+            <div class="p-3 bg-warning-50 rounded-m3-md-lg">
+              <div class="text-2xl font-bold text-warning-900">{{ staleCount }}</div>
+              <div class="text-xs text-warning-700">Stale Items</div>
             </div>
-            <div class="p-3 bg-red-50 rounded-m3-md-lg">
-              <div class="text-2xl font-bold text-red-900">{{ impactStore.issuesCount }}</div>
-              <div class="text-xs text-red-700">Issues Found</div>
+            <div class="p-3 bg-error-50 rounded-m3-md-lg">
+              <div class="text-2xl font-bold text-error-900">{{ impactStore.issuesCount }}</div>
+              <div class="text-xs text-error-700">Issues Found</div>
             </div>
-            <div class="p-3 bg-purple-50 rounded-m3-md-lg">
-              <div class="text-2xl font-bold text-purple-900">{{ impactStore.needsReviewCount }}</div>
-              <div class="text-xs text-purple-700">Needs Review</div>
+            <div class="p-3 bg-tertiary-50 rounded-m3-md-lg">
+              <div class="text-2xl font-bold text-tertiary-900">{{ impactStore.needsReviewCount }}</div>
+              <div class="text-xs text-tertiary-700">Needs Review</div>
             </div>
           </div>
 
           <!-- Changed entities -->
           <div>
-            <h3 class="text-sm font-semibold text-gray-700 mb-2">Changed Entities</h3>
+            <h3 class="text-sm font-semibold text-secondary-700 mb-2">Changed Entities</h3>
             <div class="space-y-2">
               <div
                 v-for="id in impactStore.impactReport.changedIds"
                 :key="id"
-                class="p-2 bg-blue-50 border border-blue-200 rounded-m3-md text-sm"
+                class="p-2 bg-info-50 border border-info-200 rounded-m3-md text-sm"
               >
-                <div class="font-medium text-blue-900">{{ id }}</div>
+                <div class="font-medium text-info-900">{{ id }}</div>
               </div>
             </div>
           </div>
 
           <!-- Quick issue summary -->
           <div v-if="impactStore.issuesCount > 0">
-            <h3 class="text-sm font-semibold text-gray-700 mb-2">Top Issues</h3>
+            <h3 class="text-sm font-semibold text-secondary-700 mb-2">Top Issues</h3>
             <div class="space-y-2">
               <div
                 v-for="issue in impactStore.impactReport.issues.slice(0, 3)"
                 :key="issue.id"
-                class="p-2 bg-orange-50 border border-orange-200 rounded-m3-md text-xs"
+                class="p-2 bg-warning-50 border border-warning-200 rounded-m3-md text-xs"
               >
-                <div class="font-medium text-orange-900">{{ issue.id }}</div>
-                <div class="text-orange-700 mt-1">{{ issue.message }}</div>
+                <div class="font-medium text-warning-900">{{ issue.id }}</div>
+                <div class="text-warning-700 mt-1">{{ issue.message }}</div>
               </div>
             </div>
             <button
               v-if="impactStore.issuesCount > 3"
               @click="activeTab = 'issues'"
-              class="mt-2 text-xs text-blue-600 hover:underline"
+              class="mt-2 text-xs text-info-600 hover:underline"
             >
               View all {{ impactStore.issuesCount }} issues →
             </button>
@@ -290,16 +267,16 @@ function isIssueResolved(issue: any): boolean {
 
         <!-- Issues tab -->
         <div v-if="activeTab === 'issues'" class="space-y-3">
-          <div v-if="impactStore.issuesCount === 0" class="text-sm text-gray-500 text-center py-8">
+          <div v-if="impactStore.issuesCount === 0" class="text-sm text-secondary-500 text-center py-8">
             No issues found
           </div>
           
           <!-- Actions bar -->
-          <div v-if="impactStore.issuesCount > 0" class="flex items-center justify-between pb-2 border-b border-gray-200">
+          <div v-if="impactStore.issuesCount > 0" class="flex items-center justify-between pb-2 border-b border-secondary-200">
             <div class="flex items-center gap-2">
               <button
                 @click="showResolvedIssues = !showResolvedIssues"
-                class="text-xs text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                class="text-xs text-secondary-600 hover:text-secondary-800 flex items-center gap-1"
               >
                 <span v-if="showResolvedIssues">✓ Hide Resolved</span>
                 <span v-else>Show Resolved ({{ impactStore.issuesCount - impactStore.unresolvedCount }})</span>
@@ -329,10 +306,10 @@ function isIssueResolved(issue: any): boolean {
               <button
                 @click="selectEntity(issue.id)"
                 class="group font-bold hover:underline text-left flex items-center gap-3 text-lg"
-                :class="isIssueResolved(issue) ? 'text-gray-500' : getSeverityBadgeColor(issue.severity).split(' ')[1]"
+                :class="isIssueResolved(issue) ? 'text-secondary-500' : getSeverityBadgeColor(issue.severity).split(' ')[1]"
               >
                 <div class="w-10 h-10 rounded-m3-md-full flex items-center justify-center text-xl transition-transform group-hover:scale-110"
-                  :class="isIssueResolved(issue) ? 'bg-gray-200' : getSeverityBadgeColor(issue.severity)"
+                  :class="isIssueResolved(issue) ? 'bg-secondary-200' : getSeverityBadgeColor(issue.severity)"
                 >
                   {{ isIssueResolved(issue) ? '✓' : getSeverityIcon(issue.severity) }}
                 </div>
@@ -341,7 +318,7 @@ function isIssueResolved(issue: any): boolean {
               <div class="flex gap-2 items-center">
                 <span
                   class="px-3 py-1.5 text-xs font-bold rounded-m3-md-full uppercase tracking-wider shadow-elevation-1"
-                  :class="isIssueResolved(issue) ? 'bg-gray-200 text-gray-600' : getSeverityBadgeColor(issue.severity)"
+                  :class="isIssueResolved(issue) ? 'bg-secondary-200 text-secondary-600' : getSeverityBadgeColor(issue.severity)"
                 >
                   {{ issue.severity || 'warning' }}
                 </span>
@@ -376,14 +353,14 @@ function isIssueResolved(issue: any): boolean {
               <div v-if="issue.changes && issue.changes.length > 0" class="space-y-2">
                 <div class="h-px bg-primary-200 my-2"></div>
               <div class="flex items-center gap-2 mb-2">
-                <span class="text-xs font-bold text-purple-900 uppercase tracking-wide">Source of Change:</span>
+                <span class="text-xs font-bold text-tertiary-900 uppercase tracking-wide">Source of Change:</span>
                 <button
                   @click="selectEntity(issue.sourceEntity.id)"
-                  class="text-xs font-semibold text-purple-700 hover:underline flex items-center gap-1"
+                  class="text-xs font-semibold text-tertiary-700 hover:underline flex items-center gap-1"
                 >
                   <span>{{ issue.sourceEntity.type }}</span>
                   <span class="font-mono">{{ issue.sourceEntity.id }}</span>
-                  <span v-if="issue.sourceEntity.title !== issue.sourceEntity.id" class="text-purple-600">"{{ issue.sourceEntity.title }}"</span>
+                  <span v-if="issue.sourceEntity.title !== issue.sourceEntity.id" class="text-tertiary-600">"{{ issue.sourceEntity.title }}"</span>
                 </button>
               </div>
               
