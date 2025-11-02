@@ -295,7 +295,7 @@ export const useAgentStore = defineStore('agent', () => {
       }
 
       // Reload agents
-      await loadAgents(true);
+      void loadAgents(true);
 
       return true;
     } catch (err) {

@@ -154,7 +154,7 @@ export class AIService {
         if (proxyUrl) {
           try {
             // Dynamically require to avoid module system mismatches in ESM project
-            // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const proxyMod = require('https-proxy-agent');
             const AgentCtor = proxyMod && (proxyMod.HttpsProxyAgent || proxyMod.default || proxyMod);
             let agent;

@@ -1,82 +1,21 @@
-import { test, expect, _electron as electron } from '@playwright/test';
-import type { ConsoleMessage, ElectronApplication, Page } from '@playwright/test';
+import { test, expect } from './helpers/electron';
+import type { Page } from '@playwright/test';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Refactored to use shared Electron fixtures (helpers/electron.ts) to avoid manual launch instability.
+// TODO(e2e-refactor): move repository setup helpers to a shared module if reused.
 
-let electronApp: ElectronApplication | undefined;
-let window: Page;
+let page: Page;
 const testRepoPath = path.join(__dirname, '..', '..', 'test-fixtures', 'sdd-test-repo');
 
-const attachPageDebugging = (page: Page): void => {
-  page.on('console', (msg: ConsoleMessage) => {
-    console.log(`[Page Console ${msg.type()}]:`, msg.text());
-  });
-  page.on('pageerror', (error: Error) => {
-    console.error('[Page Error]:', error.message);
-  });
-};
-
 test.describe('SDD Workflow E2E', () => {
-  test.beforeAll(async () => {
-    // Launch Electron app
-    try {
-      const requireModule = createRequire(import.meta.url);
-      const electronPath = requireModule('electron') as string;
-      electronApp = await electron.launch({
-        executablePath: electronPath,
-        args: [path.join(__dirname, '..', 'out', 'main', 'index.js')],
-        env: {
-          ...process.env,
-          NODE_ENV: 'test',
-        },
-        timeout: 30000, // Increase timeout to 30 seconds
-      });
-
-      // Capture process stdout/stderr IMMEDIATELY to catch crashes
-      electronApp.process().stdout?.on('data', (chunk) => {
-        console.log('[STDOUT]:', chunk.toString());
-      });
-      
-      electronApp.process().stderr?.on('data', (chunk) => {
-        console.error('[STDERR]:', chunk.toString());
-      });
-
-      // Capture console output for debugging
-      electronApp.on('console', (msg: ConsoleMessage) => {
-        console.log(`[Electron Console ${msg.type()}]:`, msg.text());
-      });
-
-      // Capture page errors for future windows
-      electronApp.on('window', (newPage: Page) => {
-        attachPageDebugging(newPage);
-      });
-
-      // Get the first window
-      window = await electronApp.firstWindow({ timeout: 30000 });
-      attachPageDebugging(window);
-
-      // Wait for app to be ready
-      await window.waitForLoadState('domcontentloaded', { timeout: 30000 });
-      await window.waitForTimeout(3000); // Allow stores to initialize
-    } catch (error) {
-      console.error('Failed to launch Electron app:', error);
-      electronApp = undefined;
-      throw error; // Re-throw to ensure test fails if app doesn't launch
-    }
+  test.beforeEach(async ({ page: injected }) => {
+    page = injected;
   });
 
   test.afterAll(async () => {
-    if (electronApp) {
-      await electronApp.close();
-    }
-
-    // Cleanup: Remove generated test files
     if (existsSync(testRepoPath)) {
       await fs.rm(testRepoPath, { recursive: true, force: true });
     }
@@ -84,97 +23,97 @@ test.describe('SDD Workflow E2E', () => {
 
   test('Complete SDD Workflow: Spec → Plan → Tasks → Entities', async () => {
     // Step 1: Open repository or create test repo
-    const repoManagerButton = window.locator('button:has-text("Repository Manager"), button:has-text("Select Repository")');
+    const repoManagerButton = page.locator('button:has-text("Repository Manager"), button:has-text("Select Repository")');
     
     if (await repoManagerButton.isVisible({ timeout: 5000 })) {
       await repoManagerButton.click();
-      await window.waitForTimeout(500);
+      await page.waitForTimeout(500);
 
       // Check if test repo exists, if not, create it
-      const existingRepo = window.locator(`text=${testRepoPath}`);
+      const existingRepo = page.locator(`text=${testRepoPath}`);
       if (!(await existingRepo.isVisible({ timeout: 2000 }))) {
-        const addButton = window.locator('button:has-text("Add Repository"), button:has-text("New")');
+        const addButton = page.locator('button:has-text("Add Repository"), button:has-text("New")');
         await addButton.click();
         
         // Fill in repo details
-        await window.locator('input[placeholder*="label"], input[placeholder*="name"]').fill('SDD Test Repo');
-        await window.locator('input[placeholder*="path"]').fill(testRepoPath);
+        await page.locator('input[placeholder*="label"], input[placeholder*="name"]').fill('SDD Test Repo');
+        await page.locator('input[placeholder*="path"]').fill(testRepoPath);
         
-        const saveButton = window.locator('button:has-text("Add"), button:has-text("Save")');
+        const saveButton = page.locator('button:has-text("Add"), button:has-text("Save")');
         await saveButton.click();
-        await window.waitForTimeout(1000);
+        await page.waitForTimeout(1000);
       }
 
       // Select the test repo
-      const selectButton = window.locator(`button:has-text("Select"):near(:text("${testRepoPath}"))`).first();
+      const selectButton = page.locator(`button:has-text("Select"):near(:text("${testRepoPath}"))`).first();
       await selectButton.click();
-      await window.waitForTimeout(2000);
+      await page.waitForTimeout(2000);
     }
 
     // Step 2: Open Speckit Wizard
     // Look for a button or menu item that triggers speckit workflow
-    const newButton = window.locator('button:has-text("New"), button[aria-label*="New"]').first();
+    const newButton = page.locator('button:has-text("New"), button[aria-label*="New"]').first();
     await newButton.click({ timeout: 5000 });
-    await window.waitForTimeout(500);
+    await page.waitForTimeout(500);
 
     // Try to find Speckit/SDD option in menu
-    const speckitOption = window.locator('text=/Speckit|SDD|Specification/i').first();
+    const speckitOption = page.locator('text=/Speckit|SDD|Specification/i').first();
     if (await speckitOption.isVisible({ timeout: 2000 })) {
       await speckitOption.click();
     } else {
       // Alternative: Look for a direct button
-      const speckitButton = window.locator('button:has-text("Speckit"), button:has-text("Create Spec")').first();
+      const speckitButton = page.locator('button:has-text("Speckit"), button:has-text("Create Spec")').first();
       await speckitButton.click({ timeout: 5000 });
     }
 
-    await window.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
     // Step 3: Verify Speckit Wizard opened
-    await expect(window.locator('text=Speckit Workflow, text=Specification-Driven Development')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Speckit Workflow, text=Specification-Driven Development')).toBeVisible({ timeout: 5000 });
 
     // Step 4: Create Specification
-    const descriptionInput = window.locator('textarea[placeholder*="feature"], textarea[placeholder*="Describe"]').first();
+    const descriptionInput = page.locator('textarea[placeholder*="feature"], textarea[placeholder*="Describe"]').first();
     await expect(descriptionInput).toBeVisible({ timeout: 5000 });
 
     const testFeatureDescription = 'Real-time notification system with WebSocket support and message queuing';
     await descriptionInput.fill(testFeatureDescription);
 
-    const createSpecButton = window.locator('button:has-text("Create Spec")').first();
+    const createSpecButton = page.locator('button:has-text("Create Spec")').first();
     await createSpecButton.click();
 
     // Wait for spec creation
-    await expect(window.locator('text=/Spec Number:|spec-/i')).toBeVisible({ timeout: 10000 });
-    await expect(window.locator('text=/Branch:/i')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=/Spec Number:|spec-/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/Branch:/i')).toBeVisible({ timeout: 5000 });
 
     // Verify spec was created
-    const specNumberElement = window.locator('text=/Spec Number:|\\*\\*Spec Number\\*\\*:/i').first();
+    const specNumberElement = page.locator('text=/Spec Number:|\\*\\*Spec Number\\*\\*:/i').first();
     const specNumberText = await specNumberElement.textContent();
     const specNumber = specNumberText?.match(/\d{3}/)?.[0];
     expect(specNumber).toBeTruthy();
 
     // Step 5: Generate Implementation Plan
-    const generatePlanButton = window.locator('button:has-text("Generate Plan")').first();
+    const generatePlanButton = page.locator('button:has-text("Generate Plan")').first();
     await expect(generatePlanButton).toBeVisible({ timeout: 5000 });
     await generatePlanButton.click();
 
     // Wait for plan generation
-    await expect(window.locator('text=/Plan:|plan\\.md/i')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/Plan:|plan\\.md/i')).toBeVisible({ timeout: 15000 });
 
     // Check for constitutional gates
-    const gatesResult = window.locator('text=/Constitutional Gates:|All gates passed|issues found/i').first();
+    const gatesResult = page.locator('text=/Constitutional Gates:|All gates passed|issues found/i').first();
     await expect(gatesResult).toBeVisible({ timeout: 5000 });
 
     // Step 6: Generate Task List
-    const generateTasksButton = window.locator('button:has-text("Generate Tasks")').first();
+    const generateTasksButton = page.locator('button:has-text("Generate Tasks")').first();
     await expect(generateTasksButton).toBeVisible({ timeout: 5000 });
     await generateTasksButton.click();
 
     // Wait for tasks generation
-    await expect(window.locator('text=/Tasks:|tasks\\.md/i')).toBeVisible({ timeout: 15000 });
-    await expect(window.locator('text=/Count:|\\d+ tasks/i')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=/Tasks:|tasks\\.md/i')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/Count:|\\d+ tasks/i')).toBeVisible({ timeout: 5000 });
 
     // Step 7: Generate YAML Entities
-    const generateEntitiesCheckbox = window.locator('input#generateEntities, input[type="checkbox"]:near(:text("Generate YAML Entities"))').first();
+    const generateEntitiesCheckbox = page.locator('input#generateEntities, input[type="checkbox"]:near(:text("Generate YAML Entities"))').first();
     
     if (await generateEntitiesCheckbox.isVisible({ timeout: 5000 })) {
       // Ensure checkbox is checked
@@ -183,15 +122,15 @@ test.describe('SDD Workflow E2E', () => {
       }
 
       // Click generate entities button
-      const generateEntitiesButton = window.locator('button:has-text("Generate Entities")').first();
+      const generateEntitiesButton = page.locator('button:has-text("Generate Entities")').first();
       await expect(generateEntitiesButton).toBeVisible({ timeout: 5000 });
       await generateEntitiesButton.click();
 
       // Wait for entities generation
-      await expect(window.locator('text=/Entities Generated|✓ Entities/i')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('text=/Entities Generated|✓ Entities/i')).toBeVisible({ timeout: 15000 });
 
       // Verify entities were created
-      await window.waitForTimeout(2000);
+      await page.waitForTimeout(2000);
 
       // Step 8: Verify files exist on filesystem
       if (specNumber) {
@@ -201,16 +140,16 @@ test.describe('SDD Workflow E2E', () => {
         // const storiesDir = path.join(testRepoPath, 'contexts', 'userstories');
 
         // Check if directories exist (after workflow completes)
-        await window.waitForTimeout(3000); // Allow file system operations to complete
+        await page.waitForTimeout(3000); // Allow file system operations to complete
 
         // Note: In E2E test, we can't directly access filesystem easily
         // Instead, verify UI shows success
-        await expect(window.locator('text=/Feature and UserStory entities created/i')).toBeVisible({ timeout: 5000 });
+        await expect(page.locator('text=/Feature and UserStory entities created/i')).toBeVisible({ timeout: 5000 });
       }
     }
 
     // Step 9: Complete Workflow
-    const completeButton = window.locator('button:has-text("Complete Workflow")').first();
+    const completeButton = page.locator('button:has-text("Complete Workflow")').first();
     await expect(completeButton).toBeVisible({ timeout: 5000 });
     
     // Complete button should be enabled after entities are generated
@@ -218,76 +157,76 @@ test.describe('SDD Workflow E2E', () => {
     await completeButton.click();
 
     // Verify completion message
-    await expect(window.locator('text=/Workflow Complete|🎉/i')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=/Workflow Complete|🎉/i')).toBeVisible({ timeout: 5000 });
 
     // Step 10: Close wizard
-    const closeButton = window.locator('button:has-text("Close")').last();
+    const closeButton = page.locator('button:has-text("Close")').last();
     await closeButton.click();
 
     // Verify wizard closed
-    await expect(window.locator('text=Speckit Workflow, text=Specification-Driven Development')).not.toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Speckit Workflow, text=Specification-Driven Development')).not.toBeVisible({ timeout: 5000 });
 
     // Step 11: Verify entities appear in context tree (if visible)
-    const contextTree = window.locator('text=/Features|Context Tree/i').first();
+    const contextTree = page.locator('text=/Features|Context Tree/i').first();
     if (await contextTree.isVisible({ timeout: 5000 })) {
       await contextTree.click();
       
       // Look for newly created feature
-      const newFeature = window.locator(`text=/FEAT-${specNumber}/i`).first();
+      const newFeature = page.locator(`text=/FEAT-${specNumber}/i`).first();
       await expect(newFeature).toBeVisible({ timeout: 10000 });
     }
   });
 
   test('Speckit Wizard: Cancel workflow', async () => {
     // Open wizard
-    const newButton = window.locator('button:has-text("New"), button[aria-label*="New"]').first();
+    const newButton = page.locator('button:has-text("New"), button[aria-label*="New"]').first();
     await newButton.click({ timeout: 5000 });
 
-    const speckitButton = window.locator('button:has-text("Speckit"), button:has-text("Create Spec")').first();
+    const speckitButton = page.locator('button:has-text("Speckit"), button:has-text("Create Spec")').first();
     if (await speckitButton.isVisible({ timeout: 2000 })) {
       await speckitButton.click();
     }
 
-    await window.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
     // Verify wizard opened
-    await expect(window.locator('text=Speckit Workflow, text=Specification-Driven Development')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Speckit Workflow, text=Specification-Driven Development')).toBeVisible({ timeout: 5000 });
 
     // Click close without completing
-    const closeButton = window.locator('button:has-text("Close")').last();
+    const closeButton = page.locator('button:has-text("Close")').last();
     await closeButton.click();
 
     // Verify wizard closed
-    await expect(window.locator('text=Speckit Workflow')).not.toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Speckit Workflow')).not.toBeVisible({ timeout: 5000 });
   });
 
   test('Speckit Wizard: Error handling', async () => {
     // Open wizard
-    const newButton = window.locator('button:has-text("New")').first();
+    const newButton = page.locator('button:has-text("New")').first();
     await newButton.click({ timeout: 5000 });
 
-    const speckitButton = window.locator('button:has-text("Speckit"), button:has-text("Create Spec")').first();
+    const speckitButton = page.locator('button:has-text("Speckit"), button:has-text("Create Spec")').first();
     if (await speckitButton.isVisible({ timeout: 2000 })) {
       await speckitButton.click();
     }
 
-    await window.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
     // Try to create spec with empty description
-    const createSpecButton = window.locator('button:has-text("Create Spec")').first();
+    const createSpecButton = page.locator('button:has-text("Create Spec")').first();
     
     // Button should be disabled
     await expect(createSpecButton).toBeDisabled({ timeout: 5000 });
 
     // Fill in minimal description
-    const descriptionInput = window.locator('textarea[placeholder*="feature"]').first();
+    const descriptionInput = page.locator('textarea[placeholder*="feature"]').first();
     await descriptionInput.fill('Test');
 
     // Button should now be enabled
     await expect(createSpecButton).toBeEnabled({ timeout: 2000 });
 
     // Close wizard
-    const closeButton = window.locator('button:has-text("Close")').last();
+    const closeButton = page.locator('button:has-text("Close")').last();
     await closeButton.click();
   });
 
@@ -295,40 +234,40 @@ test.describe('SDD Workflow E2E', () => {
     // This test verifies that constitutional gate results are displayed
 
     // Open wizard and create a spec
-    const newButton = window.locator('button:has-text("New")').first();
+    const newButton = page.locator('button:has-text("New")').first();
     await newButton.click({ timeout: 5000 });
 
-    const speckitButton = window.locator('button:has-text("Speckit")').first();
+    const speckitButton = page.locator('button:has-text("Speckit")').first();
     if (await speckitButton.isVisible({ timeout: 2000 })) {
       await speckitButton.click();
     }
 
-    await window.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
-    const descriptionInput = window.locator('textarea[placeholder*="feature"]').first();
+    const descriptionInput = page.locator('textarea[placeholder*="feature"]').first();
     await descriptionInput.fill('Complex multi-service authentication system');
 
-    const createSpecButton = window.locator('button:has-text("Create Spec")').first();
+    const createSpecButton = page.locator('button:has-text("Create Spec")').first();
     await createSpecButton.click();
 
-    await expect(window.locator('text=/Spec Number:/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/Spec Number:/i')).toBeVisible({ timeout: 10000 });
 
     // Generate plan
-    const generatePlanButton = window.locator('button:has-text("Generate Plan")').first();
+    const generatePlanButton = page.locator('button:has-text("Generate Plan")').first();
     await generatePlanButton.click();
 
-    await expect(window.locator('text=/Plan:/i')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/Plan:/i')).toBeVisible({ timeout: 15000 });
 
     // Check for constitutional gates section
-    const gatesSection = window.locator('text=Constitutional Gates:').first();
+    const gatesSection = page.locator('text=Constitutional Gates:').first();
     await expect(gatesSection).toBeVisible({ timeout: 5000 });
 
     // Gates should show pass or fail status
-    const gatesStatus = window.locator('text=/All gates passed|issues found/i').first();
+    const gatesStatus = page.locator('text=/All gates passed|issues found/i').first();
     await expect(gatesStatus).toBeVisible({ timeout: 5000 });
 
     // Close wizard
-    const closeButton = window.locator('button:has-text("Close")').last();
+    const closeButton = page.locator('button:has-text("Close")').last();
     await closeButton.click();
   });
 });
@@ -395,30 +334,30 @@ test.describe('Speckit Fetch Status Panel', () => {
   };
 
   async function openWizardAndReachFetchStep() {
-    const newButton = window.locator('button:has-text("New"), button[aria-label*="New"]').first();
+    const newButton = page.locator('button:has-text("New"), button[aria-label*="New"]').first();
     await newButton.click({ timeout: 5000 });
 
-    const speckitOption = window.locator('button:has-text("Speckit"), button:has-text("Create Spec"), text=/Speckit|Specification/i').first();
+    const speckitOption = page.locator('button:has-text("Speckit"), button:has-text("Create Spec"), text=/Speckit|Specification/i').first();
     await speckitOption.click({ timeout: 5000 });
 
-    await expect(window.locator('text=Speckit Workflow')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Speckit Workflow')).toBeVisible({ timeout: 5000 });
 
-    const descriptionInput = window.locator('textarea[placeholder*="feature"], textarea[placeholder*="Describe"]').first();
+    const descriptionInput = page.locator('textarea[placeholder*="feature"], textarea[placeholder*="Describe"]').first();
     await descriptionInput.fill(`Spec Kit status verification ${Date.now()}`);
 
-    const createSpecButton = window.locator('button:has-text("Create Spec")').first();
+    const createSpecButton = page.locator('button:has-text("Create Spec")').first();
     await createSpecButton.click();
 
-    await expect(window.locator('text=/Spec Number:/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/Spec Number:/i')).toBeVisible({ timeout: 10000 });
 
-    const generatePlanButton = window.locator('button:has-text("Generate Plan")').first();
+    const generatePlanButton = page.locator('button:has-text("Generate Plan")').first();
     await generatePlanButton.click();
 
-    await expect(window.locator('text=/Plan:|plan\\.md/i')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('text=/Plan:|plan\\.md/i')).toBeVisible({ timeout: 20000 });
   }
 
   async function stubSpeckitFetch(payload: unknown) {
-    await window.evaluate((mockPayload) => {
+    await page.evaluate((mockPayload) => {
       const globalAny = window as unknown as Record<string, any>;
       if (!globalAny.__originalSpeckitFetch) {
         globalAny.__originalSpeckitFetch = globalAny.api.speckit.fetch;
@@ -428,7 +367,7 @@ test.describe('Speckit Fetch Status Panel', () => {
   }
 
   async function restoreSpeckitFetchStub() {
-    await window.evaluate(() => {
+    await page.evaluate(() => {
       const globalAny = window as unknown as Record<string, any>;
       if (globalAny.__originalSpeckitFetch) {
         globalAny.api.speckit.fetch = globalAny.__originalSpeckitFetch;
@@ -443,15 +382,15 @@ test.describe('Speckit Fetch Status Panel', () => {
     try {
       await stubSpeckitFetch(successFetchPayload);
 
-      const fetchButton = window.locator('button:has-text("Fetch Spec Kit")').first();
+      const fetchButton = page.locator('button:has-text("Fetch Spec Kit")').first();
       await fetchButton.click();
 
-      await expect(window.locator('text=Release: v0.0.79')).toBeVisible({ timeout: 5000 });
-      await expect(window.locator('text=/Cache is fresh/i')).toBeVisible({ timeout: 5000 });
-      await expect(window.locator('text=Docs: 1')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('text=Release: v0.0.79')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('text=/Cache is fresh/i')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('text=Docs: 1')).toBeVisible({ timeout: 5000 });
     } finally {
       await restoreSpeckitFetchStub();
-      const closeButton = window.locator('button:has-text("Close")').last();
+      const closeButton = page.locator('button:has-text("Close")').last();
       await closeButton.click({ timeout: 5000 });
     }
   });
@@ -462,15 +401,15 @@ test.describe('Speckit Fetch Status Panel', () => {
     try {
       await stubSpeckitFetch(staleFetchPayload);
 
-      const fetchButton = window.locator('button:has-text("Fetch Spec Kit")').first();
+      const fetchButton = page.locator('button:has-text("Fetch Spec Kit")').first();
       await fetchButton.click();
 
-      await expect(window.locator('text=Release: v0.0.42')).toBeVisible({ timeout: 5000 });
-      await expect(window.locator('text=/Cache is older than the freshness window/i')).toBeVisible({ timeout: 5000 });
-      await expect(window.locator('text=Warnings')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('text=Release: v0.0.42')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('text=/Cache is older than the freshness window/i')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('text=Warnings')).toBeVisible({ timeout: 5000 });
     } finally {
       await restoreSpeckitFetchStub();
-      const closeButton = window.locator('button:has-text("Close")').last();
+      const closeButton = page.locator('button:has-text("Close")').last();
       await closeButton.click({ timeout: 5000 });
     }
   });

@@ -8,12 +8,16 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .endpoints import codegen, inspect, promptify, spec, spec_log
 from .models.responses import HealthResponse
+import asyncio
+import threading
+import os
+import signal
 
 # Service start time for uptime calculation
 START_TIME = time.time()
@@ -119,6 +123,40 @@ app.include_router(spec.router, prefix="/spec", tags=["Specification Generation"
 app.include_router(promptify.router, prefix="/spec", tags=["Promptification"])
 app.include_router(codegen.router, prefix="/codegen", tags=["Code Generation"])
 app.include_router(spec_log.router, prefix="/spec-log", tags=["Spec Logs"])
+
+
+@app.post("/shutdown")
+async def shutdown(request: Request) -> JSONResponse:  # type: ignore[override]
+    """Trigger graceful application shutdown.
+
+    This endpoint is invoked by the Electron host prior to process termination to allow
+    in-flight requests to complete. It schedules a server shutdown on the next
+    asyncio loop iteration and returns immediately. If the hosting environment does
+    not honor lifespan shutdown automatically, a fallback signal (SIGTERM) is sent after
+    a short delay.
+
+    NOTE: Authentication is not implemented because the sidecar is bound to localhost.
+    If exposure scope changes, add a shared secret or IPC-gated token.
+    """
+
+    # Schedule FastAPI / uvicorn shutdown by stopping the event loop soon.
+    loop = asyncio.get_event_loop()
+
+    def _delayed_terminate():  # pragma: no cover - timing utility
+        try:
+            # Attempt clean signal for uvicorn
+            if os.name == "nt":
+                # Windows: use CTRL_BREAK_EVENT equivalent fallback by terminating process
+                os.kill(os.getpid(), signal.SIGTERM)
+            else:
+                os.kill(os.getpid(), signal.SIGTERM)
+        except Exception as e:  # noqa: BLE001
+            print(f"[Context Kit Service] Shutdown signal error: {e}")
+
+    # Give a small grace period for the HTTP response to flush before signaling
+    threading.Timer(0.25, _delayed_terminate).start()
+
+    return JSONResponse({"status": "shutdown-initiated"})
 
 
 @app.exception_handler(Exception)

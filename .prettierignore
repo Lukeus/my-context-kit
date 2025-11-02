@@ -1,0 +1,22 @@
+# Dependency directories
+node_modules/
+**/node_modules/
+# Build outputs
+build/
+dist/
+out/
+.vite/
+.webpack/
+# Coverage and test artifacts
+coverage/
+playwright-report/
+-test-results/
+.nyc_output/
+# Lock files (managed by pnpm)
+package-lock.json
+yarn.lock
+# Large generated artifacts
+context-repo/generated/
+# Ignore compiled or temporary files
+*.log
+*.tmp
