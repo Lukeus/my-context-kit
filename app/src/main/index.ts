@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import started from 'electron-squirrel-startup';
 import { registerAllHandlers } from './ipc/register';
+import { buildCspFromEnv } from './security/csp';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,10 +31,8 @@ const createWindow = (): void => {
   // Set CSP based on environment
   // Development: Vite HMR requires 'unsafe-eval' for hot module replacement
   // Production: Strict CSP without 'unsafe-eval' for security
-  const isDevelopment = process.env.NODE_ENV === 'development' || MAIN_WINDOW_VITE_DEV_SERVER_URL;
-  const csp = isDevelopment
-    ? "default-src 'self'; script-src 'self' 'unsafe-eval' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
-    : "default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:;";
+  // const isDevelopment = process.env.NODE_ENV === 'development' || MAIN_WINDOW_VITE_DEV_SERVER_URL;
+  const csp = buildCspFromEnv();
 
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({

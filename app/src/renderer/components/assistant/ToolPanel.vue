@@ -15,32 +15,37 @@ interface PipelineOption {
   description: string;
   requiresIds?: boolean;
   argsLabel?: string;
+  capabilityId: string; // Capability ID for toggle checking
 }
 
 const pipelineOptions: PipelineOption[] = [
   {
     id: 'validate',
     label: 'Validate repository',
-    description: 'Runs schema validation across the entire context repository.'
+    description: 'Runs schema validation across the entire context repository.',
+    capabilityId: 'pipeline.validate'
   },
   {
     id: 'build-graph',
     label: 'Rebuild dependency graph',
-    description: 'Constructs the entity dependency graph for navigation and impact analysis.'
+    description: 'Constructs the entity dependency graph for navigation and impact analysis.',
+    capabilityId: 'pipeline.build-graph'
   },
   {
     id: 'impact',
     label: 'Impact analysis',
     description: 'Evaluates ripple effects for specific entities that recently changed.',
     requiresIds: true,
-    argsLabel: 'Changed entity IDs (comma separated)'
+    argsLabel: 'Changed entity IDs (comma separated)',
+    capabilityId: 'pipeline.impact'
   },
   {
     id: 'generate',
     label: 'Generate artifacts',
     description: 'Invokes content generation pipeline for specific entity IDs.',
     requiresIds: true,
-    argsLabel: 'Entity IDs to generate (comma separated)'
+    argsLabel: 'Entity IDs to generate (comma separated)',
+    capabilityId: 'pipeline.generate'
   }
 ];
 
@@ -51,7 +56,9 @@ const {
   isBusy: busyState,
   contextReadResult: latestRead,
   contextReadError: latestReadError,
-  conversation: transcriptState
+  conversation: transcriptState,
+  isCapabilityEnabled,
+  hasCapabilities
 } = storeToRefs(assistantStore);
 const contextStore = useContextStore();
 
@@ -72,6 +79,46 @@ const transcript = computed(() => transcriptState.value);
 const latestReadResult = computed(() => latestRead.value);
 const responseError = computed(() => latestReadError.value);
 const canReadContext = computed(() => Boolean(repoPath.value) && readPath.value.trim().length > 0 && !isBusy.value);
+
+// Initialize capabilities on mount
+onMounted(async () => {
+  try {
+    await assistantStore.loadCapabilities();
+  } catch (err) {
+    console.warn('Failed to initialize capabilities in ToolPanel:', err);
+  }
+});
+
+// Capability checking (T021)
+const isPipelineCapabilityEnabled = computed(() => {
+  if (!hasCapabilities.value) {
+    // If no capabilities loaded yet, allow all operations (backward compatibility)
+    return true;
+  }
+  const capId = currentOption.value?.capabilityId;
+  if (!capId) {
+    return true;
+  }
+  return isCapabilityEnabled.value(capId);
+});
+
+const capabilityMessage = computed(() => {
+  if (!currentOption.value) {
+    return null;
+  }
+  if (!hasCapabilities.value) {
+    return null;
+  }
+  const capId = currentOption.value.capabilityId;
+  if (!capId) {
+    return null;
+  }
+  const enabled = isCapabilityEnabled.value(capId);
+  if (!enabled) {
+    return `This pipeline is currently disabled. Check capability configuration to enable ${capId}.`;
+  }
+  return null;
+});
 
 watch(
   () => [selectedPipeline.value, contextStore.activeEntityId],
@@ -112,6 +159,9 @@ const canRunPipeline = computed(() => {
   if (!repoPath.value) {
     return false;
   }
+  if (!isPipelineCapabilityEnabled.value) {
+    return false;
+  }
   if (!requiresIds.value) {
     return true;
   }
@@ -128,6 +178,29 @@ function buildArgs(): Record<string, unknown> | undefined {
     .filter(Boolean);
   const key = selectedPipeline.value === 'impact' ? 'changedIds' : 'ids';
   return parsed.length > 0 ? { [key]: parsed } : undefined;
+}
+
+function getCapabilityStatus(option: PipelineOption): 'enabled' | 'disabled' | 'unknown' {
+  if (!hasCapabilities.value) {
+    return 'unknown';
+  }
+  const capId = option.capabilityId;
+  if (!capId) {
+    return 'unknown';
+  }
+  return isCapabilityEnabled.value(capId) ? 'enabled' : 'disabled';
+}
+
+function getCapabilityIndicator(option: PipelineOption): string {
+  const status = getCapabilityStatus(option);
+  switch (status) {
+    case 'enabled':
+      return '✓';
+    case 'disabled':
+      return '✗';
+    case 'unknown':
+      return '';
+  }
 }
 
 function describeOutcome(record: ToolInvocationRecord): string {
@@ -265,8 +338,14 @@ watch(
     <div class="rounded-m3-md border border-surface-variant bg-white shadow-elevation-1">
       <div class="p-4 space-y-4">
         <div class="space-y-2">
-          <label class="text-xs font-semibold text-secondary-700">Pipeline</label>
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold text-secondary-700">Pipeline</label>
+            <span v-if="hasCapabilities" class="text-[10px] text-secondary-500">
+              ✓ enabled | ✗ disabled
+            </span>
+          </div>
           <select
+            data-testid="pipeline-select"
             v-model="selectedPipeline"
             class="w-full text-sm px-3 py-2 border border-surface-variant rounded-m3-md bg-surface-1 focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
@@ -274,9 +353,20 @@ watch(
               v-for="option in pipelineOptions"
               :key="option.id"
               :value="option.id"
-            >{{ option.label }}</option>
+            >
+              <template v-if="hasCapabilities">
+                {{ getCapabilityIndicator(option) }} {{ option.label }}
+              </template>
+              <template v-else>
+                {{ option.label }}
+              </template>
+            </option>
           </select>
           <p class="text-xs text-secondary-600">{{ currentOption?.description }}</p>
+          <div v-if="capabilityMessage" class="text-xs text-error-700 bg-error-50 border border-error-200 rounded-m3-md px-3 py-2 flex items-start gap-2">
+            <span class="text-sm">⚠️</span>
+            <span>{{ capabilityMessage }}</span>
+          </div>
         </div>
 
         <div v-if="requiresIds" class="space-y-2">
@@ -293,9 +383,13 @@ watch(
         <div class="flex items-center justify-between gap-3">
           <div class="text-xs text-secondary-600">
             <p v-if="!repoPath">Select or configure a context repository to enable pipeline execution.</p>
+            <p v-else-if="!isPipelineCapabilityEnabled">
+              <span class="text-error-700">Pipeline capability disabled.</span>
+            </p>
             <p v-else>Repository: <span class="font-mono text-secondary-800">{{ repoPath }}</span></p>
           </div>
           <button
+            data-testid="run-pipeline-button"
             class="px-4 py-2 text-sm font-medium rounded-m3-md shadow-elevation-1 transition-colors"
             :class="canRunPipeline ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-secondary-200 text-secondary-500 cursor-not-allowed'"
             :disabled="!canRunPipeline || isBusy"

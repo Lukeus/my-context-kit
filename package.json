@@ -18,7 +18,7 @@
 		"test:e2e:ui": "pnpm --filter context-sync test:e2e:ui",
 		"test:e2e:debug": "pnpm --filter context-sync test:e2e:debug",
 		"test:e2e:report": "pnpm --filter context-sync test:e2e:report",
-		"test:all": "pnpm --filter context-sync test:all",
+		"test:all": "pnpm --filter context-sync test:all && pnpm service:test",
 		"install:all": "pnpm install && cd app && pnpm install",
 		"version:patch": "node scripts/version-bump.mjs patch",
 		"version:minor": "node scripts/version-bump.mjs minor",

@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+// LangChain assistant integration (Phase 2): prefer pipeline-based graph build for telemetry & capability gating
+import { useAssistantStore } from './assistantStore';
 
 interface Entity {
   id: string;
@@ -255,7 +257,37 @@ export const useContextStore = defineStore('context', () => {
       }
 
       console.debug('[contextStore.loadGraph] Starting graph build', { repoPath: repoPath.value });
-      const result = await window.api.context.buildGraph(repoPath.value);
+
+      // Attempt new LangChain sidecar pipeline first so we get telemetry + capability enforcement
+      let result: any | null = null;
+      let usedAssistantPipeline = false;
+      try {
+        const assistant = useAssistantStore();
+        // Ensure a session exists with pipeline tool; if not it will create one internally
+        const pipelineResponse: unknown = await assistant.runPipeline({
+          repoPath: repoPath.value,
+          pipeline: 'build-graph' as any // TODO(Typings): tighten AssistantPipelineName typing exposure in renderer
+        });
+        // Expected shape: { result: { status, output, error } } - perform runtime guards
+        if (pipelineResponse && typeof pipelineResponse === 'object') {
+          const maybeResult = (pipelineResponse as any).result;
+            if (maybeResult && typeof maybeResult === 'object') {
+              const output = (maybeResult as any).output;
+              if (output && typeof output === 'object' && Array.isArray((output as any).nodes)) {
+                result = output;
+                usedAssistantPipeline = true;
+              }
+            }
+        }
+      } catch (assistantErr) {
+        // Swallow and fallback; log at debug level to avoid user-facing noise
+        console.debug('[contextStore.loadGraph] Assistant pipeline path failed, falling back to legacy IPC', assistantErr);
+      }
+
+      if (!result) {
+        // Fallback to legacy direct IPC handler
+        result = await window.api.context.buildGraph(repoPath.value);
+      }
       
       if (result.error) {
         error.value = result.error;
@@ -279,12 +311,14 @@ export const useContextStore = defineStore('context', () => {
       entities.value = newEntities;
 
       const duration = performance.now() - startTime;
-      console.info('[contextStore.loadGraph] Graph loaded successfully', { 
-        duration: `${duration.toFixed(2)}ms`, 
+      console.info('[contextStore.loadGraph] Graph loaded successfully', {
+        duration: `${duration.toFixed(2)}ms`,
         entityCount: Object.keys(newEntities).length,
         nodeCount: result.nodes?.length || 0,
-        edgeCount: result.edges?.length || 0
+        edgeCount: result.edges?.length || 0,
+        via: usedAssistantPipeline ? 'assistant-pipeline' : 'legacy-ipc'
       });
+      // TODO(LangChainMigration): Remove legacy IPC fallback once all context graph builds are routed through assistant pipeline.
       return true;
     } catch (err: any) {
       error.value = err.message || 'Failed to load graph';

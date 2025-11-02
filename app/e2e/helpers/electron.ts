@@ -16,7 +16,11 @@ export interface ElectronFixtures {
  * Automatically launches and closes Electron app for each test
  */
 export const test = base.extend<ElectronFixtures>({
-  electronApp: async (_, use) => {
+  // Playwright requires the first fixture argument to use object destructuring pattern
+  // Fix: change (_, use) to ({}, use) to comply. The argument is intentionally unused.
+  // TODO(e2e-fixtures): consider accessing test worker fixtures when adding multi-window scenarios.
+  // eslint-disable-next-line no-empty-pattern -- Required by Playwright fixture signature when no base fixtures are used
+  electronApp: async ({}, use) => {
     // Path to the packaged app.asar
     const appPath = path.join(
       __dirname,

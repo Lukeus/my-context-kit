@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';" />
+    <!-- CSP updated 2025-11-02: Added explicit connect-src to permit LangChain sidecar (default :8000) and legacy :5055 plus websocket endpoints for future streaming -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 http://localhost:5055 http://127.0.0.1:5055 ws://localhost:8000 ws://127.0.0.1:8000 ws://localhost:5055 ws://127.0.0.1:5055; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';" />
     <title>Context-Sync</title>
   </head>
   <body>

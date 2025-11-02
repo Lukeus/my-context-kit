@@ -371,9 +371,187 @@ await assistantStore.sendMessage({ content: question, focusId: 'FEAT-001' });
 
 **Total**: ~31-43 hours of development work
 
+## LangChain Integration Patterns
+
+### Capability Toggle UI Pattern
+
+**Location**: `app/src/renderer/components/assistant/ToolPanel.vue`
+
+**Implementation**:
+- Capabilities loaded via `assistantStore.loadCapabilities()` on component mount
+- UI displays all pipeline options (validate, build-graph, impact, generate) regardless of capability state
+- Backend capability enforcement occurs at LangChain service layer
+- Graceful degradation: when backend unavailable, all pipelines remain selectable (UI allows operation attempts)
+
+**UI Elements**:
+```vue
+<select 
+  data-testid="pipeline-select"
+  v-model="selectedPipeline"
+  class="bg-surface-container text-on-surface rounded-m3-lg"
+>
+  <option value="validate">Validate Entities</option>
+  <option value="build-graph">Build Dependency Graph</option>
+  <option value="impact">Impact Analysis</option>
+  <option value="generate">Generate Artifacts</option>
+</select>
+
+<button 
+  data-testid="run-pipeline-button"
+  @click="handleRunPipeline"
+  :disabled="!selectedPipeline"
+>
+  Run Pipeline
+</button>
+```
+
+**Test Strategy Evolution**:
+- **Current (Phase 1)**: Structural UI tests validate component rendering, option selection, and entity ID inputs (see `app/e2e/assistant-capabilities.spec.ts`)
+- **Future (Phase 2)**: Once IPC mocking or main-process network interception available, add backend capability enforcement tests that verify disabled capabilities prevent pipeline execution
+
+**Rationale**: Playwright cannot intercept `fetch()` calls in Electron main process, so capability enforcement at backend layer cannot be tested with current harness. UI structural validation provides regression coverage while business rule coverage is deferred.
+
+### Health Workflow Polling Behavior
+
+**Location**: `app/src/renderer/stores/assistantStore.ts`
+
+**Implementation**:
+- Health polling initiated via `startHealthMonitoring(intervalMs: number)`
+- Default interval: 30 seconds (configurable)
+- Polling uses exponential backoff on consecutive failures
+- Health state stored in reactive `healthStatus` ref with properties:
+  - `status: 'healthy' | 'degraded' | 'unavailable'`
+  - `lastChecked: Date`
+  - `latencyMs: number`
+  - `errorCount: number`
+
+**Health Check Flow**:
+```
+Renderer (assistantStore) 
+  → Preload (assistantBridge.checkHealth())
+  → Main Process (IPC handler 'assistant:health')
+  → LangChain Service (GET /assistant/health)
+  → Response flows back through chain
+  → Store updates healthStatus and emits telemetry event
+```
+
+**UI Integration**:
+- `HealthBanner.vue` displays health status banner when degraded/unavailable
+- Color-coded indicators: green (healthy), yellow (degraded), red (unavailable)
+- Banner includes retry action and last-checked timestamp
+- Auto-dismisses when health restored
+
+**Backoff Strategy**:
+```typescript
+// Exponential backoff for failed health checks
+let retryInterval = baseInterval;
+if (healthStatus.value.errorCount > 0) {
+  retryInterval = Math.min(
+    baseInterval * Math.pow(2, healthStatus.value.errorCount),
+    maxInterval // cap at 5 minutes
+  );
+}
+```
+
+### Path Resolution Strategy (IPC-Based)
+
+**Problem**: Renderer process needs access to context repository paths and validation pipeline outputs, but filesystem operations must execute in main process for security (context isolation).
+
+**Solution**: IPC-mediated path resolution service
+
+**Location**: `app/src/main/ipc/handlers/path.handlers.ts`
+
+**IPC Handlers**:
+- `path:resolveContextRepo` - Resolve context repo root from workspace
+- `path:readContextFile` - Read YAML context file with metadata
+- `path:listContextFiles` - List all context files by type (feature, task, spec, etc.)
+- `path:resolvePipelineOutput` - Get path to pipeline output (graph, validation report)
+
+**Preload Bridge**: `app/src/preload/pathBridge.ts`
+
+**Usage Pattern**:
+```typescript
+// Renderer (component or store)
+const contextFile = await window.api.path.readContextFile('contexts/features/FEAT-001.yaml');
+
+// Main process handler ensures:
+// 1. Path is within allowed context repository boundaries
+// 2. File exists and is readable
+// 3. Response includes parsed YAML + metadata (lastModified, size, path)
+```
+
+**Security Boundaries**:
+- Path traversal prevention: validate all paths are within context-repo
+- Read-only access: no write operations exposed to renderer for context files
+- Pipeline execution: separate IPC channel (`pipeline:run`) with approval workflow
+
+**C4 Documentation**: See `context-repo/c4/component-sync.md` for Assistant Bridge component showing IPC boundaries and data flow.
+
+### Backend Mocking Plan
+
+**Challenge**: Current test harness cannot intercept Electron main process network calls (`fetch()` in Node.js runtime), blocking full capability enforcement testing.
+
+**Future Solutions** (prioritized):
+
+1. **IPC Stub Layer** (Recommended)
+   - Intercept at IPC boundary before main process handlers
+   - Mock `assistantBridge` methods in preload during test execution
+   - Playwright fixture provides mock implementations
+   - **Pros**: No changes to main process code, clean test isolation
+   - **Cons**: Requires custom Playwright fixture extension
+
+2. **Main Process Network Interception**
+   - Use `nock` or `msw/node` in main process during tests
+   - Inject mock server before IPC handlers execute
+   - **Pros**: Tests real IPC path, closer to production
+   - **Cons**: Requires test-only dependencies in main process, more complex setup
+
+3. **Dedicated Test Backend**
+   - Run lightweight mock LangChain service during E2E tests
+   - Returns configurable capability profiles
+   - **Pros**: Tests full integration stack
+   - **Cons**: Requires separate service lifecycle management, slower tests
+
+**Recommendation**: Implement IPC Stub Layer (Option 1) in Phase 7. This provides clean test isolation without modifying production code paths and enables comprehensive capability enforcement testing.
+
+**Implementation Sketch**:
+```typescript
+// app/e2e/helpers/mockAssistantBridge.ts
+export function createMockAssistantBridge(capabilityProfile: CapabilityProfile) {
+  return {
+    checkHealth: async () => ({ status: 'healthy', latencyMs: 50 }),
+    loadCapabilities: async () => capabilityProfile,
+    createSession: async (payload) => ({ id: 'mock-session-id', ...payload }),
+    // ... other mocked methods
+  };
+}
+
+// app/e2e/assistant-capabilities.spec.ts (future enhanced test)
+test('pipeline execution blocked when capability disabled', async ({ page }) => {
+  // Inject mock bridge with impact capability disabled
+  await page.addInitScript(() => {
+    window.api.assistant = createMockAssistantBridge({
+      pipelines: { impact: false }
+    });
+  });
+  
+  // Navigate and attempt pipeline run
+  await page.click('[data-testid="pipeline-select"]');
+  await page.selectOption('[data-testid="pipeline-select"]', 'impact');
+  await page.click('[data-testid="run-pipeline-button"]');
+  
+  // Verify error message displayed
+  await expect(page.locator('[data-testid="error-banner"]')).toContainText(
+    'Impact analysis capability is not enabled'
+  );
+});
+```
+
 ## Resources
 
 - AGENTS.md Spec: https://agents.md/
 - OpenAI Agents Guide: https://github.com/openai/agents.md
 - Project AGENTS.md: `/AGENTS.md`
 - Architecture Docs: `/docs/architecture/`
+- LangChain Integration Spec: `/specs/001-langchain-backend-integration/`
+- C4 Component Diagram: `/context-repo/c4/component-sync.md`

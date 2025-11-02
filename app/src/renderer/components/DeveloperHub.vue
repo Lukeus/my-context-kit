@@ -308,6 +308,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                     </p>
                   </div>
                   <button
+                    data-testid="assistant-nav"
                     class="px-3 py-1.5 rounded-m3-md text-xs font-semibold border border-primary-200 text-primary-700 hover:bg-primary-50"
                     @click="emit('open-assistant')">
                     Summon AI
