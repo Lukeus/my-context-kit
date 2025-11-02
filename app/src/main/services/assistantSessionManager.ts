@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type {
   AssistantProvider,
-  AssistantSession,
-  ToolDescriptor
+  ToolDescriptor,
+  TaskEnvelope,
+  AssistantSessionExtended
 } from '@shared/assistant/types';
 import {
   ConversationManager,
@@ -10,6 +11,16 @@ import {
   type ProviderAssistantMessage
 } from './conversationManager';
 import { loadProviderConfiguration } from './providerConfig';
+import { createLangChainClient } from '../../renderer/services/langchain/client'; // NOTE: relies on shared code path via bundler alias
+import { resolveLangChainConfig } from '../../renderer/services/langchain/config';
+import { resolveRepositoryPaths } from '../ipc/handlers/path-resolution.handlers';
+
+// Phase 3 T009 Refactor: Integrate LangChain orchestration.
+// Responsibilities added:
+// - Bootstrap remote session via /assistant/sessions
+// - Post messages via /assistant/sessions/{id}/messages returning TaskEnvelope
+// - Track task envelopes inside extended session (AssistantSessionExtended)
+// - Defer streaming to preload bridge (TODO: integrate SSE for T012/T013 requirements)
 
 type CreateSessionOptions = {
   provider: AssistantProvider;
@@ -17,13 +28,13 @@ type CreateSessionOptions = {
   activeTools?: string[];
 };
 
-type SessionRecord = AssistantSession;
+type SessionRecord = AssistantSessionExtended;
 
 export class AssistantSessionManager {
   private readonly sessions = new Map<string, SessionRecord>();
   private readonly conversationManager = new ConversationManager();
 
-  createSession(options: CreateSessionOptions): AssistantSession {
+  async createSession(options: CreateSessionOptions): Promise<AssistantSessionExtended> {
     const config = loadProviderConfiguration();
     const providerSettings = config.providers[options.provider];
     if (!providerSettings) {
@@ -39,7 +50,32 @@ export class AssistantSessionManager {
     });
     const now = new Date().toISOString();
 
-    const session: AssistantSession = {
+    // Resolve repository paths for provenance using direct service call
+    const pathResolution = await resolveRepositoryPaths({ includeSpecPaths: true });
+    const repoRoot: string | undefined = pathResolution.repoRoot;
+    const featureBranch: string | undefined = pathResolution.currentBranch || undefined;
+    const specificationPath: string | undefined = pathResolution.specPaths?.spec || undefined;
+
+    // Create remote LangChain session
+    const lcConfig = resolveLangChainConfig();
+    const client = createLangChainClient(lcConfig.baseUrl);
+    let langchainSessionId: string | null = null;
+    let capabilityFlags = {} as Record<string, any>;
+    try {
+      const remote = await client.createSession({
+        userId: 'local-user', // TODO(UserId): Replace with authenticated user
+        clientVersion: lcConfig.telemetryDefaults.appVersion
+      });
+      langchainSessionId = remote.sessionId;
+      if (remote.capabilityProfile?.capabilities) {
+        capabilityFlags = remote.capabilityProfile.capabilities;
+      }
+    } catch {
+      // Non-fatal: allow local session creation while remote unavailable
+      // TODO(RemoteFallback): surface health indicator to store
+    }
+
+    const session: AssistantSessionExtended = {
       id: randomUUID(),
       provider: options.provider,
       systemPrompt: options.systemPrompt,
@@ -48,18 +84,27 @@ export class AssistantSessionManager {
       pendingApprovals: [],
       telemetryId: randomUUID(),
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      capabilityProfile: undefined,
+      telemetryContext: {
+        repoRoot,
+        featureBranch,
+        specificationPath,
+        langchainSessionId
+      },
+      capabilityFlags,
+      tasks: []
     };
 
     this.sessions.set(session.id, session);
     return session;
   }
 
-  getSession(sessionId: string): AssistantSession | undefined {
+  getSession(sessionId: string): AssistantSessionExtended | undefined {
     return this.sessions.get(sessionId);
   }
 
-  updateSession(sessionId: string, updater: (session: AssistantSession) => AssistantSession): AssistantSession {
+  updateSession(sessionId: string, updater: (session: AssistantSessionExtended) => AssistantSessionExtended): AssistantSessionExtended {
     const existing = this.sessions.get(sessionId);
     if (!existing) {
       throw new Error(`Assistant session ${sessionId} not found.`);
@@ -70,7 +115,7 @@ export class AssistantSessionManager {
     return updated;
   }
 
-  appendUserTurn(sessionId: string, payload: AppendUserTurnPayload): AssistantSession {
+  appendUserTurn(sessionId: string, payload: AppendUserTurnPayload): AssistantSessionExtended {
     return this.updateSession(sessionId, session => {
       const nextConversation = this.conversationManager.appendUserTurn(session.messages, payload);
       return {
@@ -81,7 +126,7 @@ export class AssistantSessionManager {
     });
   }
 
-  appendAssistantResponse(sessionId: string, payload: ProviderAssistantMessage): AssistantSession {
+  appendAssistantResponse(sessionId: string, payload: ProviderAssistantMessage): AssistantSessionExtended {
     return this.updateSession(sessionId, session => {
       const nextConversation = this.conversationManager.appendAssistantResponse(session.messages, payload);
       return {
@@ -91,6 +136,34 @@ export class AssistantSessionManager {
       };
     });
   }
+
+  // Post a user message to LangChain orchestrator and attach returned TaskEnvelope
+  async dispatchMessage(sessionId: string, content: string, mode: 'general' | 'improvement' | 'clarification'): Promise<TaskEnvelope | null> {
+    const session = this.getSession(sessionId);
+    if (!session) throw new Error('Session not found');
+    const lcId = session.telemetryContext?.langchainSessionId as string | undefined;
+    if (!lcId) {
+      // No remote session; append locally only
+      this.appendUserTurn(sessionId, { content });
+      return null;
+    }
+    this.appendUserTurn(sessionId, { content, metadata: { mode } });
+    const client = createLangChainClient(resolveLangChainConfig().baseUrl);
+    try {
+      const envelope = await client.postMessage(lcId, { content, mode });
+      this.updateSession(sessionId, current => ({
+        ...current,
+        tasks: [...(current.tasks || []), envelope],
+        updatedAt: new Date().toISOString()
+      }));
+      return envelope;
+    } catch {
+      // TODO(DispatchError): Surface failure to UI + telemetry
+      return null;
+    }
+  }
+
+  // TODO(StreamIntegration T012/T013): integrate SSE via preload to update task envelopes incrementally.
 
   private resolveActiveTools(allTools: ToolDescriptor[], requested?: string[]): ToolDescriptor[] {
     if (!requested || requested.length === 0) {

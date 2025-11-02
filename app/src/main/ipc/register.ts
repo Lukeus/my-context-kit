@@ -13,6 +13,7 @@ import { registerSpeckitHandlers } from './handlers/speckit.handlers';
 import { registerC4Handlers } from './handlers/c4.handlers';
 import { registerAssistantHandlers } from './handlers/assistant.handlers';
 import { registerAgentHandlers } from './handlers/agent.handlers';
+import { registerPathResolutionHandlers } from './handlers/path-resolution.handlers';
 import { ContextKitServiceClient } from '../services/ContextKitServiceClient';
 import { registerContextKitHandlers } from './contextKitHandlers';
 
@@ -94,6 +95,9 @@ export async function registerAllHandlers(): Promise<void> {
   
   // Agent profile management
   registerAgentHandlers();
+  
+  // Path resolution (LangChain foundational integration)
+  registerPathResolutionHandlers();
   
   // Speckit (SDD workflow) operations
   registerSpeckitHandlers();

@@ -113,12 +113,11 @@ export class C4AnalyzerService {
     const metadata: Partial<Record<string, string | string[]>> = {};
     
     // Extract key=value pairs
-    const attrRegex = /(\w+)=([^,\s]+|(?:\[[^\]]*\]))/g;
+    const attrRegex = /(\w+)=(\[[^\]]*\]|[^,\s]+)/g;
     let match;
-    
+
     while ((match = attrRegex.exec(headerStr)) !== null) {
       const [, key, value] = match;
-      
       // Handle arrays
       if (value.startsWith('[')) {
         metadata[key] = value.slice(1, -1).split(',').map((v: string) => v.trim());

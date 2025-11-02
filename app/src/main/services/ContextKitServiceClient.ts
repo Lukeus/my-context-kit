@@ -33,11 +33,13 @@ export interface ServiceConfig {
 }
 
 export class ContextKitServiceClient {
-  private process: ChildProcess | null = null;
+  private process: ChildProcess | null = null; // Direct uvicorn/python process (not pnpm wrapper)
   private config: ServiceConfig;
   private status: ServiceStatus;
   private healthCheckTimer: NodeJS.Timeout | null = null;
   private startTime: number = 0;
+  private isStopping = false;
+  private terminationAttempts = 0;
 
   constructor(config?: Partial<ServiceConfig>) {
     // Default configuration
@@ -72,9 +74,13 @@ export class ContextKitServiceClient {
       port: this.config.port,
     };
 
-    // Register cleanup handlers
+    // Register cleanup handlers (idempotent)
     app.on('before-quit', () => { void this.stop(); });
+    app.on('will-quit', () => { void this.stop(); });
     process.on('exit', () => { void this.stop(); });
+    ['SIGINT','SIGTERM','SIGHUP'].forEach(sig => {
+      try { process.on(sig as NodeJS.Signals, () => { void this.stop(); }); } catch { /* ignore unsupported */ }
+    });
   }
 
   /**
@@ -114,39 +120,61 @@ export class ContextKitServiceClient {
       const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
       const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || process.env.MODEL_NAME;
 
-      // Start the service using pnpm (which uses uv)
-      this.process = spawn(
-        'pnpm',
-        ['start'],
-        {
-          cwd: this.config.pythonServicePath,
-          stdio: ['ignore', 'pipe', 'pipe'],
-          shell: true,
-          env: {
-            ...process.env,
-            PORT: String(this.config.port),
-            HOST: this.config.host,
-            // Pass Azure OpenAI credentials from Electron's secure storage to Python service
-            ...(azureApiKey && { AZURE_OPENAI_API_KEY: azureApiKey }),
-            ...(azureEndpoint && { AZURE_OPENAI_ENDPOINT: azureEndpoint }),
-            ...(azureDeployment && { AZURE_OPENAI_DEPLOYMENT: azureDeployment }),
-          },
-        }
-      );
+      // Resolve python executable inside venv (prefer uv-managed .venv)
+      const venvPath = this.config.uvEnvPath || join(this.config.pythonServicePath, '.venv');
+      const pythonExec = process.platform === 'win32'
+        ? join(venvPath, 'Scripts', 'python.exe')
+        : join(venvPath, 'bin', 'python');
+
+      if (!existsSync(pythonExec)) {
+        throw new Error(`Python executable not found at expected path: ${pythonExec}`);
+      }
+
+      // Spawn uvicorn directly for tighter control & easier termination
+      const uvicornArgs = [
+        '-m', 'uvicorn',
+        'context_kit_service.main:app',
+        '--host', this.config.host,
+        '--port', String(this.config.port),
+        '--lifespan', 'on',
+        '--timeout-keep-alive', '5'
+        // TODO(SidecarEnhancement): add --workers option when concurrency demanded.
+      ];
+
+      this.process = spawn(pythonExec, uvicornArgs, {
+        cwd: this.config.pythonServicePath,
+        stdio: ['ignore','pipe','pipe'],
+        env: {
+          ...process.env,
+          PORT: String(this.config.port),
+          HOST: this.config.host,
+          ...(azureApiKey && { AZURE_OPENAI_API_KEY: azureApiKey }),
+          ...(azureEndpoint && { AZURE_OPENAI_ENDPOINT: azureEndpoint }),
+          ...(azureDeployment && { AZURE_OPENAI_DEPLOYMENT: azureDeployment })
+        },
+        windowsHide: true
+      });
 
       this.startTime = Date.now();
       this.status.running = true;
 
       // Handle process output
       this.process.stdout?.on('data', (data: Buffer) => {
-        console.log(`[Context Kit Service] ${data.toString().trim()}`);
+        const line = data.toString().trim();
+        console.log(`[Context Kit Service] ${line}`);
+        if (line.includes('Application startup complete')) {
+          // Could hook early readiness signal here if desired
+        }
       });
 
       this.process.stderr?.on('data', (data: Buffer) => {
         const message = data.toString().trim();
-        // Ignore INFO level uvicorn logs in stderr
-        if (!message.includes('INFO:') && !message.includes('Started server')) {
+        if (message.length === 0) return;
+        // Filter noisy uvicorn access logs; surface warnings/errors
+        if (/\b(ERROR|Traceback|Exception)\b/i.test(message)) {
           console.error(`[Context Kit Service Error] ${message}`);
+        } else if (!message.startsWith('INFO:')) {
+          console.log(`[Context Kit Service] ${message}`);
         }
       });
 
@@ -182,43 +210,67 @@ export class ContextKitServiceClient {
    * Stop the Python service and clean up resources
    */
   async stop(): Promise<void> {
-    if (!this.process) {
+    if (!this.process || this.isStopping) {
       return;
     }
-
+    this.isStopping = true;
     console.log('👋 Stopping Context Kit Service...');
 
-    // Stop health monitoring
     if (this.healthCheckTimer) {
       clearInterval(this.healthCheckTimer);
       this.healthCheckTimer = null;
     }
 
-    // Kill the process
-    this.process.kill('SIGTERM');
+    const pid = this.process.pid;
+    const gracefulDeadlineMs = 3500;
+    const forceDeadlineMs = 8000;
+    let exited = false;
 
-    // Wait for graceful shutdown
-    await new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => {
-        if (this.process) {
-          this.process.kill('SIGKILL');
-        }
-        resolve();
-      }, 5000);
+    const markExit = () => { exited = true; };
+    this.process.once('exit', markExit);
 
-      this.process?.once('exit', () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-    });
+    // 1. Attempt HTTP graceful shutdown first
+    try {
+      const shutdownResp = await fetch(`http://${this.config.host}:${this.config.port}/shutdown`, { method: 'POST', signal: AbortSignal.timeout(1200) });
+      if (!shutdownResp.ok) {
+        console.debug('[ContextKitServiceClient] /shutdown endpoint returned non-OK');
+      }
+    } catch {
+      // Endpoint may not exist yet (TODO: implement in FastAPI app)
+    }
 
+    // 2. Send SIGTERM
+    try { this.process.kill('SIGTERM'); } catch { /* ignore */ }
+
+    const startWait = Date.now();
+    while (!exited && Date.now() - startWait < gracefulDeadlineMs) {
+      await new Promise(r => setTimeout(r, 150));
+    }
+
+    // 3. Windows-specific escalation using taskkill for process tree
+    if (!exited && process.platform === 'win32') {
+      console.warn('[ContextKitServiceClient] Escalating termination with taskkill');
+      try {
+        spawn('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+      } catch (err) {
+        console.warn('taskkill failed', err);
+      }
+    }
+
+    // 4. Final SIGKILL if still alive after force deadline (POSIX)
+    if (!exited && process.platform !== 'win32' && Date.now() - startWait >= forceDeadlineMs) {
+      console.warn('[ContextKitServiceClient] Forcing SIGKILL');
+      try { this.process.kill('SIGKILL'); } catch { /* ignore */ }
+    }
+
+    // Wait a brief moment for exit event
+    await new Promise(r => setTimeout(r, 200));
+
+    this.process.removeListener('exit', markExit);
     this.process = null;
     this.status.running = false;
     this.status.healthy = false;
-
-    // Note: We intentionally don't clean up the virtual environment
-    // to preserve installed dependencies between runs
-
+    this.isStopping = false;
     console.log('✓ Context Kit Service stopped');
   }
 

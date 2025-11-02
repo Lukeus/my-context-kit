@@ -1,15 +1,11 @@
-import type { ElectronApplication, Page } from '@playwright/test';
-import { test, expect } from '@playwright/test';
-import path from 'node:path';
-import { _electron as electron } from 'playwright';
-import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { test, expect } from './helpers/electron';
+import type { Page } from '@playwright/test';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// NOTE: This spec now relies on shared Electron fixtures (packaged app) from helpers/electron.ts
+// Avoids repeated electron.launch crashes in CI by standardizing launch sequence.
+// TODO(e2e-refactor): Consolidate Speckit stubbing utilities into a shared helper if more specs need them.
 
-let electronApp: ElectronApplication;
-let window: Page;
+let page: Page; // assigned in beforeEach via fixture injection
 
 const previewStub = {
   ok: true,
@@ -88,29 +84,27 @@ const pipelineReportStub = {
 } as const;
 
 test.describe('Speckit pipeline orchestration', () => {
-  test.beforeAll(async () => {
-    const requireModule = createRequire(import.meta.url);
-    const electronPath = requireModule('electron') as string;
-    electronApp = await electron.launch({
-      executablePath: electronPath,
-      args: [path.join(__dirname, '..', 'out', 'main', 'index.js')],
-      env: {
-        ...process.env,
-        NODE_ENV: 'test',
-      },
-      timeout: 30000,
-    });
-
-    window = await electronApp.firstWindow({ timeout: 30000 });
-    await window.waitForLoadState('domcontentloaded', { timeout: 30000 });
-    await window.waitForTimeout(1000);
-
-    await window.evaluate(({ previewStub, pipelineReportStub }) => {
+  test.beforeEach(async ({ page: injected }) => {
+    page = injected;
+    // Inject stubs fresh for each test to avoid cross-test leakage
+    await page.evaluate(({ previewStub, pipelineReportStub }) => {
       const globalAny = window as unknown as Record<string, any>;
-      globalAny.__originalSpeckitFetch = globalAny.api.speckit.fetch;
-      globalAny.__originalSpeckitListPreviews = globalAny.api.speckit.listPreviews;
-      globalAny.__originalSpeckitToEntity = globalAny.api.speckit.toEntity;
-      globalAny.__originalSpeckitRunPipelines = globalAny.api.speckit.runPipelines;
+      globalAny.api ||= {};
+      globalAny.api.speckit ||= {};
+
+      // Store originals only once per page lifecycle (idempotent)
+      if (!globalAny.__originalSpeckitFetch) {
+        globalAny.__originalSpeckitFetch = globalAny.api.speckit.fetch;
+      }
+      if (!globalAny.__originalSpeckitListPreviews) {
+        globalAny.__originalSpeckitListPreviews = globalAny.api.speckit.listPreviews;
+      }
+      if (!globalAny.__originalSpeckitToEntity) {
+        globalAny.__originalSpeckitToEntity = globalAny.api.speckit.toEntity;
+      }
+      if (!globalAny.__originalSpeckitRunPipelines) {
+        globalAny.__originalSpeckitRunPipelines = globalAny.api.speckit.runPipelines;
+      }
 
       globalAny.api.speckit.fetch = async () => ({
         ok: true,
@@ -154,67 +148,62 @@ test.describe('Speckit pipeline orchestration', () => {
     }, { previewStub, pipelineReportStub });
   });
 
-  test.afterAll(async () => {
-    if (window) {
-      await window.evaluate(() => {
-        const globalAny = window as unknown as Record<string, any>;
-        if (globalAny.__originalSpeckitFetch) {
-          globalAny.api.speckit.fetch = globalAny.__originalSpeckitFetch;
-          delete globalAny.__originalSpeckitFetch;
-        }
-        if (globalAny.__originalSpeckitListPreviews) {
-          globalAny.api.speckit.listPreviews = globalAny.__originalSpeckitListPreviews;
-          delete globalAny.__originalSpeckitListPreviews;
-        }
-        if (globalAny.__originalSpeckitToEntity) {
-          globalAny.api.speckit.toEntity = globalAny.__originalSpeckitToEntity;
-          delete globalAny.__originalSpeckitToEntity;
-        }
-        if (globalAny.__originalSpeckitRunPipelines) {
-          globalAny.api.speckit.runPipelines = globalAny.__originalSpeckitRunPipelines;
-          delete globalAny.__originalSpeckitRunPipelines;
-        }
-      });
-    }
-
-    if (electronApp) {
-      await electronApp.close();
-    }
+  test.afterEach(async () => {
+    if (!page) return;
+    await page.evaluate(() => {
+      const globalAny = window as unknown as Record<string, any>;
+      if (globalAny.__originalSpeckitFetch) {
+        globalAny.api.speckit.fetch = globalAny.__originalSpeckitFetch;
+        delete globalAny.__originalSpeckitFetch;
+      }
+      if (globalAny.__originalSpeckitListPreviews) {
+        globalAny.api.speckit.listPreviews = globalAny.__originalSpeckitListPreviews;
+        delete globalAny.__originalSpeckitListPreviews;
+      }
+      if (globalAny.__originalSpeckitToEntity) {
+        globalAny.api.speckit.toEntity = globalAny.__originalSpeckitToEntity;
+        delete globalAny.__originalSpeckitToEntity;
+      }
+      if (globalAny.__originalSpeckitRunPipelines) {
+        globalAny.api.speckit.runPipelines = globalAny.__originalSpeckitRunPipelines;
+        delete globalAny.__originalSpeckitRunPipelines;
+      }
+    });
   });
 
-  test('shows pipeline report after entity generation', async () => {
-    await window.locator('button:has-text("New")').first().click({ timeout: 5000 });
-    const speckitOption = window.locator('text=/Speckit|Specification/i').first();
+  test('shows pipeline report after entity generation', async ({ page }) => {
+    await page.locator('button:has-text("New")').first().click({ timeout: 5000 });
+    const speckitOption = page.locator('text=/Speckit|Specification/i').first();
     await speckitOption.click({ timeout: 5000 });
 
-    await expect(window.locator('text=Speckit Workflow')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Speckit Workflow')).toBeVisible({ timeout: 5000 });
 
-    const descriptionInput = window.locator('textarea[placeholder*="feature"], textarea[placeholder*="Describe"]').first();
+    const descriptionInput = page.locator('textarea[placeholder*="feature"], textarea[placeholder*="Describe"]').first();
     await descriptionInput.fill('Pipeline verification flow');
-    await window.locator('button:has-text("Create Spec")').click();
+    await page.locator('button:has-text("Create Spec")').click();
 
-    await expect(window.locator('text=/Spec Number:/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/Spec Number:/i')).toBeVisible({ timeout: 10000 });
 
-    await window.locator('button:has-text("Generate Plan")').click();
-    await expect(window.locator('text=/Plan:/i')).toBeVisible({ timeout: 15000 });
+    await page.locator('button:has-text("Generate Plan")').click();
+    await expect(page.locator('text=/Plan:/i')).toBeVisible({ timeout: 15000 });
 
-    await window.locator('button:has-text("Generate Tasks")').click();
-    await expect(window.locator('text=/Tasks:/i')).toBeVisible({ timeout: 15000 });
+    await page.locator('button:has-text("Generate Tasks")').click();
+    await expect(page.locator('text=/Tasks:/i')).toBeVisible({ timeout: 15000 });
 
-    await window.locator('button:has-text("Fetch Spec Kit")').click();
-    await expect(window.locator('label:has-text("Feature Template")')).toBeVisible({ timeout: 5000 });
+    await page.locator('button:has-text("Fetch Spec Kit")').click();
+    await expect(page.locator('label:has-text("Feature Template")')).toBeVisible({ timeout: 5000 });
 
-    const featureCheckbox = window.locator('label:has-text("Feature Template") input[type="checkbox"]').first();
+    const featureCheckbox = page.locator('label:has-text("Feature Template") input[type="checkbox"]').first();
     await featureCheckbox.check();
-    const storyCheckbox = window.locator('label:has-text("Onboarding Story") input[type="checkbox"]').first();
+    const storyCheckbox = page.locator('label:has-text("Onboarding Story") input[type="checkbox"]').first();
     await storyCheckbox.check();
 
-    const generateEntitiesButton = window.locator('button:has-text("Generate Entities")').first();
+    const generateEntitiesButton = page.locator('button:has-text("Generate Entities")').first();
     await generateEntitiesButton.click();
 
-    await expect(window.locator('text=✓ Entities Generated')).toBeVisible({ timeout: 5000 });
-    await expect(window.locator('text=Generate pipeline reported failures.')).toBeVisible({ timeout: 5000 });
-    await expect(window.locator('text=FEAT-123')).toBeVisible({ timeout: 5000 });
-    await expect(window.locator('text=US-12301')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=\u2713 Entities Generated')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Generate pipeline reported failures.')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=FEAT-123')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=US-12301')).toBeVisible({ timeout: 5000 });
   });
 });

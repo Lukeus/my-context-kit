@@ -1,9 +1,10 @@
-import type { ElectronApplication, Page } from '@playwright/test';
-import { test, expect } from '@playwright/test';
-import path from 'node:path';
-import { _electron as electron } from 'playwright';
-import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { test, expect } from './helpers/electron';
+import type { Page } from '@playwright/test';
+
+// Refactored to use shared Electron fixtures instead of manual electron.launch.
+// TODO(e2e-refactor): unify Speckit stubs with speckit-pipelines spec via helper functions.
+
+let page: Page;
 
 type SpeckitPreviewStub = {
   ok: true;
@@ -60,12 +61,6 @@ type SpeckitFetchStub = {
   };
   warnings: string[];
 };
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-let electronApp: ElectronApplication;
-let window: Page;
 
 const previewStub: SpeckitPreviewStub = {
   ok: true,
@@ -160,96 +155,75 @@ const fetchStub: SpeckitFetchStub = {
 };
 
 test.describe('Speckit preview library', () => {
-  test.beforeAll(async () => {
-    const requireModule = createRequire(import.meta.url);
-    const electronPath = requireModule('electron') as string;
-    electronApp = await electron.launch({
-      executablePath: electronPath,
-      args: [path.join(__dirname, '..', 'out', 'main', 'index.js')],
-      env: {
-        ...process.env,
-        NODE_ENV: 'test',
-      },
-      timeout: 30000,
-    });
-
-    window = await electronApp.firstWindow({ timeout: 30000 });
-    await window.waitForLoadState('domcontentloaded', { timeout: 30000 });
-    await window.waitForTimeout(1000);
-
-    await window.evaluate(({ previewStub, fetchStub }) => {
+  test.beforeEach(async ({ page: injected }) => {
+    page = injected;
+    await page.evaluate(({ previewStub, fetchStub }) => {
       const globalAny = window as unknown as Record<string, any>;
-      globalAny.__originalSpeckitFetch = globalAny.api.speckit.fetch;
-      globalAny.__originalSpeckitListPreviews = globalAny.api.speckit.listPreviews;
+      globalAny.api ||= {};
+      globalAny.api.speckit ||= {};
+      if (!globalAny.__originalSpeckitFetch) {
+        globalAny.__originalSpeckitFetch = globalAny.api.speckit.fetch;
+      }
+      if (!globalAny.__originalSpeckitListPreviews) {
+        globalAny.__originalSpeckitListPreviews = globalAny.api.speckit.listPreviews;
+      }
       globalAny.api.speckit.fetch = async () => fetchStub;
       globalAny.api.speckit.listPreviews = async () => previewStub;
     }, { previewStub, fetchStub });
   });
 
-  test.afterAll(async () => {
-    if (window) {
-      await window.evaluate(() => {
-        const globalAny = window as unknown as Record<string, any>;
-        if (globalAny.__originalSpeckitFetch) {
-          globalAny.api.speckit.fetch = globalAny.__originalSpeckitFetch;
-          delete globalAny.__originalSpeckitFetch;
-        }
-        if (globalAny.__originalSpeckitListPreviews) {
-          globalAny.api.speckit.listPreviews = globalAny.__originalSpeckitListPreviews;
-          delete globalAny.__originalSpeckitListPreviews;
-        }
-      });
-    }
-
-    if (electronApp) {
-      await electronApp.close();
-    }
+  test.afterEach(async () => {
+    if (!page) return;
+    await page.evaluate(() => {
+      const globalAny = window as unknown as Record<string, any>;
+      if (globalAny.__originalSpeckitFetch) {
+        globalAny.api.speckit.fetch = globalAny.__originalSpeckitFetch;
+        delete globalAny.__originalSpeckitFetch;
+      }
+      if (globalAny.__originalSpeckitListPreviews) {
+        globalAny.api.speckit.listPreviews = globalAny.__originalSpeckitListPreviews;
+        delete globalAny.__originalSpeckitListPreviews;
+      }
+    });
   });
 
-  test('shows filtered previews with markdown pane', async () => {
-    // Open Speckit wizard
-    await window.locator('button:has-text("New")').first().click({ timeout: 5000 });
-    const speckitOption = window.locator('text=/Speckit|Specification/i').first();
+  test('shows filtered previews with markdown pane', async ({ page }) => {
+    await page.locator('button:has-text("New")').first().click({ timeout: 5000 });
+    const speckitOption = page.locator('text=/Speckit|Specification/i').first();
     await speckitOption.click({ timeout: 5000 });
 
-    await expect(window.locator('text=Speckit Workflow')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Speckit Workflow')).toBeVisible({ timeout: 5000 });
 
-    // Bypass specification steps by creating minimal spec input
-    const descriptionInput = window.locator('textarea[placeholder*="feature"], textarea[placeholder*="Describe"]').first();
+    const descriptionInput = page.locator('textarea[placeholder*="feature"], textarea[placeholder*="Describe"]').first();
     await descriptionInput.fill('Preview flow validation');
-    await window.locator('button:has-text("Create Spec")').click();
+    await page.locator('button:has-text("Create Spec")').click();
 
-    await expect(window.locator('text=/Spec Number:/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/Spec Number:/i')).toBeVisible({ timeout: 10000 });
 
-    await window.locator('button:has-text("Generate Plan")').click();
-    await expect(window.locator('text=/Plan:/i')).toBeVisible({ timeout: 15000 });
+    await page.locator('button:has-text("Generate Plan")').click();
+    await expect(page.locator('text=/Plan:/i')).toBeVisible({ timeout: 15000 });
 
-    // Trigger fetch (stubs respond immediately)
-    await window.locator('button:has-text("Fetch Spec Kit")').click();
-    await expect(window.locator('text=Feature Template')).toBeVisible({ timeout: 5000 });
+    await page.locator('button:has-text("Fetch Spec Kit")').click();
+    await expect(page.locator('text=Feature Template')).toBeVisible({ timeout: 5000 });
 
-    // Verify selection count updates
-    const featureCheckbox = window.locator('label:has-text("Feature Template") input[type="checkbox"]').first();
+    const featureCheckbox = page.locator('label:has-text("Feature Template") input[type="checkbox"]').first();
     await featureCheckbox.check();
-    await expect(window.locator('text=1 selected')).toBeVisible({ timeout: 2000 });
+    await expect(page.locator('text=1 selected')).toBeVisible({ timeout: 2000 });
 
-    // Switch filter to templates only
-    const templateFilter = window.locator('button:has-text("Templates")').first();
+    const templateFilter = page.locator('button:has-text("Templates")').first();
     await templateFilter.click();
-    await expect(window.locator('label:has-text("Feature Template")')).toBeVisible({ timeout: 2000 });
-    await expect(window.locator('label:has-text("Spec Driven Development")')).not.toBeVisible({ timeout: 2000 });
+    await expect(page.locator('label:has-text("Feature Template")')).toBeVisible({ timeout: 2000 });
+    await expect(page.locator('label:has-text("Spec Driven Development")')).not.toBeVisible({ timeout: 2000 });
 
-    // Reset filters and search for onboarding story
-    await window.locator('button:has-text("Reset")').click();
-    const searchInput = window.locator('input[placeholder="Search Spec Kit library"]').first();
+    await page.locator('button:has-text("Reset")').click();
+    const searchInput = page.locator('input[placeholder="Search Spec Kit library"]').first();
     await searchInput.fill('Onboarding');
-    await expect(window.locator('label:has-text("Onboarding Story")')).toBeVisible({ timeout: 2000 });
-    await expect(window.locator('label:has-text("Feature Template")')).not.toBeVisible({ timeout: 2000 });
+    await expect(page.locator('label:has-text("Onboarding Story")')).toBeVisible({ timeout: 2000 });
+    await expect(page.locator('label:has-text("Feature Template")')).not.toBeVisible({ timeout: 2000 });
 
-    // Clear search and ensure preview pane renders markdown
-    await window.locator('button:has-text("Clear")').click();
-    await window.locator('button:has-text("Spec Driven Development")').click();
-    await expect(window.locator('text=Spec Driven Development').nth(0)).toBeVisible({ timeout: 2000 });
-    await expect(window.locator('text=Detailed guidance.')).toBeVisible({ timeout: 2000 });
+    await page.locator('button:has-text("Clear")').click();
+    await page.locator('button:has-text("Spec Driven Development")').click();
+    await expect(page.locator('text=Spec Driven Development').nth(0)).toBeVisible({ timeout: 2000 });
+    await expect(page.locator('text=Detailed guidance.')).toBeVisible({ timeout: 2000 });
   });
 });

@@ -8,8 +8,10 @@ import DiffViewer from './DiffViewer.vue';
 import TokenProbabilityViewer from './TokenProbabilityViewer.vue';
 import AgentSelector from './assistant/AgentSelector.vue';
 import RAGSourcesPanel from './rag/RAGSourcesPanel.vue';
+import ToolPanel from './assistant/ToolPanel.vue';
 
 type AssistantMode = 'improvement' | 'clarification' | 'general';
+type PanelView = 'chat' | 'tools';
 
 const emit = defineEmits<{ 'open-settings': [] }>();
 
@@ -22,6 +24,7 @@ const question = ref('');
 const mode = ref<AssistantMode>('general');
 const focusActive = ref(false);
 const showSources = ref(false);
+const activeView = ref<PanelView>('chat'); // Default to chat view
 
 const activeEntity = computed(() => contextStore.activeEntity);
 const canFocusActive = computed(() => Boolean(contextStore.activeEntityId));
@@ -354,6 +357,43 @@ const hasRAGSources = computed(() => ragStore.lastQuerySources.length > 0);
       </button>
     </div>
 
+    <!-- Tab Switcher -->
+    <div class="flex border-b border-surface-variant bg-white">
+      <button
+        @click="activeView = 'chat'"
+        class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all border-b-2"
+        :class="activeView === 'chat' 
+          ? 'border-primary text-primary-700 bg-primary-50' 
+          : 'border-transparent text-secondary-600 hover:text-secondary-900 hover:bg-surface-2'"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        Chat
+      </button>
+      <button
+        @click="activeView = 'tools'"
+        class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all border-b-2"
+        :class="activeView === 'tools' 
+          ? 'border-primary text-primary-700 bg-primary-50' 
+          : 'border-transparent text-secondary-600 hover:text-secondary-900 hover:bg-surface-2'"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Tools Console
+      </button>
+    </div>
+
+    <!-- Tools Console View -->
+    <div v-if="activeView === 'tools'" class="flex-1 overflow-hidden">
+      <ToolPanel />
+    </div>
+
+    <!-- Chat View -->
+    <div v-else-if="activeView === 'chat'" class="flex-1 flex flex-col overflow-hidden">
+
     <div v-if="aiStore.error" class="m-4 bg-error-50 border border-error-200 rounded-m3-md px-3 py-3 flex items-start gap-2">
       <svg class="w-4 h-4 text-error-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
       <div class="flex-1">
@@ -657,10 +697,10 @@ const hasRAGSources = computed(() => ragStore.lastQuerySources.length > 0);
       </div>
     </div>
     
-    <!-- RAG Sources Panel (Slide-over) -->
+    <!-- RAG Sources Panel (Slide-over) - Only visible in chat view -->
     <Transition name="slide-left">
       <div 
-        v-if="showSources" 
+        v-if="showSources && activeView === 'chat'" 
         class="absolute top-0 right-0 bottom-0 w-[400px] bg-white border-l border-surface-variant shadow-elevation-3 z-10 flex flex-col"
       >
         <div class="flex items-center justify-between p-3 border-b border-surface-variant bg-surface-2">
@@ -685,7 +725,10 @@ const hasRAGSources = computed(() => ragStore.lastQuerySources.length > 0);
         </div>
       </div>
     </Transition>
-  </div>
+
+    </div><!-- Close chat view div -->
+
+  </div><!-- Close main container -->
 </template>
 
 <style scoped>

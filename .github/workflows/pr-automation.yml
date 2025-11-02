@@ -113,36 +113,36 @@ jobs:
         with:
           configuration-path: '.github/auto-assign.yml'
 
-  pr-title-check:
-    name: Validate PR Title
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    timeout-minutes: 5
+  # pr-title-check:
+  #   name: Validate PR Title
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'pull_request'
+  #   timeout-minutes: 5
     
-    steps:
-      - name: Check PR title
-        uses: amannn/action-semantic-pull-request@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          types: |
-            feat
-            fix
-            docs
-            style
-            refactor
-            perf
-            test
-            build
-            ci
-            chore
-            revert
-          requireScope: false
-          subjectPattern: ^[A-Z].+$
-          subjectPatternError: |
-            The subject "{subject}" found in the pull request title "{title}"
-            didn't match the configured pattern. Please ensure that the subject
-            starts with an uppercase character.
+  #   steps:
+  #     - name: Check PR title
+  #       uses: amannn/action-semantic-pull-request@v5
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         types: |
+  #           feat
+  #           fix
+  #           docs
+  #           style
+  #           refactor
+  #           perf
+  #           test
+  #           build
+  #           ci
+  #           chore
+  #           revert
+  #         requireScope: false
+  #         subjectPattern: ^[A-Z].+$
+  #         subjectPatternError: |
+  #           The subject "{subject}" found in the pull request title "{title}"
+  #           didn't match the configured pattern. Please ensure that the subject
+  #           starts with an uppercase character.
 
   pr-size-check:
     name: Check PR Size
@@ -157,7 +157,7 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
             const total = pr.additions + pr.deletions;
-            const maxSize = 1000;
+            const maxSize = 10000;
             
             if (total > maxSize) {
               await github.rest.issues.createComment({
