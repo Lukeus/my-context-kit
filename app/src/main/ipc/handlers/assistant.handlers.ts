@@ -45,7 +45,9 @@ const orchestrator = new ToolOrchestrator({
 
 export function registerAssistantHandlers(): void {
   ipcMain.handle('assistant:createSession', async (_event, payload: { provider: AssistantProvider; systemPrompt: string; activeTools?: string[] }) => {
-    return sessionManager.createSession(payload);
+    // Returns extended session including telemetry context and tasks list
+    const session = await sessionManager.createSession(payload);
+    return session;
   });
 
   ipcMain.handle('assistant:pipelineRun', async (_event, payload: PipelineRunPayload) => {
@@ -125,8 +127,20 @@ export function registerAssistantHandlers(): void {
     };
   });
 
-  ipcMain.handle('assistant:sendMessage', async () => {
-    throw new Error('Assistant messaging is not implemented yet.');
+  ipcMain.handle('assistant:sendMessage', async (_event, payload: { sessionId: string; content: string; mode?: 'general' | 'improvement' | 'clarification' }) => {
+    const { sessionId, content, mode = 'general' } = payload;
+    const envelope = await sessionManager.dispatchMessage(sessionId, content, mode);
+    return envelope; // TaskEnvelope | null (null when remote session unavailable)
+  });
+
+  // Streaming placeholders (T010): will connect to LangChain SSE in T012/T013
+  ipcMain.handle('assistant:task:startStream', async (_event, payload: { sessionId: string; taskId: string }) => {
+    // TODO(StreamStart): Initiate SSE subscription for taskId and forward chunks via assistant:task:stream-event
+    return { ok: false, error: 'Streaming not yet implemented', taskId: payload.taskId };
+  });
+  ipcMain.handle('assistant:task:cancelStream', async (_event, payload: { sessionId: string; taskId: string }) => {
+    // TODO(StreamCancel): Cancel SSE subscription
+    return { ok: false, error: 'Streaming cancellation not yet implemented', taskId: payload.taskId };
   });
 
   ipcMain.handle('assistant:resolvePendingAction', async (_event, payload: { sessionId: string; actionId: string; decision: 'approve' | 'reject'; notes?: string }) => {

@@ -1,0 +1,142 @@
+openapi: 3.0.3
+info:
+  title: Path Resolution IPC Contract
+  description: Typed IPC request/response schemas for Electron main process path discovery handlers
+  version: 0.1.0
+
+components:
+  schemas:
+    PathResolutionRequest:
+      type: object
+      description: Request payload for resolving workspace paths
+      properties:
+        includeFeatureBranch:
+          type: boolean
+          description: Whether to detect and include the current feature branch
+          default: true
+        includeSpecPaths:
+          type: boolean
+          description: Whether to resolve specification file paths
+          default: true
+      required: []
+
+    PathResolutionResponse:
+      type: object
+      description: Response payload containing resolved workspace paths
+      properties:
+        repoRoot:
+          type: string
+          description: Absolute path to the repository root (via git rev-parse --show-toplevel or fallback heuristics)
+          example: "C:\\Users\\ladams\\source\\repos\\my-context-kit"
+        currentBranch:
+          type: string
+          nullable: true
+          description: Active feature branch name extracted from SPECIFY_FEATURE env var or git branch detection (null if not in feature context)
+          example: "001-langchain-backend-integration"
+        specDir:
+          type: string
+          nullable: true
+          description: Absolute path to the feature specification directory (specs/{currentBranch}) if currentBranch is resolved
+          example: "C:\\Users\\ladams\\source\\repos\\my-context-kit\\specs\\001-langchain-backend-integration"
+        specPaths:
+          type: object
+          nullable: true
+          description: Resolved paths to key specification files (only present if includeSpecPaths=true and specDir exists)
+          properties:
+            spec:
+              type: string
+              nullable: true
+              description: Path to spec.md
+              example: "C:\\Users\\ladams\\source\\repos\\my-context-kit\\specs\\001-langchain-backend-integration\\spec.md"
+            plan:
+              type: string
+              nullable: true
+              description: Path to plan.md
+              example: "C:\\Users\\ladams\\source\\repos\\my-context-kit\\specs\\001-langchain-backend-integration\\plan.md"
+            tasks:
+              type: string
+              nullable: true
+              description: Path to tasks.md
+              example: "C:\\Users\\ladams\\source\\repos\\my-context-kit\\specs\\001-langchain-backend-integration\\tasks.md"
+        contextDir:
+          type: string
+          description: Absolute path to context repository directory (context-repo/)
+          example: "C:\\Users\\ladams\\source\\repos\\my-context-kit\\context-repo"
+        error:
+          type: string
+          nullable: true
+          description: Error message if path resolution fails (null on success)
+      required:
+        - repoRoot
+        - contextDir
+
+    PathResolutionError:
+      type: object
+      description: Error response for failed path resolution
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "Unable to resolve repository root: not a git repository and no .context marker found"
+        code:
+          type: string
+          enum:
+            - REPO_ROOT_NOT_FOUND
+            - GIT_COMMAND_FAILED
+            - FEATURE_BRANCH_AMBIGUOUS
+            - SPEC_DIR_NOT_FOUND
+          description: Machine-readable error code
+      required:
+        - error
+        - code
+
+paths:
+  /ipc/path-resolution:
+    description: |
+      IPC channel: 'path:resolve'
+      
+      Electron main process handler that mirrors PowerShell common.ps1 discovery logic:
+      1. Resolve REPO_ROOT via git rev-parse --show-toplevel (fallback to marker-based search)
+      2. Detect CURRENT_BRANCH from SPECIFY_FEATURE environment variable or git branch --show-current
+      3. Construct spec directory path as specs/{CURRENT_BRANCH} if branch detected
+      4. Optionally resolve spec.md, plan.md, tasks.md paths if files exist
+      5. Always resolve context-repo directory as {REPO_ROOT}/context-repo
+      
+      Used by: assistantSessionManager, LangChain client wrappers
+    post:
+      summary: Resolve workspace paths for LangChain service calls
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PathResolutionRequest'
+      responses:
+        "200":
+          description: Path resolution successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PathResolutionResponse'
+        "500":
+          description: Path resolution failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PathResolutionError'
+
+# Example Usage (Preload Bridge)
+# 
+# export const pathResolutionBridge = {
+#   resolvePaths: (options?: PathResolutionRequest): Promise<PathResolutionResponse> => 
+#     ipcRenderer.invoke('path:resolve', options)
+# };
+#
+# // Renderer (assistantStore.ts)
+# const paths = await window.api.paths.resolvePaths({ includeSpecPaths: true });
+# const sessionPayload = {
+#   userId: currentUser.id,
+#   contextRoot: paths.repoRoot,
+#   featureBranch: paths.currentBranch,
+#   specificationPath: paths.specPaths?.spec
+# };

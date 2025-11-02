@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useAssistantStore } from '@/stores/assistantStore';
+import type { TaskEnvelope } from '@shared/assistant/types';
 
 type ContextReadResult = {
   path: string;
@@ -19,6 +20,10 @@ const props = defineProps<{
 }>();
 
 const hasResult = computed(() => Boolean(props.result));
+const tasks = computed<TaskEnvelope[]>(() => assistantStore.tasks || []);
+const provenance = computed<Record<string, unknown> | null>(() => assistantStore.provenance);
+const latestTask = computed<TaskEnvelope | null>(() => tasks.value.length ? tasks.value[tasks.value.length - 1] : null);
+const hasTasks = computed(() => tasks.value.length > 0);
 
 function formatTimestamp(iso: string): string {
   if (!iso) {
@@ -74,6 +79,20 @@ function cancelStream() {
   streaming.value = false;
   streamingContent.value = null;
 }
+
+function formatProvenance(value: Record<string, unknown> | null): Array<{ key: string; value: string }> {
+  if (!value) return [];
+  const keys: Array<keyof typeof value> = ['repoRoot', 'featureBranch', 'specificationPath', 'langchainSessionId'];
+  return keys
+    .filter(k => typeof value[k] === 'string' && (value[k] as string).length > 0)
+    .map(k => ({ key: k as string, value: String(value[k]) }));
+}
+
+function taskStatusLabel(task: TaskEnvelope): string {
+  const status = task.status || 'unknown';
+  const streaming = task.streaming ? 'streaming' : '';
+  return [status, streaming].filter(Boolean).join(' ');
+}
 </script>
 
 <template>
@@ -85,6 +104,30 @@ function cancelStream() {
       </div>
       <span v-if="isBusy" class="text-[11px] text-secondary-600">Loading…</span>
     </header>
+
+    <!-- Provenance Metadata -->
+    <div v-if="formatProvenance(provenance).length" class="border border-surface-variant rounded-m3-md bg-surface-1 p-3 space-y-2">
+      <p class="text-[11px] font-semibold text-secondary-700">Provenance</p>
+      <ul class="space-y-1">
+        <li v-for="item in formatProvenance(provenance)" :key="item.key" class="text-[11px] text-secondary-600 flex gap-2">
+          <span class="font-mono text-secondary-800">{{ item.key }}:</span>
+          <span class="truncate" :title="item.value">{{ item.value }}</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Latest Task Summary -->
+    <div v-if="hasTasks && latestTask" class="border border-secondary-200 rounded-m3-md bg-white p-3 space-y-2 shadow-elevation-1">
+      <div class="flex items-center justify-between">
+        <p class="text-[11px] font-semibold text-secondary-700">Latest Task</p>
+        <span class="text-[10px] text-secondary-500">{{ taskStatusLabel(latestTask) }}</span>
+      </div>
+      <p v-if="latestTask.actionType" class="text-[11px] text-secondary-600">Action: {{ latestTask.actionType }}</p>
+      <p v-if="latestTask.output?.summary" class="text-[11px] text-secondary-600 whitespace-pre-wrap">{{ latestTask.output.summary }}</p>
+      <p v-else-if="latestTask.output?.content" class="text-[11px] text-secondary-600 whitespace-pre-wrap">{{ latestTask.output.content }}</p>
+      <div v-if="latestTask.cost" class="text-[11px] text-secondary-500">Cost: {{ latestTask.cost.total ?? latestTask.cost.estimated ?? '—' }}</div>
+      <div v-if="latestTask.error" class="text-[11px] text-error-600">Error: {{ latestTask.error }}</div>
+    </div>
 
     <div v-if="error" class="bg-error-50 border border-error-200 text-error-700 text-xs rounded-m3-md px-3 py-2">
       {{ error }}

@@ -3,9 +3,11 @@ import type {
   AssistantPipelineName,
   AssistantProvider,
   AssistantSession,
+  AssistantSessionExtended,
   ConversationTurn,
   PendingAction,
-  ToolInvocationRecord
+  ToolInvocationRecord,
+  TaskEnvelope
 } from '@shared/assistant/types';
 
 export interface CreateSessionPayload {
@@ -54,13 +56,15 @@ export interface RunPipelinePayload {
 }
 
 export interface AssistantBridgeAPI {
-  createSession(payload: CreateSessionPayload): Promise<AssistantSession>;
-  sendMessage(sessionId: string, payload: SendMessagePayload): Promise<MessageResponse>;
+  createSession(payload: CreateSessionPayload): Promise<AssistantSessionExtended>;
+  sendMessage(sessionId: string, payload: SendMessagePayload & { mode?: 'general' | 'improvement' | 'clarification' }): Promise<TaskEnvelope | null>;
   executeTool(sessionId: string, payload: ExecuteToolPayload): Promise<ToolExecutionResponse>;
   resolvePendingAction(sessionId: string, actionId: string, payload: ResolvePendingActionPayload): Promise<PendingAction>;
   listTelemetry(sessionId: string): Promise<ToolInvocationRecord[]>;
   onStreamEvent(listener: (payload: unknown) => void): () => void;
   runPipeline(sessionId: string, payload: RunPipelinePayload): Promise<ToolExecutionResponse>;
+  startTaskStream(sessionId: string, taskId: string): Promise<{ ok: boolean; error?: string | null; taskId: string }>;
+  cancelTaskStream(sessionId: string, taskId: string): Promise<{ ok: boolean; error?: string | null; taskId: string }>;
 }
 
 export function createAssistantBridge(ipcRenderer: IpcRenderer): AssistantBridgeAPI {
@@ -78,7 +82,9 @@ export function createAssistantBridge(ipcRenderer: IpcRenderer): AssistantBridge
       ipcRenderer.invoke('assistant:resolvePendingAction', { sessionId, actionId, ...payload }),
     listTelemetry: (sessionId) => ipcRenderer.invoke('assistant:listTelemetry', { sessionId }),
     onStreamEvent: (listener) => subscribe('assistant:stream-event', listener),
-    runPipeline: (sessionId, payload) => ipcRenderer.invoke('assistant:pipelineRun', { sessionId, ...payload })
+    runPipeline: (sessionId, payload) => ipcRenderer.invoke('assistant:pipelineRun', { sessionId, ...payload }),
+    startTaskStream: (sessionId, taskId) => ipcRenderer.invoke('assistant:task:startStream', { sessionId, taskId }),
+    cancelTaskStream: (sessionId, taskId) => ipcRenderer.invoke('assistant:task:cancelStream', { sessionId, taskId })
   };
 }
 

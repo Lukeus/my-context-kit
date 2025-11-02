@@ -1,14 +1,42 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ConversationTurn } from '@shared/assistant/types';
+import type { ConversationTurn, TaskEnvelope } from '@shared/assistant/types';
 
 const props = defineProps<{
   transcript: ConversationTurn[];
+  tasks?: TaskEnvelope[]; // optional list of task envelopes for associating with assistant turns
   isBusy?: boolean;
   emptyMessage?: string;
 }>();
 
 const entries = computed(() => props.transcript ?? []);
+const taskIndexByTimestamp = computed(() => {
+  const map = new Map<string, TaskEnvelope>();
+  (props.tasks || []).forEach(task => {
+    const ts = task.timestamp || task.createdAt || '';
+    if (ts) map.set(ts, task);
+  });
+  return map;
+});
+
+function taskForEntry(entry: ConversationTurn): TaskEnvelope | null {
+  // Simple heuristic: match exact timestamp of task creation or fallback to last task for assistant role
+  const direct = taskIndexByTimestamp.value.get(entry.timestamp);
+  if (direct) return direct;
+  if (entry.role === 'assistant' && (props.tasks && props.tasks.length)) {
+    return props.tasks[props.tasks.length - 1];
+  }
+  return null;
+}
+
+function taskBadge(task: TaskEnvelope | null): string | null {
+  if (!task) return null;
+  const parts: string[] = [];
+  if (task.actionType) parts.push(task.actionType);
+  if (task.status) parts.push(task.status);
+  if (task.streaming) parts.push('streaming');
+  return parts.join(' · ');
+}
 
 function roleLabel(role: ConversationTurn['role']): string {
   switch (role) {
@@ -109,6 +137,7 @@ function entryTimestamp(entry: ConversationTurn): string {
         </div>
         <div class="px-4 py-3 space-y-2">
           <p class="text-sm text-secondary-900 whitespace-pre-wrap">{{ entry.content }}</p>
+          <p v-if="taskBadge(taskForEntry(entry))" class="text-[10px] text-secondary-500">Task: {{ taskBadge(taskForEntry(entry)) }}</p>
           <div v-if="referenceList(entry.metadata).length" class="space-y-1">
             <p class="text-[11px] font-semibold text-secondary-700">References</p>
             <ul class="space-y-1">

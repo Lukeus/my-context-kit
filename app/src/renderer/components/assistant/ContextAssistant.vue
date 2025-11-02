@@ -10,7 +10,7 @@ const assistantStore = useAssistantStore();
 const contextStore = useContextStore();
 const agentStore = useAgentStore();
 
-const { conversation, isBusy, session } = storeToRefs(assistantStore);
+const { conversation, isBusy, session, healthStatus, isHealthy, isDegraded, isUnhealthy, healthMessage, health } = storeToRefs(assistantStore);
 const { selectedAgent } = storeToRefs(agentStore);
 
 const messageInput = ref('');
@@ -23,6 +23,27 @@ const repoName = computed(() => {
 });
 
 const hasMessages = computed(() => conversation.value.length > 0);
+
+const showHealthBanner = computed(() => isDegraded.value || isUnhealthy.value);
+const healthBannerClass = computed(() => {
+  if (isUnhealthy.value) return 'bg-error-50 border-error-200 text-error-700';
+  if (isDegraded.value) return 'bg-orange-50 border-orange-200 text-orange-700';
+  return 'bg-surface-100 border-surface-variant text-secondary-700';
+});
+const healthIconClass = computed(() => {
+  if (isUnhealthy.value) return 'text-error-600';
+  if (isDegraded.value) return 'text-orange-600';
+  return 'text-secondary-600';
+});
+const healthStatusText = computed(() => {
+  const latency = health.value?.latencyMs;
+  const latencyStr = latency != null ? ` (${Math.round(latency)}ms)` : '';
+  return `${healthStatus.value}${latencyStr}`;
+});
+
+function retryHealthCheck() {
+  assistantStore.retryHealth();
+}
 
 async function sendMessage() {
   if (!messageInput.value.trim() || isBusy.value) return;
@@ -78,6 +99,27 @@ function handleKeyDown(event: KeyboardEvent) {
         </svg>
       </button>
     </header>
+
+    <!-- Health Status Banner (T017) -->
+    <Transition name="slide-down">
+      <div v-if="showHealthBanner" class="px-4 py-3 border-b flex items-center gap-3" :class="healthBannerClass">
+        <svg class="w-5 h-5 flex-shrink-0" :class="healthIconClass" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium">Service Status: {{ healthStatusText }}</div>
+          <div v-if="healthMessage" class="text-xs mt-1 opacity-90">{{ healthMessage }}</div>
+        </div>
+        <button
+          class="px-3 py-1.5 text-xs font-medium rounded-m3-md transition-colors"
+          :class="isUnhealthy.value ? 'bg-error-600 text-white hover:bg-error-700' : 'bg-orange-600 text-white hover:bg-orange-700'"
+          @click="retryHealthCheck"
+          title="Retry health check"
+        >
+          Retry
+        </button>
+      </div>
+    </Transition>
 
     <!-- Main Content Area -->
     <div class="flex-1 flex overflow-hidden">
@@ -266,6 +308,21 @@ function handleKeyDown(event: KeyboardEvent) {
 
 .slide-leave-to {
   transform: translateX(100%);
+  opacity: 0;
+}
+
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-down-enter-from {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.slide-down-leave-to {
+  transform: translateY(-100%);
   opacity: 0;
 }
 

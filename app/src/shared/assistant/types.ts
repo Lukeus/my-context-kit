@@ -86,6 +86,68 @@ export interface AssistantSession {
   updatedAt: string;
 }
 
+// ---------------------------------------------------------------------------
+// LangChain Integration Data Model Extensions (Phase 2 T004)
+// ---------------------------------------------------------------------------
+// Derived from specs/001-langchain-backend-integration/data-model.md and
+// contracts/assistant-langchain.yaml. These types will support foundational
+// client wrappers and session orchestration. TODO: Remove legacy duplication
+// when unified assistant architecture merges aiStore.
+
+export type CapabilityStatus = 'enabled' | 'disabled' | 'preview';
+
+export interface CapabilityEntry {
+  status: CapabilityStatus;
+  fallback?: string; // Optional fallback action identifier
+  rolloutNotes?: string; // Short notes on rollout phase
+}
+
+export interface CapabilityProfile {
+  profileId: string;
+  lastUpdated: string; // ISO timestamp
+  capabilities: Record<string, CapabilityEntry>;
+}
+
+export type TaskStatus = 'pending' | 'streaming' | 'succeeded' | 'failed';
+
+export interface TaskTimestamps {
+  created?: string; // when task accepted
+  firstResponse?: string; // when first stream token arrived
+  completed?: string; // success or failure terminal time
+}
+
+export type TaskActionType = 'prompt' | 'tool-execution' | 'approval' | 'fallback';
+
+export interface TaskEnvelope {
+  taskId: string;
+  status: TaskStatus;
+  actionType: TaskActionType; // Constrained to known action types
+  provenance?: Record<string, unknown>; // cost summaries, approval metadata, etc
+  // TODO(StreamOutput): Replace generic Record with discriminated union for tokens vs final structured outputs.
+  outputs: Array<Record<string, unknown>>; // streamed chunks or structured tool results
+  timestamps?: TaskTimestamps;
+}
+
+export interface AssistantSessionExtended extends AssistantSession {
+  capabilityProfile?: CapabilityProfile; // Loaded during bootstrap
+  telemetryContext?: Record<string, unknown>; // Correlation identifiers TODO(TelemetryTyping): introduce structured type
+  capabilityFlags?: Record<string, CapabilityEntry>; // Convenience mirror of profile.capabilities
+  tasks?: TaskEnvelope[]; // Aggregated LangChain task envelopes
+}
+
+// Utility guard helpers
+export function isTaskStreaming(t: TaskEnvelope): boolean {
+  return t.status === 'streaming';
+}
+
+export function isCapabilityEnabled(entry?: CapabilityEntry): boolean {
+  return !!entry && entry.status === 'enabled';
+}
+
+export function deriveCapabilityFlags(profile?: CapabilityProfile): Record<string, CapabilityEntry> {
+  return profile?.capabilities ? { ...profile.capabilities } : {};
+}
+
 export interface ProviderRuntimeSettings {
   id: AssistantProvider;
   displayName: string;

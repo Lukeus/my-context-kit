@@ -3,15 +3,16 @@ import { defineStore, storeToRefs } from 'pinia';
 import type {
   AssistantPipelineName,
   AssistantProvider,
-  AssistantSession,
+  AssistantSessionExtended,
   ConversationTurn,
   PendingAction,
-  ToolInvocationRecord
+  ToolInvocationRecord,
+  TaskEnvelope,
+  CapabilityProfile
 } from '@shared/assistant/types';
 import type {
   CreateSessionPayload,
   ExecuteToolPayload,
-  MessageResponse,
   ResolvePendingActionPayload,
   SendMessagePayload,
   ToolExecutionResponse,
@@ -19,6 +20,8 @@ import type {
 } from '@/../preload/assistantBridge';
 import type { AgentProfile } from '@shared/agents/types';
 import { useAgentStore } from './agentStore';
+import { createHealthPoller, type NormalisedHealth, type LangChainHealthStatus } from '@/services/langchain/health';
+import { createCapabilityCache, isCapabilityEnabled as checkCapabilityEnabled, getEnabledCapabilities } from '@/services/langchain/capabilities';
 
 function assertAssistantBridge(): typeof window.api.assistant {
   if (!window.api?.assistant) {
@@ -51,7 +54,9 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const agentStore = useAgentStore();
   const { selectedAgent } = storeToRefs(agentStore);
   
-  const session = ref<AssistantSession | null>(null);
+  const session = ref<AssistantSessionExtended | null>(null);
+  const tasks = ref<TaskEnvelope[]>([]);
+  const provenance = ref<Record<string, unknown> | null>(null);
   const conversation = ref<ConversationTurn[]>([]);
   const pendingApprovals = ref<PendingAction[]>([]);
   const activePendingId = ref<string | null>(null);
@@ -63,6 +68,16 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const contextReadError = ref<string | null>(null);
   const activeAgentProfile = ref<AgentProfile | null>(null);
 
+  // Health state (T016)
+  const health = ref<NormalisedHealth | null>(null);
+  const healthPollerInstance = createHealthPoller({ intervalMs: 10000 });
+  let healthUnsubscribe: (() => void) | null = null;
+
+  // Capability cache (T020)
+  const capabilityProfile = ref<CapabilityProfile | null>(null);
+  const capabilityCache = createCapabilityCache();
+  const capabilityLoading = ref(false);
+
   const hasSession = computed(() => Boolean(session.value));
   const activeProvider = computed<AssistantProvider | null>(() => session.value?.provider ?? null);
   const activeTools = computed(() => session.value?.activeTools ?? []);
@@ -72,10 +87,32 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     return pendingApprovals.value.find(p => p.id === activePendingId.value) ?? null;
   });
 
-  function applySession(nextSession: AssistantSession) {
+  // Health computed flags (T016)
+  const healthStatus = computed<LangChainHealthStatus>(() => health.value?.status ?? 'unknown');
+  const isHealthy = computed(() => healthStatus.value === 'healthy');
+  const isDegraded = computed(() => healthStatus.value === 'degraded');
+  const isUnhealthy = computed(() => healthStatus.value === 'unhealthy');
+  const canExecuteRisky = computed(() => isHealthy.value || isDegraded.value);
+  const healthMessage = computed<string | null>(() => {
+    if (!health.value) return null;
+    if (isUnhealthy.value) return health.value.message || 'LangChain service is currently unavailable. Operations will use local fallbacks.';
+    if (isDegraded.value) return health.value.message || 'LangChain service is experiencing degraded performance.';
+    return health.value.message;
+  });
+
+  // Capability computed (T020)
+  const hasCapabilities = computed(() => Boolean(capabilityProfile.value));
+  const enabledCapabilities = computed(() => getEnabledCapabilities(capabilityProfile.value));
+  const isCapabilityEnabled = computed(() => (capabilityId: string) => {
+    return checkCapabilityEnabled(capabilityProfile.value, capabilityId);
+  });
+
+  function applySession(nextSession: AssistantSessionExtended) {
     session.value = nextSession;
     conversation.value = [...nextSession.messages];
     pendingApprovals.value = [...nextSession.pendingApprovals];
+    tasks.value = [...(nextSession.tasks || [])];
+    provenance.value = nextSession.telemetryContext ? { ...nextSession.telemetryContext } : null;
     lastUpdated.value = nowIso();
   }
 
@@ -110,17 +147,33 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     const bridge = assertAssistantBridge();
     isBusy.value = true;
     error.value = null;
+
+    // Start health polling on first session creation (T016)
+    if (!healthUnsubscribe) {
+      healthUnsubscribe = healthPollerInstance.on(snapshot => {
+        health.value = snapshot;
+        // TODO(T016-Telemetry): log health transitions to telemetry writer
+      });
+      healthPollerInstance.start();
+    }
     
     // Apply agent profile if provided
     const sessionPayload = agentProfile ? applyAgentProfile(payload, agentProfile) : payload;
     
     try {
-      const created = await bridge.createSession(sessionPayload);
+      const created = await bridge.createSession(sessionPayload) as AssistantSessionExtended;
       applySession(created);
       telemetry.value = [];
+      tasks.value = [...(created.tasks || [])];
+      provenance.value = created.telemetryContext ? { ...created.telemetryContext } : null;
       
       // Store active agent profile
       activeAgentProfile.value = agentProfile ?? null;
+
+      // Load capability profile (T020) - non-blocking
+      loadCapabilities().catch(err => {
+        console.warn('Failed to load capability profile:', err);
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create assistant session.';
       error.value = message;
@@ -162,10 +215,17 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     };
   }
 
-  async function sendMessage(payload: SendMessagePayload) {
+  async function sendMessage(payload: SendMessagePayload & { mode?: 'general' | 'improvement' | 'clarification' }) {
     const bridge = assertAssistantBridge();
     if (!session.value) {
       throw new Error('No active assistant session. Create a session before sending messages.');
+    }
+
+    // Block risky operations when unhealthy (T016)
+    if (!canExecuteRisky.value) {
+      const fallback = 'LangChain service unavailable. Message dispatch blocked. Please retry when service recovers.';
+      error.value = fallback;
+      throw new Error(fallback);
     }
 
     isBusy.value = true;
@@ -179,10 +239,14 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     });
 
     try {
-      const response: MessageResponse = await bridge.sendMessage(session.value.id, payload);
-      appendMessage(response.message);
+      const envelope = await bridge.sendMessage(session.value.id, payload);
+      if (envelope) {
+        // Double-cast to work around TypeScript inference issue with global window.api types
+        tasks.value = [...tasks.value, envelope as unknown as TaskEnvelope];
+        // TODO(StreamMerge T012): merge streaming updates into tasks
+      }
       lastUpdated.value = nowIso();
-      return response;
+      return envelope;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Assistant message failed.';
       error.value = message;
@@ -196,6 +260,13 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     const bridge = assertAssistantBridge();
     if (!session.value) {
       throw new Error('No active assistant session. Create a session before executing tools.');
+    }
+
+    // Block risky tool execution when unhealthy (T016)
+    if (!canExecuteRisky.value && payload.toolId !== CONTEXT_READ_TOOL_ID) {
+      const fallback = 'LangChain service unavailable. Tool execution blocked. Safe read-only operations may proceed.';
+      error.value = fallback;
+      throw new Error(fallback);
     }
 
     isBusy.value = true;
@@ -225,7 +296,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     }
   }
 
-  async function ensurePipelineSession(provider: AssistantProvider, agent?: AgentProfile): Promise<AssistantSession> {
+  async function ensurePipelineSession(provider: AssistantProvider, agent?: AgentProfile): Promise<AssistantSessionExtended> {
     const requiredTools = [PIPELINE_TOOL_ID, CONTEXT_READ_TOOL_ID];
 
     if (session.value && session.value.provider === provider) {
@@ -319,7 +390,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       });
 
       if (response.session) {
-        applySession(response.session);
+        applySession(response.session as AssistantSessionExtended);
       } else if (response.conversation) {
         conversation.value = [...response.conversation];
       }
@@ -426,6 +497,55 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     contextReadResult.value = null;
     contextReadError.value = null;
     activeAgentProfile.value = null;
+    tasks.value = [];
+    provenance.value = null;
+  }
+
+  function stopHealthPolling() {
+    if (healthUnsubscribe) {
+      healthUnsubscribe();
+      healthUnsubscribe = null;
+    }
+    healthPollerInstance.stop();
+    health.value = null;
+  }
+
+  function retryHealth() {
+    // Manually trigger immediate poll and reset backoff
+    healthPollerInstance.stop();
+    healthPollerInstance.start();
+  }
+
+  // Capability management (T020)
+  async function loadCapabilities(): Promise<void> {
+    if (capabilityLoading.value) return;
+    capabilityLoading.value = true;
+    try {
+      const profile = await capabilityCache.fetch();
+      capabilityProfile.value = profile;
+    } catch (err) {
+      console.error('Failed to load capability profile:', err);
+      capabilityProfile.value = null;
+    } finally {
+      capabilityLoading.value = false;
+    }
+  }
+
+  async function refreshCapabilities(): Promise<void> {
+    capabilityLoading.value = true;
+    try {
+      const profile = await capabilityCache.refresh();
+      capabilityProfile.value = profile;
+    } catch (err) {
+      console.error('Failed to refresh capability profile:', err);
+    } finally {
+      capabilityLoading.value = false;
+    }
+  }
+
+  function clearCapabilities(): void {
+    capabilityCache.clear();
+    capabilityProfile.value = null;
   }
 
   return {
@@ -439,10 +559,29 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     contextReadResult,
     contextReadError,
     activeAgentProfile,
+    tasks,
+    provenance,
+    health,
+    healthStatus,
+    isHealthy,
+    isDegraded,
+    isUnhealthy,
+    canExecuteRisky,
+    healthMessage,
     hasSession,
     activeProvider,
     activeTools,
     pendingCount,
+    // Capability exports (T020)
+    capabilityProfile,
+    capabilityLoading,
+    hasCapabilities,
+    enabledCapabilities,
+    isCapabilityEnabled,
+    loadCapabilities,
+    refreshCapabilities,
+    clearCapabilities,
+    // Actions
     createSession,
     sendMessage,
     executeTool,
@@ -451,6 +590,8 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     readContextFile,
     refreshTelemetry,
     consumeStreamEvents,
+    stopHealthPolling,
+    retryHealth,
     reset
     ,
     // Approval helpers

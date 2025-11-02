@@ -1,0 +1,166 @@
+openapi: 3.0.3
+info:
+  title: Assistant LangChain Integration
+  version: 0.1.0
+paths:
+  /assistant/sessions:
+    post:
+      summary: Bootstrap a renderer session against the LangChain orchestration service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                clientVersion:
+                  type: string
+                capabilitiesOverride:
+                  type: object
+                  additionalProperties:
+                    type: string
+              required:
+                - userId
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                  capabilityProfile:
+                    $ref: '#/components/schemas/CapabilityProfile'
+                  telemetryContext:
+                    type: object
+        "503":
+          description: Service unavailable
+  /assistant/sessions/{sessionId}/messages:
+    post:
+      summary: Submit a prompt or user message for orchestration
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                mode:
+                  type: string
+                  enum: [general, improvement, clarification]
+                metadata:
+                  type: object
+      responses:
+        "202":
+          description: Message accepted; stream delivers responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskEnvelope'
+        "409":
+          description: Capability disabled
+        "410":
+          description: Session expired
+  /assistant/sessions/{sessionId}/tasks/{taskId}/stream:
+    get:
+      summary: Subscribe to incremental task output via Server-Sent Events
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stream of task events
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /assistant/health:
+    get:
+      summary: Report orchestration service health state used by the renderer status indicator
+      responses:
+        "200":
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, degraded]
+                  info:
+                    type: object
+        "503":
+          description: Service unavailable
+  /assistant/capabilities:
+    get:
+      summary: Fetch capability configuration mapped to assistant features
+      responses:
+        "200":
+          description: Capability map delivered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityProfile'
+components:
+  schemas:
+    CapabilityProfile:
+      type: object
+      properties:
+        profileId:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+        capabilities:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/CapabilityEntry'
+    CapabilityEntry:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [enabled, disabled, preview]
+        fallback:
+          type: string
+        rolloutNotes:
+          type: string
+    TaskEnvelope:
+      type: object
+      properties:
+        taskId:
+          type: string
+        status:
+          type: string
+          enum: [pending, streaming, succeeded, failed]
+        actionType:
+          type: string
+        provenance:
+          type: object
+        outputs:
+          type: array
+          items:
+            type: object
+        timestamps:
+          type: object
