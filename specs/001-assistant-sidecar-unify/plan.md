@@ -14,55 +14,67 @@ Unify legacy and safe tooling AI assistants into a single session-based assistan
 **Language/Version**: TypeScript (strict) for Electron main/preload/renderer; Python 3.11 (FastAPI + LangChain) for sidecar.
 **Primary Dependencies**: Electron Forge + Vite, Vue 3 Composition API, Pinia, Tailwind (Material 3 tokens), Azure OpenAI SDK (via sidecar), Ollama (via sidecar), FastAPI, LangChain Python, simple-git/isomorphic-git.
 **Storage**: Git-versioned filesystem (context-repo YAML/specs); transient in-memory session state; no new persistent DB.
-**Testing**: Vitest (TypeScript unit tests), Playwright (future E2E), pytest (sidecar service tests) – NEEDS CLARIFICATION: breadth of new test coverage for migration logic (define % or scenarios). 
+**Testing**: Vitest (TypeScript unit tests), Playwright (future E2E), pytest (sidecar service tests). Migration coverage matrix: mapping, deduplication, rollback (≥95% unique messages preserved; 0 critical failures). Performance harness tasks link: first-token latency (T028L), transcript perf (T052H), tool durations (T083), embeddings checksum reproducibility (T090A).
 **Target Platform**: Desktop (Windows/macOS/Linux Electron app) + local/remote Python sidecar.
 **Project Type**: Electron desktop application with external Python service.
-**Performance Goals**: Initial streaming token latency <300ms (SC-005); tool invocation median completion <5s for validation/graph; migration completes <5s for typical history (<500 messages). NEEDS CLARIFICATION: define p95 tool duration thresholds.
-**Constraints**: Maintain context isolation (no nodeIntegration), memory overhead minimal (avoid loading entire large diffs fully – summarization), sidecar unreachable fallback enabled.
-**Scale/Scope**: Single-user sessions per desktop instance; up to several thousand messages per session; simultaneous tool invocations limited to practical concurrency (likely <=5).
+**Performance Goals**: Initial streaming token latency p95 <300ms (SC-005); tool invocation SLOs defined; migration completes p95 <5s for typical history (<500 messages); embeddings determinism (FR-039) validated before enabling RAG-dependent features.
+**Performance SLOs**:
+| Operation | p50 | p95 |
+|-----------|-----|-----|
+| Validation pipeline | <3s | <5s |
+| Graph build pipeline | <4s | <8s |
+| Impact analysis | <5s | <10s |
+| Embeddings build | <6s | <12s |
+| First streaming token | <200ms | <300ms |
+| Migration (typical history) | <3s | <5s |
 
-**Unknowns / NEEDS CLARIFICATION**:
-1. Test coverage scope for migration (unit vs integration vs snapshot) – define acceptance target.
-2. p95 duration thresholds for heavy tools (graph build, impact analysis).
-3. Concurrency limit for simultaneous tool invocations (queue strategy).
+**Constraints**: Maintain context isolation (no nodeIntegration); summarize diffs when (total lines >800 OR raw size >100KB) – trigger if either threshold exceeded; sidecar unreachable triggers Limited Read-Only Mode (conversation only, tools disabled); concurrency capped at 3 active tool executions.
+**Scale/Scope**: Single-user sessions per desktop instance; thousands of messages per session; concurrency limited by `MAX_CONCURRENT_TOOLS = 3`.
 
-These will be resolved in Phase 0 research.
+**Unknowns Resolved**:
+1. Migration coverage: unit (mapping), integration (auto-import), rollback test; acceptance target ≥95% preservation.
+2. p95 thresholds established above; tracked in performance harness.
+3. Concurrency limit fixed to 3 for stability & predictable resource usage.
 
-## Constitution Check (Initial)
+## Constitution Check (Progressive Assessment)
 
-1. **I. Git-Versioned Source of Truth**: Updating C4 diagrams (`context-repo/c4/context-sync-mvp.md`, `component-sync.md`) plus any spec updates; telemetry schema changes documented in spec/data-model. All migration logic in code references Git-managed legacy data; no hidden state. PASS.
-2. **II. Deterministic Pipelines Before AI**: Existing pipelines (validate, build-graph, impact, generate) remain deterministic; sidecar routes tool execution but does not alter pipeline determinism. Any new retrieval index build (embeddings) must be added as deterministic Python pipeline script. PASS (embedding pipeline script addition TODO). 
-3. **III. Unified TypeScript & Build Discipline**: No deviation from TypeScript strict config; removal/deprecation of direct JS LangChain usage; pnpm only. PASS.
-4. **IV. Validation & Impact Gatekeeping**: Plan includes gating: run `pnpm typecheck`, `pnpm lint`, pipeline validate & impact before merge; migration tests added. PASS (tool duration thresholds NEEDS CLARIFICATION but not blocking gate definition).
-5. **V. Secure Desktop Boundary & Observability**: Context isolation preserved; approvals enforced; telemetry events (tool invocation, approval decision, migration result) logged. Secrets remain env variables for providers. PASS.
+### Initial Evaluation (Pre-Implementation)
 
-No violations identified; unknowns to be resolved in research phase.
+1. **I. Git-Versioned Source of Truth**: C4 diagram updates (T081) are REQUIRED GATE before merging additional assistant UI changes; current status: PENDING (must reflect sidecar boundary + embeddings + gating artifact). 
+2. **II. Deterministic Pipelines Before AI**: Embeddings pipeline (FR-039, tasks T028A/T087) MUST land before enabling any RAG-dependent or embeddings-based retrieval features; current status: PENDING.
+3. **III. Unified TypeScript & Build Discipline**: No deviation; enforce sidecar-only provider usage (FR-003) via static script (T028I). PASS (enforcement pending implementation of script).
+4. **IV. Validation & Impact Gatekeeping**: Gates defined; add explicit harness references (T028L, T052H, T083) to quantify performance. PARTIAL until harness tasks complete.
+5. **V. Secure Desktop Boundary & Observability**: Approval + telemetry design defined; telemetry completeness threshold (≥99%) for FR-004 set. PASS (implementation pending tests).
 
-## Constitution Check (Post-Design)
+**Action Items**: Treat Principles I & II as merge blockers; Principles III–V monitored via gating artifact (FR-040).
 
-Re-evaluated after research & Phase 1 artifacts:
+### Post-Design Validation (After Phase 1 Artifacts)
 
-- **I. Git-Versioned Source of Truth**: Data model, contracts, research, quickstart committed; embedding pipeline script planned (D-004) – remains compliant. PASS.
-- **II. Deterministic Pipelines Before AI**: Embeddings pipeline decision ensures determinism; no AI orchestration bypass introduced. PASS.
-- **III. Unified TypeScript & Build Discipline**: No changes weakening TypeScript strictness; sidecar integration via typed client. PASS.
-- **IV. Validation & Impact Gatekeeping**: Tool duration thresholds define performance gates; test coverage plan (migration mapping + tool invocation telemetry) documented. PASS.
-- **V. Secure Desktop Boundary & Observability**: Telemetry schema extended; approvals persisted; fallback modes defined. PASS.
+Delta assessment after research, data-model, contracts, quickstart committed:
 
-Overall status: All gates satisfied. No complexity tracking entries needed.
+- **I. Git-Versioned Source of Truth**: ✓ Planning artifacts committed; C4 update task scheduled early (T081 in Phase 2).
+- **II. Deterministic Pipelines Before AI**: ✓ Embeddings pipeline planned with checksum validation (T028A/B); defers RAG until determinism proven.
+- **III. Unified TypeScript & Build Discipline**: ✓ Typed sidecar client architecture; no TypeScript strictness relaxation.
+- **IV. Validation & Impact Gatekeeping**: ✓ Test matrix expanded (mapping, dedup, rollback); harness tasks linked to SLOs.
+- **V. Secure Desktop Boundary & Observability**: ✓ Classification enforcement (FR-032), telemetry schema extended, approval workflows defined.
+
+**Overall Status**: All principles satisfied pending task execution. No constitutional violations or complexity exceptions required.
 
 ## Phase 2 Planning (Preview)
 
-Phase 2 (to be formalized in tasks.md):
+Phase 2 (Foundational – updated scope):
 - Implement sidecar client abstraction (`services/sidecar/client.ts`).
-- Extend `assistantStore` with migration service & concurrency queue.
+- Extend `assistantStore` with migration service & concurrency queue (cap=3).
+- Deterministic embeddings pipeline script (`.context/pipelines/build-embeddings.mjs`) + checksum logging.
 - Deprecation warnings in `aiStore` usage points.
-- UI unification: create `UnifiedAssistant.vue` (replace legacy modal & panel) referencing design tokens.
-- Telemetry event emission wrapper.
 - Tool invocation queue + cancellation UI.
-- Diff rendering component with summarization threshold logic.
-- Capability manifest refresh scheduler.
-- Tests: migration mapping, diff summarization, concurrency limits, telemetry fields, fallback mode.
-- Documentation updates to C4 diagrams.
+- Diff rendering component with summarization thresholds (>800 lines OR >100KB).
+- Capability manifest refresh scheduler + manual refresh action.
+- Gating artifact generator (`scripts/ci/run-gates.ts`) producing `generated/gate-status.json`.
+- Telemetry event emission wrapper.
+- C4 diagram updates (context & component) reflecting unified assistant + sidecar + embeddings pipeline (moved earlier to satisfy Constitution Principle I lock‑step requirement).
+- Tests: migration mapping, deduplication accuracy, rollback, diff summarization thresholds, concurrency limits, telemetry fields, Limited Read-Only Mode behavior, embeddings checksum.
+- Documentation updates to C4 diagrams (reflect sidecar + unified assistant + embeddings pipeline).
 
 Dependencies:
 - Sidecar running (FastAPI) with endpoints matching contracts.

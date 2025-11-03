@@ -151,14 +151,14 @@ Rules:
 - All IDs must be UUIDv4 format.
 - Timestamps must be ISO8601.
 - Provider must match a ProviderCapability entry.
-- Large diff summarization triggers if diff >2000 LOC or >400 changed LOC.
+ - Large diff summarization triggers if (total lines >800 OR raw size >100KB) unified threshold matching FR-037.
 - Concurrency: enforce <=3 running ToolInvocation per session.
 - p95 thresholds: validate <3s, build-graph <5s, impact <7s, generate <4s (used for telemetry alerting).
 
 ## Derived / Computed Metrics
 - Session success rate = succeeded tool invocations / total tool invocations.
 - Migration preservation accuracy = totalMessagesImported / totalMessagesFound.
-- Provider performance snapshot: average streaming initial latency from stream-start to first token event.
+ - Provider performance snapshot: average streaming initial latency from stream-start to first token event (sample size ≥30, p95 <300ms per SC-005). Atomic state integrity metric: number of partial session mutations MUST remain 0.
 
 ## Security & Privacy Considerations
 - No sensitive content persisted outside Git repository context; approvals require explicit confirmation.

@@ -13,8 +13,9 @@
  * </BaseButton>
  */
 
-export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'danger' | 'ghost';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+// Component prop types
+type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'danger' | 'ghost';
+type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface Props {
   variant?: ButtonVariant;
