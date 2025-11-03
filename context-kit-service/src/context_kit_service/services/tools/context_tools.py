@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 from langchain_core.tools import StructuredTool
@@ -14,7 +14,7 @@ class ContextReadInput(BaseModel):
 
     entity_type: str = Field(description="Entity type (e.g., 'feature', 'task', 'service')")
     entity_id: str = Field(description="Entity ID (filename without extension)")
-    repo_path: Optional[str] = Field(
+    repo_path: str | None = Field(
         default=None, description="Path to context repository (optional, uses default if not provided)"
     )
 
@@ -23,15 +23,15 @@ class ContextSearchInput(BaseModel):
     """Input for context.search tool."""
 
     query: str = Field(description="Search query string")
-    entity_type: Optional[str] = Field(
+    entity_type: str | None = Field(
         default=None, description="Entity type to filter by (optional)"
     )
-    repo_path: Optional[str] = Field(
+    repo_path: str | None = Field(
         default=None, description="Path to context repository (optional, uses default if not provided)"
     )
 
 
-def _read_context_file(entity_type: str, entity_id: str, repo_path: Optional[str] = None) -> dict[str, Any]:
+def _read_context_file(entity_type: str, entity_id: str, repo_path: str | None = None) -> dict[str, Any]:
     """Read a context entity file."""
     if repo_path is None:
         repo_path = os.getenv("CONTEXT_REPO_PATH", "../context-repo")
@@ -52,7 +52,7 @@ def _read_context_file(entity_type: str, entity_id: str, repo_path: Optional[str
     }
 
 
-def _search_context(query: str, entity_type: Optional[str] = None, repo_path: Optional[str] = None) -> list[dict[str, Any]]:
+def _search_context(query: str, entity_type: str | None = None, repo_path: str | None = None) -> list[dict[str, Any]]:
     """Search context entities by query."""
     if repo_path is None:
         repo_path = os.getenv("CONTEXT_REPO_PATH", "../context-repo")

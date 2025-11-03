@@ -1,9 +1,8 @@
 """Assistant session management service."""
 
-import asyncio
 from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from ..models.assistant import (
@@ -11,12 +10,12 @@ from ..models.assistant import (
     CreateSessionRequest,
     CreateSessionResponse,
     SendMessageRequest,
+    TaskActionType,
     TaskEnvelope,
     TaskStatus,
-    TaskActionType,
     TaskTimestamps,
 )
-from .langchain_agent import create_agent, LangChainAgent
+from .langchain_agent import LangChainAgent, create_agent
 
 
 class AssistantSession:
@@ -27,8 +26,8 @@ class AssistantSession:
         session_id: str,
         user_id: str,
         provider: AssistantProvider,
-        system_prompt: Optional[str] = None,
-        active_tools: Optional[list[str]] = None,
+        system_prompt: str | None = None,
+        active_tools: list[str] | None = None,
     ):
         self.session_id = session_id
         self.user_id = user_id
@@ -38,7 +37,7 @@ class AssistantSession:
         self.messages: list[dict[str, Any]] = []
         self.tasks: list[TaskEnvelope] = []
         self.created_at = datetime.utcnow()
-        self._agent: Optional[LangChainAgent] = None
+        self._agent: LangChainAgent | None = None
 
     def _default_system_prompt(self) -> str:
         """Generate default system prompt."""
@@ -47,7 +46,7 @@ class AssistantSession:
             "Confirm scope, execute only allowlisted commands, and summarize results for humans."
         )
 
-    def add_message(self, role: str, content: str, metadata: Optional[dict[str, Any]] = None):
+    def add_message(self, role: str, content: str, metadata: dict[str, Any] | None = None):
         """Add message to conversation."""
         self.messages.append(
             {
@@ -83,7 +82,7 @@ class AssistantSessionManager:
     async def create_session(self, request: CreateSessionRequest) -> CreateSessionResponse:
         """Create new assistant session."""
         session_id = str(uuid4())
-        
+
         print(f"[SessionManager] Creating session with activeTools: {request.activeTools}")
 
         session = AssistantSession(
@@ -110,7 +109,7 @@ class AssistantSessionManager:
             createdAt=session.created_at,
         )
 
-    def get_session(self, session_id: str) -> Optional[AssistantSession]:
+    def get_session(self, session_id: str) -> AssistantSession | None:
         """Get session by ID."""
         print(f"[SessionManager] Looking up session {session_id} in manager id: {id(self)}")
         print(f"[SessionManager] Available sessions: {list(self._sessions.keys())}")
@@ -270,7 +269,7 @@ class AssistantSessionManager:
 
 
 # Global singleton
-_manager: Optional[AssistantSessionManager] = None
+_manager: AssistantSessionManager | None = None
 
 
 def get_session_manager() -> AssistantSessionManager:

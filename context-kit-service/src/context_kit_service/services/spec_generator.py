@@ -5,7 +5,6 @@ Uses LangChain and LLMs to generate technical specifications from requirements.
 """
 
 import os
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -45,11 +44,11 @@ class SpecGenerator:
                     or os.getenv("MODEL_NAME")
                     or self.model_config.get("model", "gpt-4")
                 )
-                
+
                 # Check if using Azure API Management (APIM)
                 # APIM URLs typically contain "azure-api.net" instead of "openai.azure.com"
                 is_apim = "azure-api.net" in azure_endpoint
-                
+
                 if is_apim:
                     # For APIM, the API key is actually the subscription key
                     # Use it in default_headers instead

@@ -1,8 +1,6 @@
 """Context file reader service."""
 
-import asyncio
 from pathlib import Path
-from typing import Optional
 
 import aiofiles
 
@@ -27,7 +25,7 @@ class ContextFileReader:
             raise ValueError("Path traversal attempt detected")
 
         try:
-            async with aiofiles.open(file_path, "r", encoding=encoding) as f:
+            async with aiofiles.open(file_path, encoding=encoding) as f:
                 content = await f.read()
 
             stat = file_path.stat()
@@ -47,7 +45,7 @@ class ContextFileReader:
 
 
 # Global instance
-_reader: Optional[ContextFileReader] = None
+_reader: ContextFileReader | None = None
 
 
 def get_context_file_reader() -> ContextFileReader:

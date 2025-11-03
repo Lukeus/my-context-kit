@@ -1,5 +1,9 @@
 """Assistant API endpoints."""
 
+import json
+from datetime import datetime
+from uuid import uuid4
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -15,18 +19,15 @@ from ..models.assistant import (
     RunPipelineResponse,
     SendMessageRequest,
     SendMessageResponse,
+    TaskActionType,
     TaskEnvelope,
     TaskStatus,
-    TaskActionType,
     TaskTimestamps,
 )
 from ..services.assistant_session_manager import get_session_manager
 from ..services.capability_checker import get_capability_profile
-from ..services.pipeline_executor import get_pipeline_executor
 from ..services.context_file_reader import get_context_file_reader
-import json
-from datetime import datetime
-from uuid import uuid4
+from ..services.pipeline_executor import get_pipeline_executor
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 

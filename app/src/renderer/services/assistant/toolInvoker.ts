@@ -189,8 +189,10 @@ export async function invokeToolsBatch(
         results.push(result);
         const idx = inFlight.indexOf(promise);
         if (idx > -1) inFlight.splice(idx, 1);
+      }).catch(() => {
+        // Error already logged in invokeTool
       });
-      inFlight.push(promise);
+      void inFlight.push(promise);
     }
 
     // Wait for at least one to complete

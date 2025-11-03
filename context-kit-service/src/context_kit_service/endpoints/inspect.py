@@ -116,7 +116,7 @@ async def inspect_context(request: InspectRequest) -> InspectResponse:
             recommendations=recommendations,
             duration_ms=duration_ms,
         )
-        
+
         # Convert to dict to ensure JSON serializability across IPC boundary
         return response.model_dump()
 

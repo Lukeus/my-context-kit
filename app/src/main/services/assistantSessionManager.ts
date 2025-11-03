@@ -72,10 +72,7 @@ export class AssistantSessionManager {
       
       const remote = await client.createSession({
         userId: 'local-user',
-        clientVersion: lcConfig.telemetryDefaults.appVersion,
-        provider: options.provider,
-        systemPrompt: options.systemPrompt,
-        activeTools: options.activeTools
+        clientVersion: lcConfig.telemetryDefaults.appVersion
       });
       langchainSessionId = remote.sessionId;
       if (remote.capabilityProfile?.capabilities) {
