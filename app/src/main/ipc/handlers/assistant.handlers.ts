@@ -21,6 +21,9 @@ import type { PendingAction } from '@shared/assistant/types';
 import { broadcastAssistantStream } from '../streamingEmitter';
 import type { CapabilityProfile } from '@shared/assistant/types';
 import type { AssistantTelemetryEvent } from '@shared/assistant/telemetry';
+import type { GatingStatus } from '@shared/assistant/types';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 interface PipelineRunPayload {
   sessionId: string;
@@ -273,6 +276,37 @@ export function registerAssistantHandlers(): void {
       };
     }
   });
+
+  // Gating artifact reader (FR-040): Provides read-only gating status snapshot.
+  // Safe fallbacks ensure UI can render even if artifact absent or malformed.
+  // TODO(GatingWriter T028C): Implement writer logic in embeddings pipeline script.
+  // TODO(GatingRefresh): Add periodic refresh polling when sidecar active (e.g., every 30s).
+  // TODO(GatingTests T051D): Add tests for fallback scenarios (missing artifact, parse error, stale timestamp).
+  ipcMain.handle('assistant:getGatingStatus', async (_event, payload: { repoPath: string }) => {
+    const repoPath = typeof payload?.repoPath === 'string' ? payload.repoPath : '';
+    if (!repoPath) {
+      return createDefaultGatingStatus('missing-repo-path');
+    }
+    try {
+      const gatingPath = join(repoPath, '.context', 'gate-status.json');
+      const raw = await readFile(gatingPath, 'utf-8');
+      const parsed = JSON.parse(raw) as Partial<GatingStatus>;
+      // Basic structural validation + coercion
+      const status: GatingStatus = {
+        classificationEnforced: typeof parsed.classificationEnforced === 'boolean' ? parsed.classificationEnforced : false,
+        sidecarOnly: typeof parsed.sidecarOnly === 'boolean' ? parsed.sidecarOnly : true, // default sidecarOnly true until legacy removed
+        checksumMatch: typeof parsed.checksumMatch === 'boolean' ? parsed.checksumMatch : false,
+        retrievalEnabled: typeof parsed.retrievalEnabled === 'boolean' ? parsed.retrievalEnabled : false,
+        updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
+        source: typeof parsed.source === 'string' ? parsed.source : 'unknown',
+        version: typeof parsed.version === 'string' ? parsed.version : '0.1.0'
+      };
+      return status;
+    } catch (err) {
+      // Missing or malformed artifact → return safe defaults with error provenance
+      return createDefaultGatingStatus(err instanceof Error ? err.message : 'gating-read-error');
+    }
+  });
 }
 
 function toExecuteToolOptions(sessionId: string, provider: AssistantProvider, payload: PipelineRunPayload): ExecuteToolOptions {
@@ -510,3 +544,15 @@ function formatByteSize(size: number): string {
 
 // Note: Streaming conversation support is available via assistant:stream-event channel.
 // Full provider adapter streaming is pending Azure OpenAI streaming integration.
+
+function createDefaultGatingStatus(source: string): GatingStatus {
+  return {
+    classificationEnforced: false,
+    sidecarOnly: true,
+    checksumMatch: false,
+    retrievalEnabled: false,
+    updatedAt: new Date().toISOString(),
+    source,
+    version: '0.1.0'
+  };
+}

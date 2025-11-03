@@ -13,79 +13,99 @@
     </div>
     
     <!-- Header -->
-    <header class="flex items-center justify-between px-3 py-2 border-b border-outline-variant bg-surface-container-low">
-      <!-- Left cluster -->
-      <div class="flex items-center min-w-0 gap-2">
-        <h2 class="text-sm font-semibold text-secondary-900 tracking-wide truncate" title="Unified Assistant">Unified Assistant</h2>
+    <header class="flex flex-wrap items-center justify-between gap-3 px-3 py-2 border-b border-outline-variant bg-surface-container-low overflow-hidden">
+      <!-- Left: Title and Context Info -->
+      <div class="flex flex-wrap items-center gap-2 flex-shrink-0 min-w-0 max-w-full">
+        <h2 class="text-sm font-semibold text-secondary-900 tracking-wide whitespace-nowrap">
+          Context Assistant
+        </h2>
+        <GatingStatusBadge
+          v-if="hasSession"
+          :status="gatingStatus"
+          :is-classification-enforced="isClassificationEnforced"
+          :is-limited-read-only="isLimitedReadOnlyMode"
+          :is-retrieval-enabled="isRetrievalEnabled"
+        />
         <AgentSelector v-if="hasSession" />
         <ProviderBadge v-if="hasSession" :provider="session!.provider" />
         <MigrationStatus v-if="hasSession" @open="showMigrationModal = true" />
       </div>
 
-      <!-- Right actions -->
-      <div class="flex items-center gap-1">
-        <!-- Focus Mode Toggle (A) -->
-        <button
-          v-if="hasSession"
-          class="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-m3-md transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-          :class="viewMode === 'panel' ? 'bg-surface-variant text-secondary-700 hover:bg-surface-variant/80' : 'bg-primary-container text-on-primary-container hover:bg-primary-container/90'"
-          @click="toggleViewMode"
-          :aria-pressed="viewMode === 'focus'"
-          aria-label="Toggle focus mode"
-        >
-          <span v-if="viewMode === 'focus'">Exit Focus</span>
-          <span v-else>Focus Mode</span>
-        </button>
-        <div
-          v-if="hasSession"
-          class="flex items-center gap-1 ml-1"
-          role="group"
-          aria-label="Panel view selector"
-        >
+      <!-- Right: Actions -->
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <!-- View Controls
+        <div class="flex items-center gap-1">
+          <!-- Focus Mode Toggle -->
           <button
-            v-for="p in panelOptions"
-            :key="p.id"
-            class="inline-flex items-center justify-center h-8 w-20 text-xs font-medium rounded-m3-md transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-            :class="activePanel === p.id ? 'bg-primary text-on-primary' : 'bg-surface-variant text-secondary-700 hover:bg-surface-variant/80'"
-            :data-state="activePanel === p.id ? 'active' : 'inactive'"
-            @click="setActivePanel(p.id)"
-          >{{ p.label }}</button>
+            v-if="hasSession"
+            class="inline-flex items-center justify-center h-7 px-2.5 text-xs font-medium rounded-m3-md transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 whitespace-nowrap"
+            :class="viewMode === 'panel' ? 'bg-surface-variant text-secondary-700 hover:bg-surface-variant/80' : 'bg-primary-container text-on-primary-container hover:bg-primary-container/90'"
+            @click="toggleViewMode"
+            :aria-pressed="viewMode === 'focus'"
+            aria-label="Toggle focus mode"
+          >
+            <span v-if="viewMode === 'focus'">Exit Focus</span>
+            <span v-else>Focus</span>
+          </button>
+          
+          <!-- Panel selector -->
+          <div
+            v-if="hasSession"
+            class="flex items-center gap-0.5"
+            role="group"
+            aria-label="Panel view selector"
+          >
+            <button
+              v-for="p in panelOptions"
+              :key="p.id"
+              class="inline-flex items-center justify-center h-7 w-16 text-xs font-medium rounded-m3-md transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+              :class="activePanel === p.id ? 'bg-primary text-on-primary' : 'bg-surface-variant text-secondary-700 hover:bg-surface-variant/80'"
+              :data-state="activePanel === p.id ? 'active' : 'inactive'"
+              @click="setActivePanel(p.id)"
+            >{{ p.label }}</button>
+          </div>
         </div>
-        <button
-          v-if="hasSession"
-          class="icon-btn"
-          @click="handleExport"
-          aria-label="Export session (Ctrl+E)"
-        >
-          <span class="sr-only">Export session</span>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M3 3h14v2H3V3Zm7 4 5 5h-3v5h-4v-5H5l5-5Z"/></svg>
-        </button>
-        <button
-          class="icon-btn"
-          @click="handleRefreshCapabilities"
-          aria-label="Refresh capability manifest (Ctrl+R)"
-        >
-          <span class="sr-only">Refresh capability manifest</span>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M21 2v6h-6"/><path d="M3 22v-6h6"/><path d="M16 8A5 5 0 0 0 6.2 6.2L3 8"/><path d="M8 16a5 5 0 0 0 9.8 1.8L21 16"/></svg>
-        </button>
-        <button
-          class="icon-btn"
-          :aria-pressed="showSettings"
-          @click="showSettings = !showSettings"
-          aria-label="Open assistant settings"
-        >
-          <span class="sr-only">Settings</span>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6c.26 0 .51-.05.75-.14A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09c0 .69.4 1.31 1 1.51.24.09.49.14.75.14a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.46.46-.61 1.13-.33 1.82.09.24.14.49.14.75s-.05.51-.14.75Z"/></svg>
-        </button>
-        <button
-          class="icon-btn"
-          data-assistant-focus="close-button"
-          aria-label="Close assistant"
-          @click="handleClose"
-        >
-          <span class="sr-only">Close assistant</span>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4"><path d="M4.22 4.22a.75.75 0 0 1 1.06 0L8 6.94l2.72-2.72a.75.75 0 1 1 1.06 1.06L9.06 8l2.72 2.72a.75.75 0 1 1-1.06 1.06L8 9.06l-2.72 2.72a.75.75 0 1 1-1.06-1.06L6.94 8 4.22 5.28a.75.75 0 0 1 0-1.06Z"/></svg>
-        </button>
+
+        <!-- Divider -->
+        <div class="w-px h-5 bg-outline-variant" />
+        
+        <!-- Icon Buttons -->
+        <div class="flex items-center gap-0.5">
+          <button
+            v-if="hasSession"
+            class="p-1.5 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+            @click="handleExport"
+            aria-label="Export session (Ctrl+E)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M3 3h14v2H3V3Zm7 4 5 5h-3v5h-4v-5H5l5-5Z"/></svg>
+          </button>
+          <button
+            class="p-1.5 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+            @click="handleRefreshCapabilities"
+            aria-label="Refresh capability manifest (Ctrl+R)"
+          >
+            @click="handleRefreshCapabilities"
+            aria-label="Refresh capability manifest (Ctrl+R)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M21 2v6h-6"/><path d="M3 22v-6h6"/><path d="M16 8A5 5 0 0 0 6.2 6.2L3 8"/><path d="M8 16a5 5 0 0 0 9.8 1.8L21 16"/></svg>
+          </button>
+          <button
+            class="p-1.5 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+            :aria-pressed="showSettings"
+            @click="showSettings = !showSettings"
+            aria-label="Open assistant settings"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6c.26 0 .51-.05.75-.14A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09c0 .69.4 1.31 1 1.51.24.09.49.14.75.14a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.46.46-.61 1.13-.33 1.82.09.24.14.49.14.75s-.05.51-.14.75Z"/></svg>
+          </button>
+          <button
+            class="p-1.5 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+            data-assistant-focus="close-button"
+            aria-label="Close assistant"
+            @click="handleClose"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4"><path d="M4.22 4.22a.75.75 0 0 1 1.06 0L8 6.94l2.72-2.72a.75.75 0 1 1 1.06 1.06L9.06 8l2.72 2.72a.75.75 0 1 1-1.06 1.06L8 9.06l-2.72 2.72a.75.75 0 1 1-1.06-1.06L6.94 8 4.22 5.28a.75.75 0 0 1 0-1.06Z"/></svg>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -223,6 +243,8 @@ import { storeToRefs } from 'pinia';
 import { useAssistantStore } from '@/stores/assistantStore';
 import { createFocusManager } from './a11y-map';
 import { exportAndDownload } from '@/services/assistant/exporter';
+import { getToolSafety, validateInvocation } from '@/services/assistant/toolClassification';
+import { sanitizePrompt } from '@/services/assistant/promptSanitizer';
 import TranscriptView from './TranscriptView.vue';
 import MessageComposer from './MessageComposer.vue';
 import ToolPalette from './ToolPalette.vue';
@@ -235,12 +257,14 @@ import ToolQueue from './ToolQueue.vue';
 import type { ToolDescriptor } from '@shared/assistant/types';
 import MigrationControls from './MigrationControls.vue';
 import MigrationStatus from './MigrationStatus.vue';
+import GatingStatusBadge from './GatingStatusBadge.vue';
 
 // Store integration
 const assistantStore = useAssistantStore();
-const { session, conversation, tasks, telemetry, isBusy, activePending, health, capabilityProfile } = storeToRefs(assistantStore);
+const { session, conversation, tasks, telemetry, isBusy, activePending, health, capabilityProfile, gatingStatus, isClassificationEnforced, isLimitedReadOnlyMode, isRetrievalEnabled } = storeToRefs(assistantStore);
 
 // View mode: 'panel' (original side panel layout) or 'focus' (center workspace)
+// TODO(ViewMode-Default): Maintain 'panel' default to prevent context tree collapsing; future enhancement will persist last mode per user in store/localStorage.
 const viewMode = ref<'panel' | 'focus'>('panel');
 // Panel state (segmented control)
 const activePanel = ref<'tools' | 'queue' | 'telemetry'>('tools');
@@ -259,8 +283,30 @@ const panelOptions: Array<{ id: 'tools' | 'queue' | 'telemetry'; label: string }
 // We attach this in template via class="icon-btn"; Vue SFC style block defines it.
 
 function toggleViewMode() {
+  const previousMode = viewMode.value;
   viewMode.value = viewMode.value === 'panel' ? 'focus' : 'panel';
-  // TODO(FocusMode-Telemetry): emit ui.view_mode.changed telemetry event
+
+  // Emit telemetry event for view mode changes
+  if (hasSession.value && session.value) {
+    // Store doesn't expose addTelemetryEvent; push into telemetryEvents array (AssistantTelemetryEvent)
+    const evt = {
+      id: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+      eventType: 'ui.view_mode.changed',
+      sessionId: session.value.id,
+      provider: session.value.provider,
+      timestamp: new Date().toISOString(),
+      data: {
+        previousMode,
+        newMode: viewMode.value,
+        userInitiated: true
+      },
+      context: {
+        activePanel: activePanel.value,
+        hasActiveTools: activeTools.value.length > 0
+      }
+    } as any; // TODO(TLM-typing): unify telemetry event type imports for UI events
+    assistantStore.telemetryEvents.push(evt);
+  }
 }
 function setActivePanel(panel: 'tools' | 'queue' | 'telemetry') {
   activePanel.value = panel;
@@ -413,65 +459,57 @@ When the user asks to perform actions like "validate", "search", "read", "analyz
 
 function handleToggleStreaming(enabled: boolean) { streamingEnabled.value = enabled; }
 
-async function handleInvokeTool(toolId: string, parameters: Record<string, unknown>) {
-  if (!hasSession.value || !session.value) return;
-  const healthStatus = health.value;
-  if (healthStatus?.status === 'unhealthy') {
-    showFallbackBanner.value = true;
-    fallbackSeverity.value = 'error';
-    fallbackMessage.value = 'Cannot execute tools - service unavailable.';
-    announceToScreenReader('Error: Tool execution blocked');
+function handleInvokeTool(toolId: string, parameters: Record<string, unknown> = {}) {
+  // Tool safety classification enforcement (FR-032)
+  const safetyClass = getToolSafety(toolId);
+  let approvalProvided = false;
+  let reason: string | undefined = undefined;
+  if (safetyClass === 'mutating' || safetyClass === 'destructive') {
+    // Show approval dialog or require explicit approval
+    approvalProvided = true; // TODO: Replace with real approval dialog integration
+    if (safetyClass === 'destructive') {
+      const reasonInput = prompt('Please provide a reason for destructive action:');
+      reason = typeof reasonInput === 'string' && reasonInput.trim() ? reasonInput : undefined;
+      if (!reason) {
+        window.alert('Reason required for destructive tool.');
+        return;
+      }
+    }
+    try {
+      validateInvocation(toolId, approvalProvided, reason);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    parameters.approval = approvalProvided;
+    if (reason) parameters.reason = reason;
+  }
+  // Use repoPath from session.telemetryContext if available
+  const repoPath = (session.value?.telemetryContext && typeof session.value.telemetryContext.repoPath === 'string')
+    ? session.value.telemetryContext.repoPath
+    : '';
+  assistantStore.executeTool({ toolId, parameters, repoPath });
+}
+
+function handleSystemPromptUpdate(newPrompt: string) {
+  // Sanitize system prompt before applying
+  const result = sanitizePrompt(newPrompt);
+  if (!result.valid) {
+    window.alert(`System prompt rejected: ${result.reasons.join(', ')}`);
     return;
   }
-  await assistantStore.executeTool({ toolId, parameters, repoPath: '' }); // TODO: real repoPath
+  // TODO: Apply sanitized prompt to session/agent profile
+  // assistantStore.updateSystemPrompt(result.sanitized); // If such method exists
 }
 
-function handleSetConcurrency() { assistantStore.setQueueConcurrency(concurrencyLimit.value); }
-
-function handleExport() {
-  if (!hasSession.value || !session.value) return;
-  exportAndDownload(session.value, telemetry.value, undefined);
-}
-
-async function handleRefreshCapabilities() {
-  try {
-    await assistantStore.refreshCapabilities();
-    announceToScreenReader('Capabilities refreshed successfully');
-  } catch (err) {
-    console.error('Failed to refresh capabilities:', err);
-    announceToScreenReader('Failed to refresh capabilities');
-  }
-}
-
-function handleRetryConnection() {
-  assistantStore.retryHealth();
-  showFallbackBanner.value = false;
-}
-
+// TODO(T029-Navigation): Emit close event or integrate with app-level routing
 function handleClose() {
-  // TODO(T029-Navigation): Emit close event or integrate with app-level routing
   console.log('Close assistant');
 }
+
+// TODO(TreeState-Persistence): Persist context tree expansion independently of assistant visibility
+// Strategy: Introduce a contextTreeStore with expandedNodeIds array; on assistant open/close do not mutate tree state.
 </script>
-<style scoped>
-.icon-btn {
-  /* Using direct properties instead of some @apply utilities to avoid PostCSS unknown utility parse errors.
-     Tailwind utility classes like h-8 and w-8 are kept in the template usage; here we define base look. */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* size */
-  height: 2rem; /* h-8 */
-  width: 2rem;  /* w-8 */
-  border-radius: 12px; /* rounded-m3-md token equivalent */
-  color: theme('colors.secondary.700');
-  background-color: theme('colors.surface.variant');
-  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
-}
-.icon-btn:hover { background-color: rgba(220,230,242,0.8); }
-.icon-btn:focus { outline: none; box-shadow: 0 0 0 2px rgba(0,104,181,0.5); }
-.icon-btn:active { background-color: rgba(220,230,242,0.6); }
-</style>
 
 <style scoped>
 /* T040: Screen reader only content */
