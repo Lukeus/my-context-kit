@@ -103,7 +103,7 @@ async def generate_code(request: CodegenRequest) -> CodegenResponse:
             log_entry_id=log_entry_id,
             duration_ms=duration_ms,
         )
-        
+
         # Convert to dict to ensure JSON serializability across IPC boundary
         return response.model_dump()
 

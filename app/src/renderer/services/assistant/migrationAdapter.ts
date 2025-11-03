@@ -9,14 +9,12 @@
 import type { MigrationRecord } from '@shared/assistant/migration';
 import type { AssistantSessionExtended, ConversationTurn, AssistantProvider } from '@shared/assistant/types';
 import { addCheckpoint, createInitialMigrationRecord } from '@shared/assistant/migration';
-import { now, elapsed } from '@/services/assistant/timeHelpers';
 import { useAssistantStore } from '@/stores/assistantStore';
 // NOTE(T068): Initial migration scan + auto trigger utilities.
 // These helpers intentionally avoid side effects beyond in-memory state for first pass.
 // Persistence, telemetry emission, and rollback will be added in subsequent tasks (T073, T074).
 
 // Lazy import to avoid circular dep at module init time; only needed when scanning.
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import type { useAIStore } from '@/stores/aiStore';
 
 // T073/T082: Telemetry emission helper refactored to leverage assistantStore telemetry sink.
@@ -120,7 +118,7 @@ function inferProvider(legacyStore: ReturnType<typeof useAIStore> | undefined): 
  * NOTE: The legacy implementation currently supports a single in-memory conversation; we wrap it as one session.
  * Returns empty array if no legacy store or no messages. (T068)
  */
-export function scanLegacySessions(legacyStore?: ReturnType<typeof useAIStore>): LegacyAIStoreSession[] {
+export async function scanLegacySessions(legacyStore?: ReturnType<typeof useAIStore>): Promise<LegacyAIStoreSession[]> {
   if (SCAN_COMPLETED) {
     return [];
   }
@@ -129,8 +127,7 @@ export function scanLegacySessions(legacyStore?: ReturnType<typeof useAIStore>):
     // Dynamically obtain store if not supplied
     // Import inline to avoid circular dependency at module load.
     if (!legacyStore) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const mod = require('@/stores/aiStore');
+      const mod = await import('@/stores/aiStore');
       if (mod?.useAIStore) {
         legacyStore = mod.useAIStore();
       }
@@ -204,7 +201,7 @@ export async function ensureLegacyMigration(options: MigrationOptions = {}): Pro
   }
   
   const startTime = Date.now();
-  const sessions = scanLegacySessions();
+  const sessions = await scanLegacySessions();
   
   if (!sessions.length) {
     AUTO_MIGRATION_PERFORMED = true;

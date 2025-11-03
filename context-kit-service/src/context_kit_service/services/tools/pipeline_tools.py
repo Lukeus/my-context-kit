@@ -2,8 +2,7 @@
 
 import os
 import subprocess
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
@@ -12,7 +11,7 @@ from pydantic import BaseModel, Field
 class PipelineValidateInput(BaseModel):
     """Input for pipeline.validate tool."""
 
-    repo_path: Optional[str] = Field(
+    repo_path: str | None = Field(
         default=None, description="Path to context repository (optional, uses default if not provided)"
     )
 
@@ -20,7 +19,7 @@ class PipelineValidateInput(BaseModel):
 class PipelineBuildGraphInput(BaseModel):
     """Input for pipeline.build-graph tool."""
 
-    repo_path: Optional[str] = Field(
+    repo_path: str | None = Field(
         default=None, description="Path to context repository (optional, uses default if not provided)"
     )
 
@@ -29,7 +28,7 @@ class PipelineImpactInput(BaseModel):
     """Input for pipeline.impact tool."""
 
     entity_ids: list[str] = Field(description="List of entity IDs to analyze impact for")
-    repo_path: Optional[str] = Field(
+    repo_path: str | None = Field(
         default=None, description="Path to context repository (optional, uses default if not provided)"
     )
 
@@ -38,8 +37,8 @@ class PipelineGenerateInput(BaseModel):
     """Input for pipeline.generate tool."""
 
     template: str = Field(description="Template name to generate from")
-    output_path: Optional[str] = Field(default=None, description="Output file path (optional)")
-    repo_path: Optional[str] = Field(
+    output_path: str | None = Field(default=None, description="Output file path (optional)")
+    repo_path: str | None = Field(
         default=None, description="Path to context repository (optional, uses default if not provided)"
     )
 
@@ -73,7 +72,7 @@ def _run_pipeline(command: list[str], repo_path: str) -> dict[str, Any]:
         }
 
 
-def _validate_pipeline(repo_path: Optional[str] = None) -> dict[str, Any]:
+def _validate_pipeline(repo_path: str | None = None) -> dict[str, Any]:
     """Run validation pipeline."""
     if repo_path is None:
         repo_path = os.getenv("CONTEXT_REPO_PATH", "../context-repo")
@@ -81,7 +80,7 @@ def _validate_pipeline(repo_path: Optional[str] = None) -> dict[str, Any]:
     return _run_pipeline(["pnpm", "validate"], repo_path)
 
 
-def _build_graph_pipeline(repo_path: Optional[str] = None) -> dict[str, Any]:
+def _build_graph_pipeline(repo_path: str | None = None) -> dict[str, Any]:
     """Run build-graph pipeline."""
     if repo_path is None:
         repo_path = os.getenv("CONTEXT_REPO_PATH", "../context-repo")
@@ -89,7 +88,7 @@ def _build_graph_pipeline(repo_path: Optional[str] = None) -> dict[str, Any]:
     return _run_pipeline(["pnpm", "build-graph"], repo_path)
 
 
-def _impact_pipeline(entity_ids: list[str], repo_path: Optional[str] = None) -> dict[str, Any]:
+def _impact_pipeline(entity_ids: list[str], repo_path: str | None = None) -> dict[str, Any]:
     """Run impact analysis pipeline."""
     if repo_path is None:
         repo_path = os.getenv("CONTEXT_REPO_PATH", "../context-repo")
@@ -98,7 +97,7 @@ def _impact_pipeline(entity_ids: list[str], repo_path: Optional[str] = None) -> 
     return _run_pipeline(command, repo_path)
 
 
-def _generate_pipeline(template: str, output_path: Optional[str] = None, repo_path: Optional[str] = None) -> dict[str, Any]:
+def _generate_pipeline(template: str, output_path: str | None = None, repo_path: str | None = None) -> dict[str, Any]:
     """Run generate pipeline."""
     if repo_path is None:
         repo_path = os.getenv("CONTEXT_REPO_PATH", "../context-repo")

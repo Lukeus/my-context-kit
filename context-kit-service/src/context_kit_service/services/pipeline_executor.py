@@ -1,9 +1,7 @@
 """Pipeline execution service."""
 
 import asyncio
-import subprocess
 from pathlib import Path
-from typing import Any, Optional
 
 from ..models.assistant import PipelineName, RunPipelineRequest, RunPipelineResponse
 
@@ -95,7 +93,7 @@ class PipelineExecutor:
 
 
 # Global instance
-_executor: Optional[PipelineExecutor] = None
+_executor: PipelineExecutor | None = None
 
 
 def get_pipeline_executor() -> PipelineExecutor:

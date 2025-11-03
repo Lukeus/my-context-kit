@@ -1,6 +1,5 @@
 """Tool registry for managing available LangChain tools."""
 
-from typing import Optional
 
 from langchain_core.tools import BaseTool
 
@@ -15,7 +14,7 @@ class ToolRegistry:
         """Register a tool with its ID."""
         self._tools[tool.name] = tool
 
-    def get(self, tool_id: str) -> Optional[BaseTool]:
+    def get(self, tool_id: str) -> BaseTool | None:
         """Get a tool by ID."""
         return self._tools.get(tool_id)
 
@@ -29,7 +28,7 @@ class ToolRegistry:
 
 
 # Global registry instance
-_registry: Optional[ToolRegistry] = None
+_registry: ToolRegistry | None = None
 
 
 def get_tool_registry() -> ToolRegistry:
