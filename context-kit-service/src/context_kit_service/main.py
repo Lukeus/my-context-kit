@@ -12,7 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .endpoints import codegen, inspect, promptify, spec, spec_log
+from .endpoints import codegen, inspect, promptify, spec, spec_log, assistant
 from .models.responses import HealthResponse
 import asyncio
 import threading
@@ -118,6 +118,7 @@ async def health() -> HealthResponse:
 
 
 # Include endpoint routers
+app.include_router(assistant.router, tags=["Assistant"])
 app.include_router(inspect.router, prefix="/context", tags=["Context Inspection"])
 app.include_router(spec.router, prefix="/spec", tags=["Specification Generation"])
 app.include_router(promptify.router, prefix="/spec", tags=["Promptification"])

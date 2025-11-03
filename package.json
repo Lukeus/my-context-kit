@@ -56,7 +56,8 @@
 		}
 	},
 	"dependencies": {
-		"diff-match-patch": "^1.0.5"
+		"diff-match-patch": "^1.0.5",
+		"dotenv": "^17.2.3"
 	},
 	"devDependencies": {
 		"@vitejs/plugin-vue": "^6.0.1",

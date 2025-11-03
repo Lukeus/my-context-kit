@@ -7,8 +7,10 @@ import type {
   ConversationTurn,
   PendingAction,
   ToolInvocationRecord,
-  TaskEnvelope
+  TaskEnvelope,
+  CapabilityProfile
 } from '@shared/assistant/types';
+import type { AssistantTelemetryEvent } from '@shared/assistant/telemetry';
 
 export interface CreateSessionPayload {
   provider: AssistantProvider;
@@ -55,6 +57,12 @@ export interface RunPipelinePayload {
   args?: Record<string, unknown>;
 }
 
+export interface HealthStatusResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+  message?: string;
+  timestamp: string;
+}
+
 export interface AssistantBridgeAPI {
   createSession(payload: CreateSessionPayload): Promise<AssistantSessionExtended>;
   sendMessage(sessionId: string, payload: SendMessagePayload & { mode?: 'general' | 'improvement' | 'clarification' }): Promise<TaskEnvelope | null>;
@@ -65,6 +73,10 @@ export interface AssistantBridgeAPI {
   runPipeline(sessionId: string, payload: RunPipelinePayload): Promise<ToolExecutionResponse>;
   startTaskStream(sessionId: string, taskId: string): Promise<{ ok: boolean; error?: string | null; taskId: string }>;
   cancelTaskStream(sessionId: string, taskId: string): Promise<{ ok: boolean; error?: string | null; taskId: string }>;
+  // T016: Extended telemetry and capability endpoints
+  listTelemetryEvents(sessionId: string): Promise<AssistantTelemetryEvent[]>;
+  fetchCapabilityManifest(): Promise<CapabilityProfile>;
+  getHealthStatus(): Promise<HealthStatusResponse>;
 }
 
 export function createAssistantBridge(ipcRenderer: IpcRenderer): AssistantBridgeAPI {
@@ -84,7 +96,11 @@ export function createAssistantBridge(ipcRenderer: IpcRenderer): AssistantBridge
     onStreamEvent: (listener) => subscribe('assistant:stream-event', listener),
     runPipeline: (sessionId, payload) => ipcRenderer.invoke('assistant:pipelineRun', { sessionId, ...payload }),
     startTaskStream: (sessionId, taskId) => ipcRenderer.invoke('assistant:task:startStream', { sessionId, taskId }),
-    cancelTaskStream: (sessionId, taskId) => ipcRenderer.invoke('assistant:task:cancelStream', { sessionId, taskId })
+    cancelTaskStream: (sessionId, taskId) => ipcRenderer.invoke('assistant:task:cancelStream', { sessionId, taskId }),
+    // T016: Extended endpoints
+    listTelemetryEvents: (sessionId) => ipcRenderer.invoke('assistant:listTelemetryEvents', { sessionId }),
+    fetchCapabilityManifest: () => ipcRenderer.invoke('assistant:fetchCapabilityManifest'),
+    getHealthStatus: () => ipcRenderer.invoke('assistant:getHealthStatus')
   };
 }
 

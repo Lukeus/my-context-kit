@@ -426,6 +426,10 @@ declare global {
         listTelemetry: (sessionId: string) => Promise<ToolInvocationRecord[]>;
         onStreamEvent: (listener: (payload: unknown) => void) => (() => void);
         runPipeline: (sessionId: string, payload: RunPipelinePayload) => Promise<ToolExecutionResponse>;
+        // T016: Extended telemetry and capability endpoints
+        listTelemetryEvents: (sessionId: string) => Promise<any[]>;
+        fetchCapabilityManifest: () => Promise<any>;
+        getHealthStatus: () => Promise<{ status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown'; message?: string; timestamp: string }>;
       };
       agent: AgentBridge;
       c4: {

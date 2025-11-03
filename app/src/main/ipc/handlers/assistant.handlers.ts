@@ -19,6 +19,8 @@ import { openPullRequest } from '../../services/tools/openPullRequest';
 import { LangChainAIService } from '../../services/LangChainAIService';
 import type { PendingAction } from '@shared/assistant/types';
 import { broadcastAssistantStream } from '../streamingEmitter';
+import type { CapabilityProfile } from '@shared/assistant/types';
+import type { AssistantTelemetryEvent } from '@shared/assistant/telemetry';
 
 interface PipelineRunPayload {
   sessionId: string;
@@ -77,6 +79,14 @@ export function registerAssistantHandlers(): void {
   ipcMain.handle('assistant:listTelemetry', async (_event, payload: { sessionId: string }) => {
     const records = await telemetryWriter.getRecordsForSession(payload.sessionId);
     return records;
+  });
+
+  // T015: Extended telemetry events endpoint for health snapshots and other non-tool events
+  ipcMain.handle('assistant:listTelemetryEvents', async (_event, _sessionId: string) => {
+    // TODO(T015-TelemetryStore): Implement persistent telemetry event storage
+    // For now, return empty array until dedicated telemetry store is implemented
+    const events: AssistantTelemetryEvent[] = [];
+    return events;
   });
 
   ipcMain.handle('assistant:executeTool', async (_event, payload: { sessionId: string; toolId: string; repoPath: string; parameters?: Record<string, unknown> }) => {
@@ -216,6 +226,51 @@ export function registerAssistantHandlers(): void {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to resolve pending action.';
       throw new Error(message);
+    }
+  });
+
+  // T015: Capability manifest endpoint for runtime capability gating
+  ipcMain.handle('assistant:fetchCapabilityManifest', async (_event) => {
+    try {
+      // TODO(T015-CapabilityService): Implement capability manifest service in main process
+      // For now, return a basic manifest with core capabilities enabled
+      const manifest: CapabilityProfile = {
+        profileId: 'default-profile',
+        lastUpdated: new Date().toISOString(),
+        capabilities: {
+          'pipeline.validate': { status: 'enabled' },
+          'pipeline.build-graph': { status: 'enabled' },
+          'pipeline.impact': { status: 'enabled' },
+          'pipeline.generate': { status: 'enabled' },
+          'context.read': { status: 'enabled' },
+          'context.search': { status: 'enabled' },
+          'entity.details': { status: 'enabled' },
+          'entity.similar': { status: 'enabled' }
+        }
+      };
+      return manifest;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch capability manifest.';
+      throw new Error(message);
+    }
+  });
+
+  // T015: Health status endpoint for service availability checks
+  ipcMain.handle('assistant:getHealthStatus', async (_event) => {
+    try {
+      // TODO(T015-HealthService): Implement LangChain health check service
+      // For now, return healthy status
+      return {
+        status: 'healthy' as const,
+        message: 'LangChain service available',
+        timestamp: new Date().toISOString()
+      };
+    } catch (err: unknown) {
+      return {
+        status: 'unhealthy' as const,
+        message: err instanceof Error ? err.message : 'Health check failed',
+        timestamp: new Date().toISOString()
+      };
     }
   });
 }

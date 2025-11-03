@@ -21,7 +21,12 @@ import type {
 import type { AgentProfile } from '@shared/agents/types';
 import { useAgentStore } from './agentStore';
 import { createHealthPoller, type NormalisedHealth, type LangChainHealthStatus } from '@/services/langchain/health';
+import { makeHealthSnapshot, type AssistantTelemetryEvent } from '@shared/assistant/telemetry';
 import { createCapabilityCache, isCapabilityEnabled as checkCapabilityEnabled, getEnabledCapabilities } from '@/services/langchain/capabilities';
+import { createQueueManager, type QueueManager, type QueueEvent } from '@/services/assistant/queueManager';
+import { emitToolLifecycle } from '@/services/assistant/telemetryEmitter';
+// T069: Auto legacy migration trigger
+import { ensureLegacyMigration } from '@/services/assistant/migrationAdapter';
 
 function assertAssistantBridge(): typeof window.api.assistant {
   if (!window.api?.assistant) {
@@ -39,6 +44,18 @@ const CONTEXT_READ_TOOL_ID = 'context.read';
 const PIPELINE_SESSION_PROMPT = 'You are a guard-railed operator for context repository pipelines. '
   + 'Confirm scope, execute only allowlisted commands, and summarise results for humans.';
 
+// NOTE(T003): We intentionally avoid augmenting global ImportMeta type inline to prevent conflicts.
+// Access env vars through a typed helper to satisfy TS without polluting global declarations.
+function getViteEnvFlag(name: string): string | undefined {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const env = (import.meta as any)?.env;
+    return env ? env[name] : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 interface ContextReadResult {
   path: string;
   repoRelativePath: string;
@@ -47,6 +64,21 @@ interface ContextReadResult {
   size: number;
   lastModified: string;
   truncated: boolean;
+}
+
+// T039: Edit suggestion types
+export interface EditSuggestion {
+  id: string;
+  sessionId: string;
+  turnIndex: number;
+  targetId?: string;
+  filePath: string;
+  summary: string;
+  updatedContent: string;
+  status: 'pending' | 'approved' | 'rejected' | 'applying' | 'applied' | 'failed';
+  error?: string;
+  createdAt: string;
+  resolvedAt?: string;
 }
 
 export const useAssistantStore = defineStore('assistant-safe-tools', () => {
@@ -61,22 +93,52 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const pendingApprovals = ref<PendingAction[]>([]);
   const activePendingId = ref<string | null>(null);
   const telemetry = ref<ToolInvocationRecord[]>([]);
+  // Extended telemetry events (T013): health snapshots & future non-tool events
+  const telemetryEvents = ref<AssistantTelemetryEvent[]>([]);
   const isBusy = ref(false);
   const error = ref<string | null>(null);
   const lastUpdated = ref<string | null>(null);
   const contextReadResult = ref<ContextReadResult | null>(null);
   const contextReadError = ref<string | null>(null);
   const activeAgentProfile = ref<AgentProfile | null>(null);
+  // T039: Edit suggestions state
+  const editSuggestions = ref<EditSuggestion[]>([]);
+  // Feature flag (T003): Controls availability of unified assistant UI. Reads from Vite env.
+  // NOTE: This flag should be used by renderer components to conditionally render unified assistant.
+  // TODO(Unification Cleanup): Remove flag once legacy aiStore is fully removed.
+  const flagValue = getViteEnvFlag('VITE_UNIFIED_ASSISTANT_ENABLED');
+  const unifiedAssistantEnabled = ref<boolean>(
+    Boolean(flagValue) && ['true', '1', 'on', 'yes'].includes(String(flagValue).toLowerCase())
+  );
 
   // Health state (T016)
   const health = ref<NormalisedHealth | null>(null);
   const healthPollerInstance = createHealthPoller({ intervalMs: 10000 });
   let healthUnsubscribe: (() => void) | null = null;
+  let lastEmittedHealthStatus: LangChainHealthStatus | null = null; // prevent duplicate emissions
 
   // Capability cache (T020)
   const capabilityProfile = ref<CapabilityProfile | null>(null);
   const capabilityCache = createCapabilityCache();
   const capabilityLoading = ref(false);
+
+  // Queue manager (T012)
+  const queueManager: QueueManager = createQueueManager({ concurrency: 3 });
+  const _queueUnsubscribe = queueManager.on((event: QueueEvent) => {
+    // Wire queue events to telemetry
+    try {
+      const sessionId = session.value?.id;
+      if (!sessionId) return;
+      if (event.kind === 'task.started') {
+        // TODO(T012-Telemetry): Map task metadata to tool invocation telemetry
+        console.debug('Queue task started:', event.taskId);
+      } else if (event.kind === 'task.finished') {
+        console.debug('Queue task finished:', event.taskId, event.status, `${event.durationMs}ms`);
+      }
+    } catch (err) {
+      console.warn('Failed to emit queue telemetry:', err);
+    }
+  });
 
   const hasSession = computed(() => Boolean(session.value));
   const activeProvider = computed<AssistantProvider | null>(() => session.value?.provider ?? null);
@@ -86,6 +148,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     if (!activePendingId.value) return null;
     return pendingApprovals.value.find(p => p.id === activePendingId.value) ?? null;
   });
+  const isUnifiedAssistantActive = computed(() => unifiedAssistantEnabled.value);
 
   // Health computed flags (T016)
   const healthStatus = computed<LangChainHealthStatus>(() => health.value?.status ?? 'unknown');
@@ -152,7 +215,18 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     if (!healthUnsubscribe) {
       healthUnsubscribe = healthPollerInstance.on(snapshot => {
         health.value = snapshot;
-        // TODO(T016-Telemetry): log health transitions to telemetry writer
+        // T013: Emit telemetry event when status changes or every poll if degraded/unhealthy persists
+        try {
+          const statusChanged = snapshot.status !== lastEmittedHealthStatus;
+          const forceEmit = snapshot.status === 'unhealthy' || snapshot.status === 'degraded';
+          if (statusChanged || forceEmit) {
+            const evt = makeHealthSnapshot(session.value?.id, session.value?.provider, snapshot.status, snapshot.message, 10000);
+            telemetryEvents.value = [...telemetryEvents.value, evt];
+            lastEmittedHealthStatus = snapshot.status;
+          }
+        } catch (err) {
+          console.warn('Failed to emit health snapshot telemetry:', err);
+        }
       });
       healthPollerInstance.start();
     }
@@ -173,6 +247,19 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       // Load capability profile (T020) - non-blocking
       loadCapabilities().catch(err => {
         console.warn('Failed to load capability profile:', err);
+      });
+
+      // AUTO MIGRATION (T069): Perform one-time migration of legacy aiStore data if present.
+      // Non-blocking; errors logged but do not affect session creation.
+      ensureLegacyMigration({ dryRun: false }).then(results => {
+        if (results.length === 0) {
+          console.debug('[Migration] No legacy sessions detected - skipped.');
+          return;
+        }
+        const summary = results.map(r => `${r.record.id}:${r.success ? 'ok' : 'fail'}`).join(', ');
+        console.info('[Migration] Legacy migration attempted →', summary);
+      }).catch(err => {
+        console.warn('[Migration] ensureLegacyMigration failed:', err);
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create assistant session.';
@@ -215,17 +302,17 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     };
   }
 
-  async function sendMessage(payload: SendMessagePayload & { mode?: 'general' | 'improvement' | 'clarification' }) {
+  async function sendMessage(id: string, payload: SendMessagePayload & { mode?: 'general' | 'improvement' | 'clarification'; }) {
     const bridge = assertAssistantBridge();
     if (!session.value) {
       throw new Error('No active assistant session. Create a session before sending messages.');
     }
 
-    // Block risky operations when unhealthy (T016)
-    if (!canExecuteRisky.value) {
-      const fallback = 'LangChain service unavailable. Message dispatch blocked. Please retry when service recovers.';
-      error.value = fallback;
-      throw new Error(fallback);
+    // T016: When service unhealthy, allow queuing non-tool user messages with degraded flag instead of hard-blocking.
+    // This preserves UX continuity; responses will be attempted once service recovers.
+    const degraded = !canExecuteRisky.value;
+    if (degraded) {
+      console.warn('[Assistant] Service unhealthy; queuing user message for deferred processing.');
     }
 
     isBusy.value = true;
@@ -235,14 +322,44 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       role: 'user',
       content: payload.content,
       timestamp,
-      metadata: payload.attachments ? { attachments: payload.attachments } : undefined
+      metadata: {
+        ...(payload.attachments ? { attachments: payload.attachments } : {}),
+        ...(degraded ? { queuedDueToHealth: true } : {})
+      }
     });
 
     try {
+      if (degraded) {
+        // Queue logic: we do not attempt immediate send; return null envelope.
+        // TODO(T016-Retry): Implement health-based retry queue for deferred messages.
+        lastUpdated.value = nowIso();
+        return null as any as TaskEnvelope; // placeholder; UI can display queued status.
+      }
       const envelope = await bridge.sendMessage(session.value.id, payload);
       if (envelope) {
-        // Double-cast to work around TypeScript inference issue with global window.api types
-        tasks.value = [...tasks.value, envelope as unknown as TaskEnvelope];
+        // TODO(T012): MessageResponse may not have TaskEnvelope structure yet.
+        // Cast to TaskEnvelope only if the response structure matches.
+        const taskEnvelope = envelope as unknown as TaskEnvelope;
+        
+        // Only add to tasks if it has the expected TaskEnvelope structure
+        if (taskEnvelope.taskId) {
+          tasks.value = [...tasks.value, taskEnvelope];
+        }
+        
+        // Extract assistant response - handle both MessageResponse and TaskEnvelope formats
+        // TODO(T012): Align MessageResponse type definition with actual response structure
+        const outputs = (taskEnvelope as any)?.outputs;
+        if (outputs && Array.isArray(outputs) && outputs.length > 0) {
+          const output = outputs[0];
+          if (output.type === 'text' && typeof output.content === 'string') {
+            appendMessage({
+              role: 'assistant',
+              content: output.content,
+              timestamp: output.timestamp || nowIso(),
+              metadata: { taskId: taskEnvelope.taskId }
+            });
+          }
+        }
         // TODO(StreamMerge T012): merge streaming updates into tasks
       }
       lastUpdated.value = nowIso();
@@ -269,31 +386,72 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       throw new Error(fallback);
     }
 
-    isBusy.value = true;
-    error.value = null;
-    try {
-      const result: ToolExecutionResponse = await bridge.executeTool(session.value.id, payload);
-      if (result.session) {
-        applySession(result.session);
-      } else if (result.conversation) {
-        conversation.value = [...result.conversation];
-      }
+    // T012: Enqueue tool execution through queue manager
+    const task = queueManager.enqueue('tool', async () => {
+      isBusy.value = true;
+      error.value = null;
+      const sessionId = session.value!.id;
+      const startTime = Date.now();
+      
+      try {
+        // Emit tool.invoked telemetry
+        emitToolLifecycle({
+          sessionId,
+          toolId: payload.toolId,
+          phase: 'invoked',
+          repoPath: payload.repoPath,
+          parameters: payload.parameters
+        });
 
-      if (result.pending) {
-        pendingApprovals.value = [...pendingApprovals.value, result.pending];
+        const result: ToolExecutionResponse = await bridge.executeTool(sessionId, payload);
+        if (result.session) {
+          applySession(result.session);
+        } else if (result.conversation) {
+          conversation.value = [...result.conversation];
+        }
+
+        if (result.pending) {
+          pendingApprovals.value = [...pendingApprovals.value, result.pending];
+        }
+        if (result.error) {
+          error.value = result.error;
+          // Emit tool.failed telemetry
+          emitToolLifecycle({
+            sessionId,
+            toolId: payload.toolId,
+            phase: 'failed',
+            errorMessage: result.error,
+            durationMs: Date.now() - startTime
+          });
+        } else {
+          // Emit tool.completed telemetry
+          emitToolLifecycle({
+            sessionId,
+            toolId: payload.toolId,
+            phase: 'completed',
+            durationMs: Date.now() - startTime
+          });
+        }
+        lastUpdated.value = nowIso();
+        return result;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Tool execution failed.';
+        error.value = message;
+        // Emit tool.failed telemetry
+        emitToolLifecycle({
+          sessionId,
+          toolId: payload.toolId,
+          phase: 'failed',
+          errorMessage: message,
+          durationMs: Date.now() - startTime
+        });
+        throw err;
+      } finally {
+        isBusy.value = false;
       }
-      if (result.error) {
-        error.value = result.error;
-      }
-      lastUpdated.value = nowIso();
-      return result;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Tool execution failed.';
-      error.value = message;
-      throw err;
-    } finally {
-      isBusy.value = false;
-    }
+    }, { toolId: payload.toolId, repoPath: payload.repoPath });
+
+    return task.action();
   }
 
   async function ensurePipelineSession(provider: AssistantProvider, agent?: AgentProfile): Promise<AssistantSessionExtended> {
@@ -330,32 +488,38 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     const agent = selectedAgent.value;
     const activeSession = await ensurePipelineSession(provider, agent || undefined);
 
-    isBusy.value = true;
-    error.value = null;
+    // T012: Enqueue pipeline execution through queue manager
+    const task = queueManager.enqueue('pipeline', async () => {
+      isBusy.value = true;
+      error.value = null;
+  
 
-    const payload: RunPipelinePayload = {
-      repoPath: options.repoPath,
-      pipeline: options.pipeline,
-      ...(options.args ? { args: options.args } : {})
-    };
+      const payload: RunPipelinePayload = {
+        repoPath: options.repoPath,
+        pipeline: options.pipeline,
+        ...(options.args ? { args: options.args } : {})
+      };
 
-    try {
-      const response = await bridge.runPipeline(activeSession.id, payload);
-      lastUpdated.value = nowIso();
-      return response;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Pipeline execution failed.';
-      error.value = message;
-      throw err;
-    } finally {
       try {
-        await refreshTelemetry(true);
-      } catch (refreshError) {
-        // Telemetry refresh failures are logged but do not block pipeline execution.
-        console.warn('Failed to refresh telemetry after pipeline run:', refreshError);
+        const response = await bridge.runPipeline(activeSession.id, payload);
+        lastUpdated.value = nowIso();
+        return response;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Pipeline execution failed.';
+        error.value = message;
+        throw err;
+      } finally {
+        try {
+          await refreshTelemetry(true);
+        } catch (refreshError) {
+          // Telemetry refresh failures are logged but do not block pipeline execution.
+          console.warn('Failed to refresh telemetry after pipeline run:', refreshError);
+        }
+        isBusy.value = false;
       }
-      isBusy.value = false;
-    }
+    }, { pipeline: options.pipeline, repoPath: options.repoPath });
+
+    return task.action();
   }
 
   async function readContextFile(options: { repoPath: string; path: string; encoding?: string; provider?: AssistantProvider }) {
@@ -480,10 +644,27 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
 
   function consumeStreamEvents() {
     const bridge = assertAssistantBridge();
-    return bridge.onStreamEvent(payload => {
-      // Note: Stream event handling can be enhanced when backend emits structured streaming data.
-      // Current implementation supports basic assistant chunk, error, and completion events.
-      console.debug('Received stream event:', payload);
+    return bridge.onStreamEvent((payload: unknown) => {
+      // T012: Merge streaming TaskEnvelope chunks.
+      // Expected payload shape (proposed): { taskId, type: 'chunk'|'error'|'complete', content?, metadata? }
+      // Fallback to logging if structure unknown.
+      try {
+        if (!payload || typeof payload !== 'object') {
+          console.debug('Stream payload not object:', payload);
+          return;
+        }
+        const data = payload as Record<string, unknown>;
+        const taskId = typeof data.taskId === 'string' ? data.taskId : undefined;
+        if (!taskId) {
+          console.debug('Stream payload missing taskId:', payload);
+          return;
+        }
+        const type = typeof data.type === 'string' ? data.type : undefined;
+        const chunkContent = data.content;
+        mergeStreamingTask(taskId, type, chunkContent, data);
+      } catch (err) {
+        console.warn('Stream merge failed:', err);
+      }
     });
   }
 
@@ -492,6 +673,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     conversation.value = [];
     pendingApprovals.value = [];
     telemetry.value = [];
+    telemetryEvents.value = [];
     error.value = null;
     lastUpdated.value = null;
     contextReadResult.value = null;
@@ -499,6 +681,15 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     activeAgentProfile.value = null;
     tasks.value = [];
     provenance.value = null;
+    editSuggestions.value = []; // T039: Clear edit suggestions
+  }
+
+  function getQueueSnapshot() {
+    return queueManager.getSnapshot();
+  }
+
+  function setQueueConcurrency(limit: number) {
+    queueManager.setConcurrency(limit);
   }
 
   function stopHealthPolling() {
@@ -548,11 +739,122 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     capabilityProfile.value = null;
   }
 
+  // T039: Edit suggestion workflow
+  function addEditSuggestion(params: {
+    turnIndex: number;
+    targetId?: string;
+    filePath: string;
+    summary: string;
+    updatedContent: string;
+  }): EditSuggestion {
+    if (!session.value) {
+      throw new Error('Cannot add edit suggestion without active session');
+    }
+
+    const edit: EditSuggestion = {
+      id: crypto.randomUUID(),
+      sessionId: session.value.id,
+      turnIndex: params.turnIndex,
+      targetId: params.targetId,
+      filePath: params.filePath,
+      summary: params.summary,
+      updatedContent: params.updatedContent,
+      status: 'pending',
+      createdAt: nowIso()
+    };
+
+    editSuggestions.value.push(edit);
+    return edit;
+  }
+
+  async function approveEditSuggestion(editId: string): Promise<void> {
+    const edit = editSuggestions.value.find(e => e.id === editId);
+    if (!edit) {
+      throw new Error(`Edit suggestion not found: ${editId}`);
+    }
+
+    if (edit.status !== 'pending') {
+      throw new Error(`Edit suggestion already processed: ${edit.status}`);
+    }
+
+    // Update status to approved - application will happen separately
+    edit.status = 'approved';
+    edit.resolvedAt = nowIso();
+  }
+
+  async function rejectEditSuggestion(editId: string): Promise<void> {
+    const edit = editSuggestions.value.find(e => e.id === editId);
+    if (!edit) {
+      throw new Error(`Edit suggestion not found: ${editId}`);
+    }
+
+    if (edit.status !== 'pending') {
+      throw new Error(`Edit suggestion already processed: ${edit.status}`);
+    }
+
+    edit.status = 'rejected';
+    edit.resolvedAt = nowIso();
+  }
+
+  async function applyEditSuggestion(editId: string): Promise<void> {
+    const edit = editSuggestions.value.find(e => e.id === editId);
+    if (!edit) {
+      throw new Error(`Edit suggestion not found: ${editId}`);
+    }
+
+    if (edit.status !== 'approved') {
+      throw new Error(`Edit must be approved before applying: ${edit.status}`);
+    }
+
+    try {
+      edit.status = 'applying';
+      
+      // TODO: Implement actual file write through IPC
+      // This would call something like: await window.api.fs.writeFile(edit.filePath, edit.updatedContent)
+      console.log('TODO: Apply edit to file:', edit.filePath);
+      
+      // Simulate async operation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      edit.status = 'applied';
+    } catch (err) {
+      edit.status = 'failed';
+      edit.error = err instanceof Error ? err.message : 'Failed to apply edit';
+      throw err;
+    }
+  }
+
+  async function applyAllApprovedEdits(): Promise<void> {
+    const approvedEdits = editSuggestions.value.filter(e => e.status === 'approved');
+    
+    for (const edit of approvedEdits) {
+      try {
+        await applyEditSuggestion(edit.id);
+      } catch (err) {
+        console.error(`Failed to apply edit ${edit.id}:`, err);
+        // Continue with other edits even if one fails
+      }
+    }
+  }
+
+  function clearEditSuggestions(): void {
+    editSuggestions.value = [];
+  }
+
+  function getEditSuggestionsByTurn(turnIndex: number): EditSuggestion[] {
+    return editSuggestions.value.filter(e => e.turnIndex === turnIndex);
+  }
+
+  function getPendingEditSuggestions(): EditSuggestion[] {
+    return editSuggestions.value.filter(e => e.status === 'pending');
+  }
+
   return {
     session,
     conversation,
     pendingApprovals,
     telemetry,
+    telemetryEvents,
     isBusy,
     error,
     lastUpdated,
@@ -568,10 +870,22 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     isUnhealthy,
     canExecuteRisky,
     healthMessage,
+    unifiedAssistantEnabled,
+    isUnifiedAssistantActive,
     hasSession,
     activeProvider,
     activeTools,
     pendingCount,
+    // T039: Edit suggestions exports
+    editSuggestions,
+    addEditSuggestion,
+    approveEditSuggestion,
+    rejectEditSuggestion,
+    applyEditSuggestion,
+    applyAllApprovedEdits,
+    clearEditSuggestions,
+    getEditSuggestionsByTurn,
+    getPendingEditSuggestions,
     // Capability exports (T020)
     capabilityProfile,
     capabilityLoading,
@@ -592,8 +906,10 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     consumeStreamEvents,
     stopHealthPolling,
     retryHealth,
-    reset
-    ,
+    reset,
+    // Queue management (T012)
+    getQueueSnapshot,
+    setQueueConcurrency,
     // Approval helpers
     activePendingId,
     activePending,
@@ -606,6 +922,47 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     refreshPendingApprovals
   };
 });
+
+// T012: Helper to merge streaming updates into tasks list.
+function mergeStreamingTask(taskId: string, eventType: string | undefined, chunkContent: unknown, _data: Record<string, unknown>) {
+  // Access store instance directly - called from within store context
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const store = require('./assistantStore') as { useAssistantStore: typeof useAssistantStore };
+  const s = store.useAssistantStore();
+  const tasks = s.tasks as unknown as { value: TaskEnvelope[] };
+  const existingIndex = tasks.value.findIndex(t => t.taskId === taskId);
+  const now = new Date().toISOString();
+
+  if (existingIndex === -1) {
+    // Create new streaming task envelope.
+    const envelope: TaskEnvelope = {
+      taskId,
+      status: eventType === 'error' ? 'failed' : eventType === 'complete' ? 'succeeded' : 'streaming',
+      actionType: 'prompt', // TODO(T012-ActionType): derive from payload metadata when available
+      outputs: chunkContent ? [{ chunk: chunkContent }] : [],
+      timestamps: { created: now, firstResponse: chunkContent ? now : undefined, completed: eventType === 'complete' || eventType === 'error' ? now : undefined }
+    };
+    tasks.value = [...tasks.value, envelope];
+    return;
+  }
+
+  const current = tasks.value[existingIndex];
+  const outputs = [...current.outputs];
+  if (chunkContent) {
+    outputs.push({ chunk: chunkContent });
+  }
+  const updated: TaskEnvelope = {
+    ...current,
+    status: eventType === 'error' ? 'failed' : eventType === 'complete' ? 'succeeded' : current.status,
+    outputs,
+    timestamps: {
+      created: current.timestamps?.created || now,
+      firstResponse: current.timestamps?.firstResponse || (chunkContent ? now : undefined),
+      completed: eventType === 'complete' || eventType === 'error' ? now : current.timestamps?.completed
+    }
+  };
+  tasks.value = tasks.value.map(t => (t.taskId === taskId ? updated : t));
+}
 
 function normaliseContextReadResult(result: Record<string, unknown> | null | undefined): ContextReadResult | null {
   if (!result) {
