@@ -77,6 +77,7 @@ export interface AssistantBridgeAPI {
   listTelemetryEvents(sessionId: string): Promise<AssistantTelemetryEvent[]>;
   fetchCapabilityManifest(): Promise<CapabilityProfile>;
   getHealthStatus(): Promise<HealthStatusResponse>;
+  getGatingStatus(repoPath: string): Promise<import('@shared/assistant/types').GatingStatus>;
 }
 
 export function createAssistantBridge(ipcRenderer: IpcRenderer): AssistantBridgeAPI {
@@ -100,7 +101,8 @@ export function createAssistantBridge(ipcRenderer: IpcRenderer): AssistantBridge
     // T016: Extended endpoints
     listTelemetryEvents: (sessionId) => ipcRenderer.invoke('assistant:listTelemetryEvents', { sessionId }),
     fetchCapabilityManifest: () => ipcRenderer.invoke('assistant:fetchCapabilityManifest'),
-    getHealthStatus: () => ipcRenderer.invoke('assistant:getHealthStatus')
+    getHealthStatus: () => ipcRenderer.invoke('assistant:getHealthStatus'),
+    getGatingStatus: (repoPath: string) => ipcRenderer.invoke('assistant:getGatingStatus', { repoPath })
   };
 }
 

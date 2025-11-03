@@ -430,6 +430,7 @@ declare global {
         listTelemetryEvents: (sessionId: string) => Promise<any[]>;
         fetchCapabilityManifest: () => Promise<any>;
         getHealthStatus: () => Promise<{ status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown'; message?: string; timestamp: string }>;
+        getGatingStatus: (repoPath: string) => Promise<import('@shared/assistant/types').GatingStatus>;
       };
       agent: AgentBridge;
       c4: {

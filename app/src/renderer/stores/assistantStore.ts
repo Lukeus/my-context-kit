@@ -8,7 +8,8 @@ import type {
   PendingAction,
   ToolInvocationRecord,
   TaskEnvelope,
-  CapabilityProfile
+  CapabilityProfile,
+  GatingStatus
 } from '@shared/assistant/types';
 import type {
   CreateSessionPayload,
@@ -25,6 +26,8 @@ import { makeHealthSnapshot, type AssistantTelemetryEvent } from '@shared/assist
 import { createCapabilityCache, isCapabilityEnabled as checkCapabilityEnabled, getEnabledCapabilities } from '@/services/langchain/capabilities';
 import { createQueueManager, type QueueManager, type QueueEvent } from '@/services/assistant/queueManager';
 import { emitToolLifecycle } from '@/services/assistant/telemetryEmitter';
+import { getToolSafety, validateInvocation } from '@/services/assistant/toolClassification';
+import { sanitizePrompt } from '@/services/assistant/promptSanitizer';
 // T069: Auto legacy migration trigger
 import { ensureLegacyMigration } from '@/services/assistant/migrationAdapter';
 
@@ -122,6 +125,10 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const capabilityCache = createCapabilityCache();
   const capabilityLoading = ref(false);
 
+  // Gating status (FR-040)
+  const gatingStatus = ref<GatingStatus | null>(null);
+  const gatingLoading = ref(false);
+
   // Queue manager (T012)
   const queueManager: QueueManager = createQueueManager({ concurrency: 3 });
   const _queueUnsubscribe = queueManager.on((event: QueueEvent) => {
@@ -169,6 +176,13 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const isCapabilityEnabled = computed(() => (capabilityId: string) => {
     return checkCapabilityEnabled(capabilityProfile.value, capabilityId);
   });
+
+  // Gating computed flags
+  const isClassificationEnforced = computed(() => Boolean(gatingStatus.value?.classificationEnforced));
+  const isSidecarOnly = computed(() => gatingStatus.value?.sidecarOnly !== false); // default true until legacy removed
+  const checksumMatch = computed(() => Boolean(gatingStatus.value?.checksumMatch));
+  const isRetrievalEnabled = computed(() => Boolean(gatingStatus.value?.retrievalEnabled && checksumMatch.value));
+  const isLimitedReadOnlyMode = computed(() => !isClassificationEnforced.value && isSidecarOnly.value); // FR-011 banner condition
 
   function applySession(nextSession: AssistantSessionExtended) {
     session.value = nextSession;
@@ -233,6 +247,15 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     
     // Apply agent profile if provided
     const sessionPayload = agentProfile ? applyAgentProfile(payload, agentProfile) : payload;
+      // Sanitize system prompt (FR-035)
+      if (sessionPayload.systemPrompt) {
+        const result = sanitizePrompt(sessionPayload.systemPrompt);
+        if (!result.valid) {
+          error.value = `System prompt rejected: ${result.reasons.join(', ')}`;
+          throw new Error(error.value);
+        }
+        sessionPayload.systemPrompt = result.sanitized;
+      }
     
     try {
       const created = await bridge.createSession(sessionPayload) as AssistantSessionExtended;
@@ -248,6 +271,16 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       loadCapabilities().catch(err => {
         console.warn('Failed to load capability profile:', err);
       });
+
+      // Load gating status (FR-040) - non-blocking
+      const repoPathForGating = (created.telemetryContext && typeof created.telemetryContext.repoRoot === 'string')
+        ? created.telemetryContext.repoRoot as string
+        : undefined;
+      if (repoPathForGating) {
+        loadGatingStatus(repoPathForGating).catch(err => {
+          console.warn('Failed to load gating status:', err);
+        });
+      }
 
       // AUTO MIGRATION (T069): Perform one-time migration of legacy aiStore data if present.
       // Non-blocking; errors logged but do not affect session creation.
@@ -276,6 +309,15 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   function applyAgentProfile(payload: CreateSessionPayload, agent: AgentProfile): CreateSessionPayload {
     // Use agent's system prompt
     const systemPrompt = agent.systemPrompt || payload.systemPrompt;
+      // Sanitize system prompt (FR-035)
+      let sanitizedPrompt = systemPrompt;
+      if (sanitizedPrompt) {
+        const result = sanitizePrompt(sanitizedPrompt);
+        if (!result.valid) {
+          throw new Error(`Agent system prompt rejected: ${result.reasons.join(', ')}`);
+        }
+        sanitizedPrompt = result.sanitized;
+      }
     
     // Use agent's tool requirements
     const activeTools = agent.tools
@@ -385,6 +427,21 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       error.value = fallback;
       throw new Error(fallback);
     }
+
+      // Tool safety classification enforcement (FR-032)
+      const safetyClass = getToolSafety(payload.toolId);
+      if (safetyClass === 'mutating' || safetyClass === 'destructive') {
+        // Approval gating: must have explicit approval in payload
+        const approvalProvided = !!payload.parameters?.approval;
+        const reasonRaw = payload.parameters?.reason;
+        const reason = typeof reasonRaw === 'string' ? reasonRaw : undefined;
+        try {
+          validateInvocation(payload.toolId, approvalProvided, reason);
+        } catch (err) {
+          error.value = err instanceof Error ? err.message : String(err);
+          throw err;
+        }
+      }
 
     // T012: Enqueue tool execution through queue manager
     const task = queueManager.enqueue('tool', async () => {
@@ -503,6 +560,8 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       try {
         const response = await bridge.runPipeline(activeSession.id, payload);
         lastUpdated.value = nowIso();
+        // Refresh gating status after pipeline runs that could mutate embeddings (TODO: restrict to embeddings pipeline once added)
+        loadGatingStatus(options.repoPath).catch(err => console.warn('Gating status refresh failed:', err));
         return response;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Pipeline execution failed.';
@@ -722,6 +781,37 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     }
   }
 
+  // Gating status loader (FR-040)
+  // TODO(GatingPeriodicRefresh): Add background polling to refresh gating status every N seconds when sidecar active.
+  // TODO(GatingIntegration T028C): Call after embeddings pipeline completes to pick up checksumMatch=true updates.
+  // TODO(GatingRepoPath): Integrate with contextStore to auto-detect active repo path when unified.
+  async function loadGatingStatus(repoPath?: string): Promise<void> {
+    if (!repoPath) {
+      // TODO(GatingRepoPath): Accept active repo path from contextStore once unified
+      return;
+    }
+    if (gatingLoading.value) return;
+    gatingLoading.value = true;
+    try {
+      const bridge = assertAssistantBridge();
+      const status = await bridge.getGatingStatus(repoPath);
+      gatingStatus.value = status;
+    } catch (err) {
+      console.warn('Failed to load gating status:', err);
+      gatingStatus.value = {
+        classificationEnforced: false,
+        sidecarOnly: true,
+        checksumMatch: false,
+        retrievalEnabled: false,
+        updatedAt: nowIso(),
+        source: 'fallback-load-error',
+        version: '0.1.0'
+      };
+    } finally {
+      gatingLoading.value = false;
+    }
+  }
+
   async function refreshCapabilities(): Promise<void> {
     capabilityLoading.value = true;
     try {
@@ -895,6 +985,15 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     loadCapabilities,
     refreshCapabilities,
     clearCapabilities,
+    // Gating status exports
+    gatingStatus,
+    gatingLoading,
+    loadGatingStatus,
+    isClassificationEnforced,
+    isSidecarOnly,
+    checksumMatch,
+    isRetrievalEnabled,
+    isLimitedReadOnlyMode,
     // Actions
     createSession,
     sendMessage,
