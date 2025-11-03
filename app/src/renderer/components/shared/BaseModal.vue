@@ -138,4 +138,3 @@ onUnmounted(() => {
     </Transition>
   </Teleport>
 </template>
-</script>

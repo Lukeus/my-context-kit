@@ -19,7 +19,8 @@
 
 import { computed } from 'vue';
 
-export type AlertSeverity = 'info' | 'success' | 'warning' | 'error';
+// NOTE: Internal component-only type; do not export to avoid barrel duplication issues.
+type AlertSeverity = 'info' | 'success' | 'warning' | 'error';
 
 interface Props {
   severity?: AlertSeverity;

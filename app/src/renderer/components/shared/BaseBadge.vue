@@ -11,8 +11,9 @@
  * <BaseBadge variant="error" rounded>Offline</BaseBadge>
  */
 
-export type BadgeVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info';
-export type BadgeSize = 'xs' | 'sm' | 'md';
+// Component prop types
+type BadgeVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info';
+type BadgeSize = 'xs' | 'sm' | 'md';
 
 interface Props {
   variant?: BadgeVariant;
