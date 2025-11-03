@@ -33,7 +33,7 @@
 
       <!-- Right: Actions -->
       <div class="flex items-center gap-2 flex-shrink-0">
-        <!-- View Controls
+        <!-- View Controls -->
         <div class="flex items-center gap-1">
           <!-- Focus Mode Toggle -->
           <button
@@ -81,9 +81,6 @@
           </button>
           <button
             class="p-1.5 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-            @click="handleRefreshCapabilities"
-            aria-label="Refresh capability manifest (Ctrl+R)"
-          >
             @click="handleRefreshCapabilities"
             aria-label="Refresh capability manifest (Ctrl+R)"
           >
