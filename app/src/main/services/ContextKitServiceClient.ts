@@ -120,6 +120,20 @@ export class ContextKitServiceClient {
       const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
       const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || process.env.MODEL_NAME;
 
+      // Get active context repo path to pass to Python service
+      const { RepoService } = await import('./repo.service');
+      const repoService = new RepoService();
+      const contextRepoPath = await repoService.getDefaultRepoPath();
+
+      console.log('[ContextKitService] Credentials check:', {
+        hasApiKey: !!azureApiKey,
+        hasEndpoint: !!azureEndpoint,
+        hasDeployment: !!azureDeployment,
+        endpoint: azureEndpoint,
+        deployment: azureDeployment,
+        contextRepoPath
+      });
+
       // Resolve python executable inside venv (prefer uv-managed .venv)
       const venvPath = this.config.uvEnvPath || join(this.config.pythonServicePath, '.venv');
       const pythonExec = process.platform === 'win32'
@@ -150,7 +164,8 @@ export class ContextKitServiceClient {
           HOST: this.config.host,
           ...(azureApiKey && { AZURE_OPENAI_API_KEY: azureApiKey }),
           ...(azureEndpoint && { AZURE_OPENAI_ENDPOINT: azureEndpoint }),
-          ...(azureDeployment && { AZURE_OPENAI_DEPLOYMENT: azureDeployment })
+          ...(azureDeployment && { AZURE_OPENAI_DEPLOYMENT: azureDeployment }),
+          ...(contextRepoPath && { CONTEXT_REPO_PATH: contextRepoPath })
         },
         windowsHide: true
       });

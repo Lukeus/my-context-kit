@@ -42,6 +42,10 @@ export default tseslint.config(
     rules: {
       // Warn on 'any' to allow gradual migration while preventing new violations
       '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['error', { 
+        argsIgnorePattern: '^_', 
+        varsIgnorePattern: '^_' 
+      }],
       '@typescript-eslint/strict-boolean-expressions': ['warn', {
         allowString: true,  // Allow string checks - common pattern
         allowNumber: true,  // Allow number checks - common pattern

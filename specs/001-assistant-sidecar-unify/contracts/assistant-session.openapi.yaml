@@ -1,0 +1,227 @@
+openapi: 3.1.0
+info:
+  title: Unified Assistant Sessions API
+  version: 0.1.0
+  description: API contract for unified assistant operations via sidecar
+servers:
+  - url: http://localhost:PORT
+paths:
+  /sessions:
+    post:
+      summary: Create a new assistant session
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider:
+                  type: string
+                systemPrompt:
+                  type: string
+                streamingEnabled:
+                  type: boolean
+              required: [provider, systemPrompt]
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssistantSession'
+  /sessions/{id}:
+    get:
+      summary: Get session by id
+      operationId: getSession
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AssistantSession' } } } }
+  /sessions/{id}/messages:
+    post:
+      summary: Add user message
+      operationId: addMessage
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content: { type: string }
+                mode: { type: string, enum: [improvement, clarification, general] }
+              required: [content]
+      responses:
+        '201': { description: Message accepted, content: { application/json: { schema: { $ref: '#/components/schemas/ConversationMessage' } } } }
+  /sessions/{id}/tools/invoke:
+    post:
+      summary: Invoke a tool within a session
+      operationId: invokeTool
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                toolId: { type: string }
+                params: { type: object, additionalProperties: true }
+              required: [toolId]
+      responses:
+        '202': { description: Tool invocation queued, content: { application/json: { schema: { $ref: '#/components/schemas/ToolInvocation' } } } }
+  /sessions/{id}/approvals/{approvalId}:
+    post:
+      summary: Decide on an approval
+      operationId: decideApproval
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: path
+          name: approvalId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision: { type: string, enum: [approve, deny] }
+                rationale: { type: string }
+              required: [decision]
+      responses:
+        '200': { description: Approval updated, content: { application/json: { schema: { $ref: '#/components/schemas/PendingApproval' } } } }
+  /capabilities/manifest:
+    get:
+      summary: Get capability manifest
+      operationId: getManifest
+      responses:
+        '200': { description: Manifest, content: { application/json: { schema: { $ref: '#/components/schemas/CapabilityManifest' } } } }
+components:
+  schemas:
+    AssistantSession:
+      type: object
+      properties:
+        id: { type: string }
+        provider: { type: string }
+        systemPrompt: { type: string }
+        createdAt: { type: string, format: date-time }
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/ConversationMessage' }
+        tools:
+          type: array
+          items: { $ref: '#/components/schemas/ToolInvocation' }
+        approvals:
+          type: array
+          items: { $ref: '#/components/schemas/PendingApproval' }
+        telemetry:
+          type: array
+          items: { $ref: '#/components/schemas/TelemetryEvent' }
+        streamingEnabled: { type: boolean }
+        capabilityVersion: { type: string }
+      required: [id, provider, systemPrompt, createdAt, messages, tools, approvals, telemetry]
+    ConversationMessage:
+      type: object
+      properties:
+        id: { type: string }
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+        mode: { type: string, enum: [improvement, clarification, general] }
+        suggestions:
+          type: array
+          items: { $ref: '#/components/schemas/EditSuggestion' }
+        streaming: { type: boolean }
+        provider: { type: string }
+        tokensConsumed: { type: integer }
+      required: [id, role, content, createdAt]
+    ToolInvocation:
+      type: object
+      properties:
+        id: { type: string }
+        sessionId: { type: string }
+        toolId: { type: string }
+        status: { type: string, enum: [queued, running, succeeded, failed, canceled] }
+        queuedAt: { type: string, format: date-time }
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time }
+        resultSummary: { type: string }
+        errorDetail: { type: string }
+        source: { type: string }
+        tokensConsumed: { type: integer }
+      required: [id, sessionId, toolId, status, queuedAt, source]
+    PendingApproval:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [edit-apply, file-write, destructive-action] }
+        status: { type: string, enum: [pending, approved, denied, expired] }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: string, format: date-time }
+        diffSummary: { type: string }
+        rationale: { type: string }
+      required: [id, type, status, createdAt]
+    EditSuggestion:
+      type: object
+      properties:
+        id: { type: string }
+        filePath: { type: string }
+        diff: { type: string }
+        summary: { type: string }
+        applied: { type: boolean }
+        appliedAt: { type: string, format: date-time }
+      required: [id, filePath, diff, applied]
+    TelemetryEvent:
+      type: object
+      properties:
+        eventId: { type: string }
+        eventType: { type: string, enum: [tool-invocation, approval-decision, migration, stream-start, stream-complete, error] }
+        timestamp: { type: string, format: date-time }
+        sessionId: { type: string }
+        outcome: { type: string, enum: [success, failure, n/a] }
+        durationMs: { type: integer }
+        provider: { type: string }
+        streaming: { type: boolean }
+        tokensConsumed: { type: integer }
+        capabilityVersion: { type: string }
+      required: [eventId, eventType, timestamp]
+    CapabilityManifest:
+      type: object
+      properties:
+        version: { type: string }
+        supportedTools: { type: array, items: { type: string } }
+        unsupportedTools: { type: array, items: { type: string } }
+        providerCapabilities:
+          type: array
+          items: { $ref: '#/components/schemas/ProviderCapability' }
+        generatedAt: { type: string, format: date-time }
+      required: [version, supportedTools, providerCapabilities, generatedAt]
+    ProviderCapability:
+      type: object
+      properties:
+        provider: { type: string }
+        streaming: { type: boolean }
+        tools: { type: array, items: { type: string } }
+        embeddings: { type: boolean }
+        tokenMetadata: { type: boolean }
+        limitedMode: { type: boolean }
+      required: [provider, streaming, tools, embeddings, tokenMetadata, limitedMode]

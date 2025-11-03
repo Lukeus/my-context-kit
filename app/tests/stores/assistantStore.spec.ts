@@ -155,7 +155,7 @@ describe('assistantStore pending approvals', () => {
     // Wait for health poll to complete (tests use 50ms interval)
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    const envelope = await store.sendMessage({ content: 'Hello world' });
+    const envelope = await store.sendMessage('test',{ content: 'Hello world' });
     expect(envelope).not.toBeNull();
     expect(store.tasks.length).toBe(1);
     expect(store.tasks[0].outputs[0].summary).toContain('Echo: Hello world');
@@ -168,7 +168,7 @@ describe('assistantStore pending approvals', () => {
     // Wait for health poll to complete (tests use 50ms interval)
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    await store.sendMessage({ content: 'Ping' });
+    await store.sendMessage('ping',{ content: 'Ping' });
     expect(store.tasks.length).toBe(1);
     store.reset();
     expect(store.tasks.length).toBe(0);
@@ -262,7 +262,7 @@ describe('assistantStore health transitions (T018)', () => {
     expect(store.canExecuteRisky).toBe(false);
 
     // Should throw when unhealthy
-    await expect(store.sendMessage({ content: 'test' })).rejects.toThrow(/unavailable/);
+    await expect(store.sendMessage('test',{ content: 'test' })).rejects.toThrow(/unavailable/);
   });
 
   it('allows operations when degraded', async () => {
@@ -281,7 +281,7 @@ describe('assistantStore health transitions (T018)', () => {
     expect(store.canExecuteRisky).toBe(true);
 
     // Should succeed when degraded (slow but operational)
-    const result = await store.sendMessage({ content: 'test' });
+    const result = await store.sendMessage('test',{ content: 'test' });
     expect(result).toBeDefined();
   });
 

@@ -10,7 +10,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits<{ close: []; 'open-settings': [] }>();
+const emit = defineEmits<{ close: []; 'open-settings': []; 'open-unified': [] }>();
 
 const aiStore = useAIStore();
 const contextStore = useContextStore();
@@ -18,6 +18,8 @@ const contextStore = useContextStore();
 const question = ref('');
 const mode = ref<AssistantMode>('general');
 const focusActive = ref(false);
+// T045: Deprecation notice state
+const showDeprecationNotice = ref(true);
 
 const activeEntity = computed(() => contextStore.activeEntity);
 const canFocusActive = computed(() => Boolean(contextStore.activeEntityId));
@@ -34,6 +36,8 @@ function resetComposer() {
 watch(() => props.show, async (visible) => {
   if (visible) {
     await aiStore.initialize();
+    // T045: Show deprecation notice when modal opens
+    showDeprecationNotice.value = true;
   }
   resetComposer();
 });
@@ -98,6 +102,38 @@ function openSettings() {
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       >
         <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[960px] max-w-[95vw] max-h-[92vh] flex flex-col border border-surface-variant">
+          <!-- T045: Deprecation Notice -->
+          <div
+            v-if="showDeprecationNotice"
+            class="px-4 py-3 bg-warning-container border-b border-warning flex items-start justify-between"
+            role="alert"
+          >
+            <div class="flex items-start gap-3">
+              <span class="text-2xl">⚠️</span>
+              <div class="flex-1">
+                <p class="text-sm font-semibold text-on-warning-container">
+                  This assistant interface is deprecated
+                </p>
+                <p class="text-xs text-on-warning-container mt-1">
+                  Please use the new Unified Assistant for better performance, streaming support, and enhanced features.
+                </p>
+                <button
+                  class="mt-2 text-xs px-3 py-1 rounded-m3-sm bg-warning text-on-warning hover:bg-warning/80 transition-colors"
+                  @click="emit('open-unified')"
+                >
+                  Switch to Unified Assistant
+                </button>
+              </div>
+            </div>
+            <button
+              class="p-1 text-on-warning-container hover:bg-warning/20 rounded"
+              aria-label="Dismiss deprecation notice"
+              @click="showDeprecationNotice = false"
+            >
+              ✕
+            </button>
+          </div>
+          
           <!-- Header -->
           <div class="px-6 py-5 border-b border-surface-variant bg-surface-2 flex items-center justify-between">
             <div>
@@ -231,91 +267,50 @@ function openSettings() {
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-2 bg-surface-3 border border-surface-variant rounded-m3-md px-2 py-1">
                 <button
-                  v-for="option in ['general', 'improvement', 'clarification']"
-                  :key="option"
-                  class="px-3 py-1 text-xs font-medium rounded-m3-md transition-colors"
-                  :class="mode === option ? 'bg-primary-600 text-white shadow-elevation-1' : 'text-secondary-700 hover:bg-surface-4'"
-                  @click="mode = option as AssistantMode"
-                >{{ option }}</button>
-              </div>
-              <label class="flex items-center gap-2 text-xs text-secondary-700">
-                <input
-                  type="checkbox"
-                  class="h-4 w-4 rounded-m3-md border-surface-variant text-primary-600 focus:ring-primary-400"
-                  v-model="focusActive"
-                  :disabled="!canFocusActive"
-                />
-                <span>
-                  Focus on {{ canFocusActive ? activeEntity?.id : 'active entity (select one)' }}
-                </span>
-              </label>
-            </div>
+                  <script setup lang="ts">
+                  // DEPRECATED COMPONENT (T086)
+                  // ---------------------------------------------------------------------------
+                  // This legacy modal has been superseded by the unified assistant implementation.
+                  // It remains as a minimal stub until all tests referencing it (US1 legacy tests)
+                  // are migrated or removed. It should not be used for new features.
+                  // TODO(T086-Final): Delete this file after confirming no test or runtime references.
+                  // See `UnifiedAssistant.vue` + `assistantStore` for the active implementation.
 
-            <textarea
-              v-model="question"
-              rows="3"
-              class="w-full px-4 py-3 bg-surface-1 border border-surface-variant rounded-m3-md text-sm text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-elevation-1"
-              placeholder="Ask for improvements or clarifications across the context repository..."
-              @keydown="handleKeydown"
-            ></textarea>
+                  interface Props { show: boolean }
+                  defineProps<Props>();
+                  const emit = defineEmits<{ close: []; 'open-unified': [] }>();
 
-            <div class="flex items-center justify-between gap-3 flex-wrap">
-              <div class="flex items-center gap-2 text-xs text-secondary-600">
-                <button
-                  class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-md border border-surface-variant transition-colors"
-                  @click="quickPrompt('improvement')"
-                >Suggest improvements</button>
-                <button
-                  class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-md border border-surface-variant transition-colors"
-                  @click="quickPrompt('clarification')"
-                >Ask for clarifications</button>
-              </div>
-              <div class="flex items-center gap-2">
-                <button
-                  class="px-3 py-2 text-xs text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-md"
-                  @click="aiStore.clearConversation()"
-                >Clear conversation</button>
-                <button
-                  class="px-5 py-2.5 text-sm font-medium bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white rounded-m3-md transition-all shadow-elevation-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  :disabled="isSendDisabled"
-                  @click="sendQuestion"
-                >
-                  {{ aiStore.isLoading ? 'Sending…' : 'Send (Ctrl+Enter)' }}
-                </button>
-              </div>
-            </div>
+                  function openUnified() {
+                    emit('open-unified');
+                  }
 
-            <div v-if="aiStore.usageHistory.length" class="text-[10px] text-secondary-500">
-              Last response: {{ aiStore.usageHistory[aiStore.usageHistory.length - 1].totalTokens }} tokens • prompt {{ aiStore.usageHistory[aiStore.usageHistory.length - 1].promptTokens }}, completion {{ aiStore.usageHistory[aiStore.usageHistory.length - 1].completionTokens }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
-</template>
-
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-active > div > div,
-.modal-leave-active > div > div {
-  transition: transform 0.2s ease;
-}
-
-.modal-enter-from > div > div {
+                  function dismiss() {
+                    emit('close');
   transform: scale(0.95);
 }
 
 .modal-leave-to > div > div {
-  transform: scale(0.95);
-}
-</style>
+                    <div v-if="show" class="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+                      <div class="bg-surface rounded-m3-lg shadow-xl w-[560px] max-h-[85vh] flex flex-col overflow-hidden">
+                        <header class="px-5 py-4 border-b border-outline-variant flex items-center justify-between bg-primary-container">
+                          <h2 class="text-lg font-semibold text-on-primary-container flex items-center gap-2">
+                            <span>Legacy Assistant (Deprecated)</span>
+                            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-error-container text-on-error-container">Deprecated</span>
+                          </h2>
+                          <button @click="dismiss" class="px-2 py-1 text-sm rounded-m3-md bg-surface-variant text-on-surface-variant hover:bg-surface-variant/80">×</button>
+                        </header>
+                        <div class="p-6 space-y-4 overflow-y-auto text-sm">
+                          <p class="text-on-surface-variant">This legacy modal has been replaced by the Unified Assistant with tooling, approvals, telemetry, and migration features.</p>
+                          <ul class="list-disc pl-5 space-y-1 text-on-surface-variant">
+                            <li>No new features will be added here.</li>
+                            <li>Existing sessions have been migrated automatically.</li>
+                            <li>Use the Unified Assistant for edit suggestions & tool execution.</li>
+                          </ul>
+                          <button @click="openUnified" class="px-4 py-2 rounded-m3-md bg-tertiary-container text-on-tertiary-container hover:bg-tertiary-container/80">Open Unified Assistant</button>
+                        </div>
+                        <footer class="px-5 py-3 border-t border-outline-variant text-xs text-on-surface-variant">
+                          Scheduled for removal after telemetry & tests finalize (see task T086).
+                        </footer>
+                      </div>
+                    </div>
+                  :disabled="isSendDisabled"
