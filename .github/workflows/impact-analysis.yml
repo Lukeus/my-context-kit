@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0  # Need full history to detect changes
       
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 10.19.0
       
@@ -209,7 +209,7 @@ jobs:
           fetch-depth: 0
       
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 10.19.0
       
