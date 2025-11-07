@@ -370,7 +370,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     
     return {
       ...payload,
-      systemPrompt,
+      systemPrompt: sanitizedPrompt,
       activeTools: activeTools || payload.activeTools,
       ...config
     };
