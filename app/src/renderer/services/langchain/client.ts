@@ -8,6 +8,9 @@ import type { CapabilityProfile, TaskEnvelope } from '@shared/assistant/types';
 export interface CreateSessionRequest {
   userId: string;
   clientVersion: string;
+  provider?: string;
+  systemPrompt?: string;
+  activeTools?: string[];
   capabilitiesOverride?: Record<string, string>;
 }
 

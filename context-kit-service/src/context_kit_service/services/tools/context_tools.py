@@ -56,8 +56,16 @@ def _search_context(query: str, entity_type: str | None = None, repo_path: str |
     """Search context entities by query."""
     if repo_path is None:
         repo_path = os.getenv("CONTEXT_REPO_PATH", "../context-repo")
+    
+    print(f"[ContextSearchTool] Searching with query='{query}', entity_type={entity_type}, repo_path={repo_path}")
 
     contexts_dir = Path(repo_path) / "contexts"
+    
+    if not contexts_dir.exists():
+        error_msg = f"Context directory not found: {contexts_dir}. Please set CONTEXT_REPO_PATH environment variable."
+        print(f"[ContextSearchTool] ERROR: {error_msg}")
+        raise FileNotFoundError(error_msg)
+    
     results = []
 
     # Determine which entity types to search
@@ -65,6 +73,8 @@ def _search_context(query: str, entity_type: str | None = None, repo_path: str |
         search_types = [entity_type]
     else:
         search_types = [d.name for d in contexts_dir.iterdir() if d.is_dir()]
+    
+    print(f"[ContextSearchTool] Searching in types: {search_types}")
 
     query_lower = query.lower()
 
@@ -86,9 +96,11 @@ def _search_context(query: str, entity_type: str | None = None, repo_path: str |
                         "name": data.get("name", yaml_file.stem),
                         "summary": data.get("summary", "")[:200],
                     })
-            except Exception:
+            except Exception as e:
+                print(f"[ContextSearchTool] Error reading {yaml_file}: {e}")
                 continue
-
+    
+    print(f"[ContextSearchTool] Found {len(results)} results")
     return results
 
 

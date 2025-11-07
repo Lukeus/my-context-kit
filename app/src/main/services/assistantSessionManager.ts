@@ -72,7 +72,10 @@ export class AssistantSessionManager {
       
       const remote = await client.createSession({
         userId: 'local-user',
-        clientVersion: lcConfig.telemetryDefaults.appVersion
+        clientVersion: lcConfig.telemetryDefaults.appVersion,
+        provider: options.provider,
+        systemPrompt: options.systemPrompt,
+        activeTools: options.activeTools
       });
       langchainSessionId = remote.sessionId;
       if (remote.capabilityProfile?.capabilities) {
@@ -84,8 +87,13 @@ export class AssistantSessionManager {
       // TODO(RemoteFallback): surface health indicator to store
     }
 
+    // Use the LangChain session ID as the primary session ID for consistency
+    // If LangChain service is unavailable, fall back to a local UUID
+    const sessionId = langchainSessionId ?? randomUUID();
+    console.log('[assistantSessionManager] Using session ID:', sessionId, '(from LangChain:', langchainSessionId, ')');
+
     const session: AssistantSessionExtended = {
-      id: randomUUID(),
+      id: sessionId,
       provider: options.provider,
       systemPrompt: options.systemPrompt,
       messages: seededConversation,
@@ -106,6 +114,7 @@ export class AssistantSessionManager {
     };
 
     this.sessions.set(session.id, session);
+    console.log('[assistantSessionManager] Session stored with ID:', session.id, 'Total sessions:', this.sessions.size);
     return session;
   }
 

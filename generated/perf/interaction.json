@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "metric": "interaction",
+  "generatedAt": "2025-11-07T18:49:52.877Z",
+  "samples": 30,
+  "stats": {
+    "mean": 128800,
+    "median": 121500,
+    "p50": 121500,
+    "p95": 169500,
+    "min": 103000,
+    "max": 181000
+  },
+  "discardedOutliers": 2
+}

@@ -129,4 +129,4 @@ the renderer context.
 
 ---
 
-**Generated**: 2025-10-29T18:34:05.040Z | **Source**: C:\Users\lukeu\source\repos\my-context-kit\context-repo\contexts\governance\constitution.yaml
+**Generated**: 2025-11-05T22:34:48.961Z | **Source**: C:\Users\ladams\source\repos\my-context-kit\context-repo\contexts\governance\constitution.yaml

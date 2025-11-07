@@ -27,14 +27,20 @@ Unify legacy and safe tooling AI assistants into a single session-based assistan
 | Embeddings build | <6s | <12s |
 | First streaming token | <200ms | <300ms |
 | Migration (typical history) | <3s | <5s |
+| Multi-step interaction (ask+tool+approval) | <120s | <180s |
+
+All durations are in seconds (ms where specified). Harness metrics discard top/bottom 5% outliers before computing p50/p95.
 
 **Constraints**: Maintain context isolation (no nodeIntegration); summarize diffs when (total lines >800 OR raw size >100KB) – trigger if either threshold exceeded; sidecar unreachable triggers Limited Read-Only Mode (conversation only, tools disabled); concurrency capped at 3 active tool executions.
+**Concurrency Rationale**: Initial cap=3; increase only if p95 tool duration <5s and average per-invocation memory <500MB.
+**RAG Gating**: Retrieval features remain disabled until embeddings determinism (FR-039) passes checksum reproducibility and gating artifact reports `checksumMatch=true`.
 **Scale/Scope**: Single-user sessions per desktop instance; thousands of messages per session; concurrency limited by `MAX_CONCURRENT_TOOLS = 3`.
 
 **Unknowns Resolved**:
-1. Migration coverage: unit (mapping), integration (auto-import), rollback test; acceptance target ≥95% preservation.
-2. p95 thresholds established above; tracked in performance harness.
-3. Concurrency limit fixed to 3 for stability & predictable resource usage.
+1. Migration coverage: unit (mapping), integration (auto-import), rollback (<500ms) test; acceptance target ≥95% preservation; dedup integrated into FR-006.
+2. p95 thresholds established above; tracked in performance harness with artifact outputs (`generated/perf/*.json`).
+3. Concurrency limit fixed to 3 for stability & predictable resource usage; escalation criteria documented.
+4. Summarization thresholds centralized via shared constant (`SUMMARY_TRIGGER`); prevents divergence across FR-010 & FR-037.
 
 ## Constitution Check (Progressive Assessment)
 
@@ -46,7 +52,7 @@ Unify legacy and safe tooling AI assistants into a single session-based assistan
 4. **IV. Validation & Impact Gatekeeping**: Gates defined; add explicit harness references (T028L, T052H, T083) to quantify performance. PARTIAL until harness tasks complete.
 5. **V. Secure Desktop Boundary & Observability**: Approval + telemetry design defined; telemetry completeness threshold (≥99%) for FR-004 set. PASS (implementation pending tests).
 
-**Action Items**: Treat Principles I & II as merge blockers; Principles III–V monitored via gating artifact (FR-040).
+**Action Items**: Principles I & II are merge blockers (C4 diagrams early + deterministic embeddings). Principles III–V monitored via gating artifact (FR-040) and early telemetry completeness (≥99.5%).
 
 ### Post-Design Validation (After Phase 1 Artifacts)
 
@@ -62,19 +68,20 @@ Delta assessment after research, data-model, contracts, quickstart committed:
 
 ## Phase 2 Planning (Preview)
 
-Phase 2 (Foundational – updated scope):
-- Implement sidecar client abstraction (`services/sidecar/client.ts`).
-- Extend `assistantStore` with migration service & concurrency queue (cap=3).
-- Deterministic embeddings pipeline script (`.context/pipelines/build-embeddings.mjs`) + checksum logging.
-- Deprecation warnings in `aiStore` usage points.
-- Tool invocation queue + cancellation UI.
-- Diff rendering component with summarization thresholds (>800 lines OR >100KB).
-- Capability manifest refresh scheduler + manual refresh action.
-- Gating artifact generator (`scripts/ci/run-gates.ts`) producing `generated/gate-status.json`.
-- Telemetry event emission wrapper.
-- C4 diagram updates (context & component) reflecting unified assistant + sidecar + embeddings pipeline (moved earlier to satisfy Constitution Principle I lock‑step requirement).
-- Tests: migration mapping, deduplication accuracy, rollback, diff summarization thresholds, concurrency limits, telemetry fields, Limited Read-Only Mode behavior, embeddings checksum.
-- Documentation updates to C4 diagrams (reflect sidecar + unified assistant + embeddings pipeline).
+Phase 2 (Foundational – updated scope, ARCHITECTURE GATED):
+1. C4 diagram updates (context & component) reflecting unified assistant + sidecar + embeddings pipeline + gating artifact (MERGE BLOCKER prior to other Phase 2 tasks).
+2. Implement sidecar client abstraction (`services/sidecar/client.ts`).
+3. Extend `assistantStore` with migration service & concurrency queue (cap=3).
+4. Deterministic embeddings pipeline script (`.context/pipelines/build-embeddings.mjs`) + checksum logging (RAG disabled until checksumMatch=true).
+5. Deprecation warnings in `aiStore` usage points.
+6. Tool invocation queue + cancellation UI.
+7. Diff rendering component using shared summarization constants (>800 lines OR >100KB).
+8. Capability manifest refresh scheduler + manual refresh action.
+9. Gating artifact generator (`scripts/ci/run-gates.ts`) producing `generated/gate-status.json`.
+10. Telemetry event emission wrapper & completeness test (≥99.5%) early.
+11. Performance harness tasks (first token latency, interaction latency) before UI merge.
+12. Tests: migration mapping, dedup accuracy, rollback latency, summarization thresholds, concurrency limits, telemetry completeness, Limited Mode behavior, embeddings checksum.
+13. Documentation updates (C4 diagrams) captured before assistant UI merges.
 
 Dependencies:
 - Sidecar running (FastAPI) with endpoints matching contracts.

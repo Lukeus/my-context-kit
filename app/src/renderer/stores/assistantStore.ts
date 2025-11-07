@@ -26,10 +26,12 @@ import { makeHealthSnapshot, type AssistantTelemetryEvent } from '@shared/assist
 import { createCapabilityCache, isCapabilityEnabled as checkCapabilityEnabled, getEnabledCapabilities } from '@/services/langchain/capabilities';
 import { createQueueManager, type QueueManager, type QueueEvent } from '@/services/assistant/queueManager';
 import { emitToolLifecycle } from '@/services/assistant/telemetryEmitter';
-import { getToolSafety, validateInvocation } from '@/services/assistant/toolClassification';
+import { getToolSafety, validateInvocation, updateClassificationFromManifest, resetClassification } from '@/services/assistant/toolClassification';
 import { sanitizePrompt } from '@/services/assistant/promptSanitizer';
+import { fetchManifest as fetchCapabilityManifest } from '@/services/sidecar/manifest';
 // T069: Auto legacy migration trigger
 import { ensureLegacyMigration } from '@/services/assistant/migrationAdapter';
+import { CONCURRENCY_LIMIT } from '@shared/assistant/constants';
 
 function assertAssistantBridge(): typeof window.api.assistant {
   if (!window.api?.assistant) {
@@ -130,7 +132,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const gatingLoading = ref(false);
 
   // Queue manager (T012)
-  const queueManager: QueueManager = createQueueManager({ concurrency: 3 });
+  const queueManager: QueueManager = createQueueManager({ concurrency: CONCURRENCY_LIMIT });
   const _queueUnsubscribe = queueManager.on((event: QueueEvent) => {
     // Wire queue events to telemetry
     try {
@@ -183,6 +185,36 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const checksumMatch = computed(() => Boolean(gatingStatus.value?.checksumMatch));
   const isRetrievalEnabled = computed(() => Boolean(gatingStatus.value?.retrievalEnabled && checksumMatch.value));
   const isLimitedReadOnlyMode = computed(() => !isClassificationEnforced.value && isSidecarOnly.value); // FR-011 banner condition
+
+  // T048: Atomic transaction wrapper for multi-step state mutations (FR-031)
+  let transactionDepth = 0;
+  const pendingUpdates: Array<() => void> = [];
+
+  function beginTransaction() {
+    transactionDepth++;
+  }
+
+  function commitTransaction() {
+    transactionDepth--;
+    if (transactionDepth === 0 && pendingUpdates.length > 0) {
+      // Apply all pending updates atomically
+      pendingUpdates.forEach(update => update());
+      pendingUpdates.length = 0;
+    }
+  }
+
+  function runAtomic<T>(fn: () => T): T {
+    beginTransaction();
+    try {
+      const result = fn();
+      commitTransaction();
+      return result;
+    } catch (err) {
+      transactionDepth = 0; // Reset on error
+      pendingUpdates.length = 0;
+      throw err;
+    }
+  }
 
   function applySession(nextSession: AssistantSessionExtended) {
     session.value = nextSession;
@@ -379,32 +411,36 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       }
       const envelope = await bridge.sendMessage(session.value.id, payload);
       if (envelope) {
-        // TODO(T012): MessageResponse may not have TaskEnvelope structure yet.
-        // Cast to TaskEnvelope only if the response structure matches.
-        const taskEnvelope = envelope as unknown as TaskEnvelope;
-        
-        // Only add to tasks if it has the expected TaskEnvelope structure
-        if (taskEnvelope.taskId) {
-          tasks.value = [...tasks.value, taskEnvelope];
-        }
-        
-        // Extract assistant response - handle both MessageResponse and TaskEnvelope formats
-        // TODO(T012): Align MessageResponse type definition with actual response structure
-        const outputs = (taskEnvelope as any)?.outputs;
-        if (outputs && Array.isArray(outputs) && outputs.length > 0) {
-          const output = outputs[0];
-          if (output.type === 'text' && typeof output.content === 'string') {
-            appendMessage({
-              role: 'assistant',
-              content: output.content,
-              timestamp: output.timestamp || nowIso(),
-              metadata: { taskId: taskEnvelope.taskId }
-            });
+        // T048: Use atomic transaction for multi-step state update (task + message append)
+        runAtomic(() => {
+          // TODO(T012): MessageResponse may not have TaskEnvelope structure yet.
+          // Cast to TaskEnvelope only if the response structure matches.
+          const taskEnvelope = envelope as unknown as TaskEnvelope;
+          
+          // Only add to tasks if it has the expected TaskEnvelope structure
+          if (taskEnvelope.taskId) {
+            tasks.value = [...tasks.value, taskEnvelope];
           }
-        }
-        // TODO(StreamMerge T012): merge streaming updates into tasks
+          
+          // Extract assistant response - handle both MessageResponse and TaskEnvelope formats
+          // TODO(T012): Align MessageResponse type definition with actual response structure
+          const outputs = (taskEnvelope as any)?.outputs;
+          if (outputs && Array.isArray(outputs) && outputs.length > 0) {
+            const output = outputs[0];
+            if (output.type === 'text' && typeof output.content === 'string') {
+              appendMessage({
+                role: 'assistant',
+                content: output.content,
+                timestamp: output.timestamp || nowIso(),
+                metadata: { taskId: taskEnvelope.taskId }
+              });
+            }
+          }
+          // TODO(StreamMerge T012): merge streaming updates into tasks
+          
+          lastUpdated.value = nowIso();
+        });
       }
-      lastUpdated.value = nowIso();
       return envelope;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Assistant message failed.';
@@ -436,7 +472,10 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
         const reasonRaw = payload.parameters?.reason;
         const reason = typeof reasonRaw === 'string' ? reasonRaw : undefined;
         try {
-          validateInvocation(payload.toolId, approvalProvided, reason);
+          validateInvocation(payload.toolId, approvalProvided, reason, {
+            gating: gatingStatus.value ?? null,
+            reasonMinLength: 8
+          });
         } catch (err) {
           error.value = err instanceof Error ? err.message : String(err);
           throw err;
@@ -448,6 +487,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       isBusy.value = true;
       error.value = null;
       const sessionId = session.value!.id;
+      console.log('[assistantStore.executeTool] Using sessionId:', sessionId, 'from session:', session.value);
       const startTime = Date.now();
       
       try {
@@ -460,6 +500,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
           parameters: payload.parameters
         });
 
+        console.log('[assistantStore.executeTool] Calling bridge.executeTool with sessionId:', sessionId);
         const result: ToolExecutionResponse = await bridge.executeTool(sessionId, payload);
         if (result.session) {
           applySession(result.session);
@@ -650,10 +691,15 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     error.value = null;
     try {
       const action = await bridge.resolvePendingAction(session.value.id, actionId, payload);
-      pendingApprovals.value = pendingApprovals.value
-        .filter(item => item.id !== actionId)
-        .concat(action.approvalState === 'pending' ? [action] : []);
-      lastUpdated.value = nowIso();
+      
+      // T048: Use atomic transaction for multi-step state update
+      runAtomic(() => {
+        pendingApprovals.value = pendingApprovals.value
+          .filter(item => item.id !== actionId)
+          .concat(action.approvalState === 'pending' ? [action] : []);
+        lastUpdated.value = nowIso();
+      });
+      
       return action;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Approval decision failed.';
@@ -664,8 +710,12 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     }
   }
 
-  async function approvePending(actionId: string, notes?: string) {
-    return resolvePendingAction(actionId, { decision: 'approve', notes });
+  async function approvePending(
+    actionId: string, 
+    notes?: string,
+    metadata?: ResolvePendingActionPayload['metadata']
+  ) {
+    return resolvePendingAction(actionId, { decision: 'approve', notes, metadata });
   }
 
   async function rejectPending(actionId: string, notes?: string) {
@@ -766,6 +816,16 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     healthPollerInstance.start();
   }
 
+  async function synchroniseToolClassification(forceRefresh = false): Promise<void> {
+    try {
+      const { index } = await fetchCapabilityManifest({ forceRefresh });
+      updateClassificationFromManifest(index);
+    } catch (err) {
+      console.warn('Failed to synchronise tool classification from manifest:', err);
+      resetClassification();
+    }
+  }
+
   // Capability management (T020)
   async function loadCapabilities(): Promise<void> {
     if (capabilityLoading.value) return;
@@ -773,9 +833,11 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     try {
       const profile = await capabilityCache.fetch();
       capabilityProfile.value = profile;
+      await synchroniseToolClassification();
     } catch (err) {
       console.error('Failed to load capability profile:', err);
       capabilityProfile.value = null;
+      resetClassification();
     } finally {
       capabilityLoading.value = false;
     }
@@ -817,8 +879,10 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     try {
       const profile = await capabilityCache.refresh();
       capabilityProfile.value = profile;
+      await synchroniseToolClassification(true);
     } catch (err) {
       console.error('Failed to refresh capability profile:', err);
+      resetClassification();
     } finally {
       capabilityLoading.value = false;
     }
@@ -827,6 +891,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   function clearCapabilities(): void {
     capabilityCache.clear();
     capabilityProfile.value = null;
+    resetClassification();
   }
 
   // T039: Edit suggestion workflow

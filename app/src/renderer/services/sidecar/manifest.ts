@@ -8,7 +8,7 @@
 
 import { createSidecarClient } from './client';
 import type { CapabilityManifest, CapabilityIndex } from '@shared/assistant/capabilities';
-import { indexManifest } from '@shared/assistant/capabilities';
+import { indexManifest, validateCapabilityManifest, createEmptyManifest } from '@shared/assistant/capabilities';
 
 export interface ManifestFetchOptions {
   forceRefresh?: boolean; // bypass cache
@@ -26,23 +26,26 @@ export async function fetchManifest(options: ManifestFetchOptions = {}): Promise
   const client = createSidecarClient();
   const envelope = await client.fetchCapabilityManifest();
   if (!envelope.ok) {
-    // Fallback: provide empty manifest so consumers can gate features.
-    const manifest: CapabilityManifest = {
-      manifestId: 'fallback',
-      generatedAt: new Date().toISOString(),
-      version: '1.0.0',
-      capabilities: [],
-      source: 'cached'
-    };
+    const manifest = createEmptyManifest('cached', 'fetch-error');
     cachedManifest = manifest;
     cachedIndex = indexManifest(manifest);
     lastFetchedAt = manifest.generatedAt;
     return { manifest, index: cachedIndex };
   }
 
-  cachedManifest = envelope.data;
-  cachedIndex = indexManifest(envelope.data);
-  lastFetchedAt = envelope.data.generatedAt;
+  const validation = validateCapabilityManifest(envelope.data);
+  if (!validation.ok) {
+    console.warn('[assistant][capabilities] Manifest validation failed:', validation.errors);
+    const manifest = createEmptyManifest('cached', 'invalid-schema');
+    cachedManifest = manifest;
+    cachedIndex = indexManifest(manifest);
+    lastFetchedAt = manifest.generatedAt;
+    return { manifest, index: cachedIndex };
+  }
+
+  cachedManifest = validation.manifest;
+  cachedIndex = indexManifest(validation.manifest);
+  lastFetchedAt = validation.manifest.generatedAt;
   return { manifest: cachedManifest, index: cachedIndex };
 }
 

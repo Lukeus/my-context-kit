@@ -24,7 +24,7 @@ export const PROVIDER_TOKENS: Record<AssistantProvider, ProviderToken> = {
     displayName: 'Azure OpenAI',
     shortName: 'Azure',
     icon: '☁️',
-    color: '#0078D4',
+    color: '#005A9E',
     bgColor: '#E6F2FF',
     description: 'Microsoft Azure OpenAI Service',
     capabilities: ['streaming', 'function-calling', 'embeddings', 'vision']
