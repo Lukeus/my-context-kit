@@ -50,7 +50,7 @@ Remember: The context repo is declarative YAML validated by pipelines, not execu
         required: true,
         capabilities: ['execute'],
         config: {
-          allowedPipelines: ['validate', 'build-graph', 'impact', 'generate']
+          allowedPipelines: ['validate', 'build-graph', 'impact', 'generate', 'build-embeddings']
         }
       },
       {

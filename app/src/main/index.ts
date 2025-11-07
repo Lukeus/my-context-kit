@@ -4,9 +4,26 @@ import { fileURLToPath } from 'node:url';
 import started from 'electron-squirrel-startup';
 import { registerAllHandlers } from './ipc/register';
 import { buildCspFromEnv } from './security/csp';
+import { config as dotenvConfig } from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load environment variables from .env file in project root
+const projectRoot = path.resolve(__dirname, '..', '..', '..');
+const envPath = path.join(projectRoot, '.env');
+console.log(`[Main] Loading .env from: ${envPath}`);
+const result = dotenvConfig({ path: envPath });
+if (result.error) {
+  console.error('[Main] Failed to load .env:', result.error);
+} else {
+  console.log('[Main] Environment variables loaded:', {
+    hasAzureEndpoint: !!process.env.AZURE_OPENAI_ENDPOINT,
+    hasAzureDeployment: !!process.env.AZURE_OPENAI_DEPLOYMENT,
+    endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+    deployment: process.env.AZURE_OPENAI_DEPLOYMENT
+  });
+}
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling
 if (started) {

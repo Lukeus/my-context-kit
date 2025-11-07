@@ -4,6 +4,10 @@ Context Kit Service - FastAPI Application
 Python sidecar service for Context Kit pipeline orchestration with LangChain.
 """
 
+import asyncio
+import os
+import signal
+import threading
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -12,12 +16,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .endpoints import codegen, inspect, promptify, spec, spec_log
+from .endpoints import assistant, codegen, inspect, promptify, spec, spec_log
 from .models.responses import HealthResponse
-import asyncio
-import threading
-import os
-import signal
 
 # Service start time for uptime calculation
 START_TIME = time.time()
@@ -118,6 +118,7 @@ async def health() -> HealthResponse:
 
 
 # Include endpoint routers
+app.include_router(assistant.router, tags=["Assistant"])
 app.include_router(inspect.router, prefix="/context", tags=["Context Inspection"])
 app.include_router(spec.router, prefix="/spec", tags=["Specification Generation"])
 app.include_router(promptify.router, prefix="/spec", tags=["Promptification"])

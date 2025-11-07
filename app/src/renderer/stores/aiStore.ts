@@ -1,8 +1,42 @@
+/**
+ * =============================================================================
+ *  LEGACY ASSISTANT STORE (aiStore)
+ * =============================================================================
+ *  DEPRECATION NOTICE:
+ *  This store represents the legacy AI assistant implementation using direct
+ *  LangChain streaming helpers. The unified, session-based assistant now lives
+ *  in `assistantStore.ts` and associated components under `components/assistant/`.
+ *
+ *  MIGRATION TRACKING:
+ *  - Spec/Feature: 001-assistant-sidecar-unify
+ *  - User Stories: US1 (Unified UI), US2 (Sidecar Tooling Routing), US3 (Legacy Migration)
+ *  - After migration completion, this file will be removed. Do NOT add new
+ *    features here—extend the unified assistant architecture instead.
+ *
+ *  RUNTIME BEHAVIOR:
+ *  A one-time console warning is emitted to help developers notice lingering
+ *  usage. Feature gating for the unified assistant is controlled by the
+ *  `UNIFIED_ASSISTANT_ENABLED` flag (introduced in T003) accessed via
+ *  `assistantStore`. When enabled, UI should prefer the unified assistant.
+ *
+ *  TODO(Unification): Remove this store after all legacy UI components are
+ *  migrated and `AIAssistantModal.vue` is deprecated.
+ * =============================================================================
+ */
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useContextStore } from './contextStore';
 import { DEFAULT_PROMPTS, detectModelCapabilities } from '../types/ai-prompts';
 import type { AIPromptConfig, ModelCapabilities, TokenProbability } from '../types/ai-prompts';
+
+// Emit a one-time deprecation warning in the renderer so developers see migration status.
+// Guard with a global symbol to avoid noisy logs on hot-reload.
+declare global { interface Window { __AI_STORE_DEPRECATED_SHOWN?: boolean } }
+if (typeof window !== 'undefined' && !window.__AI_STORE_DEPRECATED_SHOWN) {
+   
+  console.warn('[DEPRECATED] aiStore is legacy. Use assistantStore (session-based) instead. See spec 001-assistant-sidecar-unify.');
+  window.__AI_STORE_DEPRECATED_SHOWN = true;
+}
 
 type AssistantMode = 'improvement' | 'clarification' | 'general';
 

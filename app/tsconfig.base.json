@@ -7,8 +7,10 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    // TODO(T005): Evaluate removing skipLibCheck to surface type issues in dependency libs.
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
+    // TODO(T005): allowJs is enabled in derived tsconfig.json; confirm necessity and consider removal to enforce pure TS.
     "typeRoots": ["src/types", "node_modules/@types"],
     "baseUrl": ".",
     "paths": {

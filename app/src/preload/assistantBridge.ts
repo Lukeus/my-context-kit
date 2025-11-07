@@ -7,8 +7,10 @@ import type {
   ConversationTurn,
   PendingAction,
   ToolInvocationRecord,
-  TaskEnvelope
+  TaskEnvelope,
+  CapabilityProfile
 } from '@shared/assistant/types';
+import type { AssistantTelemetryEvent } from '@shared/assistant/telemetry';
 
 export interface CreateSessionPayload {
   provider: AssistantProvider;
@@ -31,6 +33,13 @@ export interface ExecuteToolPayload {
 export interface ResolvePendingActionPayload {
   decision: 'approve' | 'reject';
   notes?: string;
+  metadata?: {
+    isDestructive?: boolean;
+    reasonLength?: number;
+    confirm1At?: string | null;
+    confirm2At?: string | null;
+    [key: string]: unknown;
+  };
 }
 
 export interface MessageResponse {
@@ -55,6 +64,12 @@ export interface RunPipelinePayload {
   args?: Record<string, unknown>;
 }
 
+export interface HealthStatusResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+  message?: string;
+  timestamp: string;
+}
+
 export interface AssistantBridgeAPI {
   createSession(payload: CreateSessionPayload): Promise<AssistantSessionExtended>;
   sendMessage(sessionId: string, payload: SendMessagePayload & { mode?: 'general' | 'improvement' | 'clarification' }): Promise<TaskEnvelope | null>;
@@ -65,6 +80,11 @@ export interface AssistantBridgeAPI {
   runPipeline(sessionId: string, payload: RunPipelinePayload): Promise<ToolExecutionResponse>;
   startTaskStream(sessionId: string, taskId: string): Promise<{ ok: boolean; error?: string | null; taskId: string }>;
   cancelTaskStream(sessionId: string, taskId: string): Promise<{ ok: boolean; error?: string | null; taskId: string }>;
+  // T016: Extended telemetry and capability endpoints
+  listTelemetryEvents(sessionId: string): Promise<AssistantTelemetryEvent[]>;
+  fetchCapabilityManifest(): Promise<CapabilityProfile>;
+  getHealthStatus(): Promise<HealthStatusResponse>;
+  getGatingStatus(repoPath: string): Promise<import('@shared/assistant/types').GatingStatus>;
 }
 
 export function createAssistantBridge(ipcRenderer: IpcRenderer): AssistantBridgeAPI {
@@ -77,14 +97,24 @@ export function createAssistantBridge(ipcRenderer: IpcRenderer): AssistantBridge
   return {
     createSession: (payload) => ipcRenderer.invoke('assistant:createSession', payload),
     sendMessage: (sessionId, payload) => ipcRenderer.invoke('assistant:sendMessage', { sessionId, ...payload }),
-    executeTool: (sessionId, payload) => ipcRenderer.invoke('assistant:executeTool', { sessionId, ...payload }),
+    executeTool: (sessionId, payload) => {
+      console.log('[assistantBridge.executeTool] Received sessionId:', sessionId, 'payload:', payload);
+      const combined = { sessionId, ...payload };
+      console.log('[assistantBridge.executeTool] Sending to IPC:', combined);
+      return ipcRenderer.invoke('assistant:executeTool', combined);
+    },
     resolvePendingAction: (sessionId, actionId, payload) =>
       ipcRenderer.invoke('assistant:resolvePendingAction', { sessionId, actionId, ...payload }),
     listTelemetry: (sessionId) => ipcRenderer.invoke('assistant:listTelemetry', { sessionId }),
     onStreamEvent: (listener) => subscribe('assistant:stream-event', listener),
     runPipeline: (sessionId, payload) => ipcRenderer.invoke('assistant:pipelineRun', { sessionId, ...payload }),
     startTaskStream: (sessionId, taskId) => ipcRenderer.invoke('assistant:task:startStream', { sessionId, taskId }),
-    cancelTaskStream: (sessionId, taskId) => ipcRenderer.invoke('assistant:task:cancelStream', { sessionId, taskId })
+    cancelTaskStream: (sessionId, taskId) => ipcRenderer.invoke('assistant:task:cancelStream', { sessionId, taskId }),
+    // T016: Extended endpoints
+    listTelemetryEvents: (sessionId) => ipcRenderer.invoke('assistant:listTelemetryEvents', { sessionId }),
+    fetchCapabilityManifest: () => ipcRenderer.invoke('assistant:fetchCapabilityManifest'),
+    getHealthStatus: () => ipcRenderer.invoke('assistant:getHealthStatus'),
+    getGatingStatus: (repoPath: string) => ipcRenderer.invoke('assistant:getGatingStatus', { repoPath })
   };
 }
 

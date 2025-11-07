@@ -8,6 +8,7 @@ import Snackbar from './components/Snackbar.vue';
 import { useContextStore } from './stores/contextStore';
 import { useBuilderStore } from './stores/builderStore';
 import { useAIStore } from './stores/aiStore';
+import { useAssistantStore } from './stores/assistantStore';
 import { useGitStore } from './stores/gitStore';
 import { useAgentStore } from './stores/agentStore';
 import { useLangChainStore } from './stores/langchainStore';
@@ -49,7 +50,7 @@ const PromptBuilder = defineAsyncComponent(() => import('./components/ContextKit
 const CodeGenerator = defineAsyncComponent(() => import('./components/ContextKit/CodeGenerator.vue'));
 
 // AI Assistant - keep eager loaded as it's frequently used
-import AIAssistantPanel from './components/AIAssistantPanel.vue';
+import UnifiedAssistant from './components/assistant/UnifiedAssistant.vue';
 
 const contextStore = useContextStore();
 const builderStore = useBuilderStore();
@@ -617,13 +618,41 @@ function openAssistantPanel() {
 }
 
 const aiStore = useAIStore();
+const assistantStore = useAssistantStore();
 
 async function handleAskAboutEntity(entityId: string) {
-  openAssistantPanel();
-  await aiStore.initialize();
+  // Switch to AI assistant panel
+  activeNavId.value = 'ai';
+  rightPanelOpen.value = true;
+  
+  // Get entity details
   const entity = contextStore.getEntity(entityId);
-  const prompt = entity ? `Give a concise brief on ${entityId} (type: ${entity._type}). Highlight risks, dependencies, and next steps.` : `Give a concise brief on ${entityId}.`;
-  await aiStore.ask(prompt, { mode: 'general', focusId: entityId });
+  const entityType = entity?._type || 'unknown';
+  const entityTitle = entity?.title || entity?.name || entity?.iWant || entityId;
+  
+  // Build context-aware prompt
+  const prompt = entity 
+    ? `Analyze ${entityId} (type: ${entityType}, title: "${entityTitle}"). Provide a concise overview covering: purpose, key dependencies, current status, potential risks, and recommended next steps.`
+    : `Provide information about entity ${entityId}.`;
+  
+  // Create session if needed or use existing
+  if (!assistantStore.session) {
+    await assistantStore.createSession({
+      userId: 'local-user',
+      provider: 'azure-openai',
+      systemPrompt: 'You are an intelligent assistant for a context repository. Help users understand entities, their relationships, and impact. Focus on clarity and actionable insights.',
+      activeTools: ['context.read', 'context.search', 'pipeline.validate', 'pipeline.build-graph', 'pipeline.build-embeddings', 'pipeline.impact', 'pipeline.generate']
+    });
+  }
+  
+  // Send the message
+  if (assistantStore.session) {
+    await assistantStore.sendMessage(assistantStore.session.id, {
+      role: 'user',
+      content: prompt,
+      mode: 'general'
+    });
+  }
 }
 
 async function handleCommandExecute(commandId: string) {
@@ -1283,7 +1312,7 @@ async function handleRemoveRepo(id: string) {
         class="bg-surface-1 border-l border-surface-variant shadow-elevation-1 relative flex-shrink-0"
       >
         <div class="h-full">
-          <AIAssistantPanel @open-settings="showAISettings = true" />
+          <UnifiedAssistant />
         </div>
         <!-- Resize handle -->
         <div

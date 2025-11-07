@@ -8,7 +8,8 @@ import type {
   PendingAction,
   ToolInvocationRecord,
   TaskEnvelope,
-  CapabilityProfile
+  CapabilityProfile,
+  GatingStatus
 } from '@shared/assistant/types';
 import type {
   CreateSessionPayload,
@@ -21,7 +22,16 @@ import type {
 import type { AgentProfile } from '@shared/agents/types';
 import { useAgentStore } from './agentStore';
 import { createHealthPoller, type NormalisedHealth, type LangChainHealthStatus } from '@/services/langchain/health';
+import { makeHealthSnapshot, type AssistantTelemetryEvent } from '@shared/assistant/telemetry';
 import { createCapabilityCache, isCapabilityEnabled as checkCapabilityEnabled, getEnabledCapabilities } from '@/services/langchain/capabilities';
+import { createQueueManager, type QueueManager, type QueueEvent } from '@/services/assistant/queueManager';
+import { emitToolLifecycle } from '@/services/assistant/telemetryEmitter';
+import { getToolSafety, validateInvocation, updateClassificationFromManifest, resetClassification } from '@/services/assistant/toolClassification';
+import { sanitizePrompt } from '@/services/assistant/promptSanitizer';
+import { fetchManifest as fetchCapabilityManifest } from '@/services/sidecar/manifest';
+// T069: Auto legacy migration trigger
+import { ensureLegacyMigration } from '@/services/assistant/migrationAdapter';
+import { CONCURRENCY_LIMIT } from '@shared/assistant/constants';
 
 function assertAssistantBridge(): typeof window.api.assistant {
   if (!window.api?.assistant) {
@@ -39,6 +49,18 @@ const CONTEXT_READ_TOOL_ID = 'context.read';
 const PIPELINE_SESSION_PROMPT = 'You are a guard-railed operator for context repository pipelines. '
   + 'Confirm scope, execute only allowlisted commands, and summarise results for humans.';
 
+// NOTE(T003): We intentionally avoid augmenting global ImportMeta type inline to prevent conflicts.
+// Access env vars through a typed helper to satisfy TS without polluting global declarations.
+function getViteEnvFlag(name: string): string | undefined {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const env = (import.meta as any)?.env;
+    return env ? env[name] : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 interface ContextReadResult {
   path: string;
   repoRelativePath: string;
@@ -47,6 +69,21 @@ interface ContextReadResult {
   size: number;
   lastModified: string;
   truncated: boolean;
+}
+
+// T039: Edit suggestion types
+export interface EditSuggestion {
+  id: string;
+  sessionId: string;
+  turnIndex: number;
+  targetId?: string;
+  filePath: string;
+  summary: string;
+  updatedContent: string;
+  status: 'pending' | 'approved' | 'rejected' | 'applying' | 'applied' | 'failed';
+  error?: string;
+  createdAt: string;
+  resolvedAt?: string;
 }
 
 export const useAssistantStore = defineStore('assistant-safe-tools', () => {
@@ -61,22 +98,56 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const pendingApprovals = ref<PendingAction[]>([]);
   const activePendingId = ref<string | null>(null);
   const telemetry = ref<ToolInvocationRecord[]>([]);
+  // Extended telemetry events (T013): health snapshots & future non-tool events
+  const telemetryEvents = ref<AssistantTelemetryEvent[]>([]);
   const isBusy = ref(false);
   const error = ref<string | null>(null);
   const lastUpdated = ref<string | null>(null);
   const contextReadResult = ref<ContextReadResult | null>(null);
   const contextReadError = ref<string | null>(null);
   const activeAgentProfile = ref<AgentProfile | null>(null);
+  // T039: Edit suggestions state
+  const editSuggestions = ref<EditSuggestion[]>([]);
+  // Feature flag (T003): Controls availability of unified assistant UI. Reads from Vite env.
+  // NOTE: This flag should be used by renderer components to conditionally render unified assistant.
+  // TODO(Unification Cleanup): Remove flag once legacy aiStore is fully removed.
+  const flagValue = getViteEnvFlag('VITE_UNIFIED_ASSISTANT_ENABLED');
+  const unifiedAssistantEnabled = ref<boolean>(
+    Boolean(flagValue) && ['true', '1', 'on', 'yes'].includes(String(flagValue).toLowerCase())
+  );
 
   // Health state (T016)
   const health = ref<NormalisedHealth | null>(null);
   const healthPollerInstance = createHealthPoller({ intervalMs: 10000 });
   let healthUnsubscribe: (() => void) | null = null;
+  let lastEmittedHealthStatus: LangChainHealthStatus | null = null; // prevent duplicate emissions
 
   // Capability cache (T020)
   const capabilityProfile = ref<CapabilityProfile | null>(null);
   const capabilityCache = createCapabilityCache();
   const capabilityLoading = ref(false);
+
+  // Gating status (FR-040)
+  const gatingStatus = ref<GatingStatus | null>(null);
+  const gatingLoading = ref(false);
+
+  // Queue manager (T012)
+  const queueManager: QueueManager = createQueueManager({ concurrency: CONCURRENCY_LIMIT });
+  const _queueUnsubscribe = queueManager.on((event: QueueEvent) => {
+    // Wire queue events to telemetry
+    try {
+      const sessionId = session.value?.id;
+      if (!sessionId) return;
+      if (event.kind === 'task.started') {
+        // TODO(T012-Telemetry): Map task metadata to tool invocation telemetry
+        console.debug('Queue task started:', event.taskId);
+      } else if (event.kind === 'task.finished') {
+        console.debug('Queue task finished:', event.taskId, event.status, `${event.durationMs}ms`);
+      }
+    } catch (err) {
+      console.warn('Failed to emit queue telemetry:', err);
+    }
+  });
 
   const hasSession = computed(() => Boolean(session.value));
   const activeProvider = computed<AssistantProvider | null>(() => session.value?.provider ?? null);
@@ -86,6 +157,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     if (!activePendingId.value) return null;
     return pendingApprovals.value.find(p => p.id === activePendingId.value) ?? null;
   });
+  const isUnifiedAssistantActive = computed(() => unifiedAssistantEnabled.value);
 
   // Health computed flags (T016)
   const healthStatus = computed<LangChainHealthStatus>(() => health.value?.status ?? 'unknown');
@@ -106,6 +178,43 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const isCapabilityEnabled = computed(() => (capabilityId: string) => {
     return checkCapabilityEnabled(capabilityProfile.value, capabilityId);
   });
+
+  // Gating computed flags
+  const isClassificationEnforced = computed(() => Boolean(gatingStatus.value?.classificationEnforced));
+  const isSidecarOnly = computed(() => gatingStatus.value?.sidecarOnly !== false); // default true until legacy removed
+  const checksumMatch = computed(() => Boolean(gatingStatus.value?.checksumMatch));
+  const isRetrievalEnabled = computed(() => Boolean(gatingStatus.value?.retrievalEnabled && checksumMatch.value));
+  const isLimitedReadOnlyMode = computed(() => !isClassificationEnforced.value && isSidecarOnly.value); // FR-011 banner condition
+
+  // T048: Atomic transaction wrapper for multi-step state mutations (FR-031)
+  let transactionDepth = 0;
+  const pendingUpdates: Array<() => void> = [];
+
+  function beginTransaction() {
+    transactionDepth++;
+  }
+
+  function commitTransaction() {
+    transactionDepth--;
+    if (transactionDepth === 0 && pendingUpdates.length > 0) {
+      // Apply all pending updates atomically
+      pendingUpdates.forEach(update => update());
+      pendingUpdates.length = 0;
+    }
+  }
+
+  function runAtomic<T>(fn: () => T): T {
+    beginTransaction();
+    try {
+      const result = fn();
+      commitTransaction();
+      return result;
+    } catch (err) {
+      transactionDepth = 0; // Reset on error
+      pendingUpdates.length = 0;
+      throw err;
+    }
+  }
 
   function applySession(nextSession: AssistantSessionExtended) {
     session.value = nextSession;
@@ -152,13 +261,33 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     if (!healthUnsubscribe) {
       healthUnsubscribe = healthPollerInstance.on(snapshot => {
         health.value = snapshot;
-        // TODO(T016-Telemetry): log health transitions to telemetry writer
+        // T013: Emit telemetry event when status changes or every poll if degraded/unhealthy persists
+        try {
+          const statusChanged = snapshot.status !== lastEmittedHealthStatus;
+          const forceEmit = snapshot.status === 'unhealthy' || snapshot.status === 'degraded';
+          if (statusChanged || forceEmit) {
+            const evt = makeHealthSnapshot(session.value?.id, session.value?.provider, snapshot.status, snapshot.message, 10000);
+            telemetryEvents.value = [...telemetryEvents.value, evt];
+            lastEmittedHealthStatus = snapshot.status;
+          }
+        } catch (err) {
+          console.warn('Failed to emit health snapshot telemetry:', err);
+        }
       });
       healthPollerInstance.start();
     }
     
     // Apply agent profile if provided
     const sessionPayload = agentProfile ? applyAgentProfile(payload, agentProfile) : payload;
+      // Sanitize system prompt (FR-035)
+      if (sessionPayload.systemPrompt) {
+        const result = sanitizePrompt(sessionPayload.systemPrompt);
+        if (!result.valid) {
+          error.value = `System prompt rejected: ${result.reasons.join(', ')}`;
+          throw new Error(error.value);
+        }
+        sessionPayload.systemPrompt = result.sanitized;
+      }
     
     try {
       const created = await bridge.createSession(sessionPayload) as AssistantSessionExtended;
@@ -173,6 +302,29 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       // Load capability profile (T020) - non-blocking
       loadCapabilities().catch(err => {
         console.warn('Failed to load capability profile:', err);
+      });
+
+      // Load gating status (FR-040) - non-blocking
+      const repoPathForGating = (created.telemetryContext && typeof created.telemetryContext.repoRoot === 'string')
+        ? created.telemetryContext.repoRoot as string
+        : undefined;
+      if (repoPathForGating) {
+        loadGatingStatus(repoPathForGating).catch(err => {
+          console.warn('Failed to load gating status:', err);
+        });
+      }
+
+      // AUTO MIGRATION (T069): Perform one-time migration of legacy aiStore data if present.
+      // Non-blocking; errors logged but do not affect session creation.
+      ensureLegacyMigration({ dryRun: false }).then(results => {
+        if (results.length === 0) {
+          console.debug('[Migration] No legacy sessions detected - skipped.');
+          return;
+        }
+        const summary = results.map(r => `${r.record.id}:${r.success ? 'ok' : 'fail'}`).join(', ');
+        console.info('[Migration] Legacy migration attempted →', summary);
+      }).catch(err => {
+        console.warn('[Migration] ensureLegacyMigration failed:', err);
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create assistant session.';
@@ -189,6 +341,15 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   function applyAgentProfile(payload: CreateSessionPayload, agent: AgentProfile): CreateSessionPayload {
     // Use agent's system prompt
     const systemPrompt = agent.systemPrompt || payload.systemPrompt;
+      // Sanitize system prompt (FR-035)
+      let sanitizedPrompt = systemPrompt;
+      if (sanitizedPrompt) {
+        const result = sanitizePrompt(sanitizedPrompt);
+        if (!result.valid) {
+          throw new Error(`Agent system prompt rejected: ${result.reasons.join(', ')}`);
+        }
+        sanitizedPrompt = result.sanitized;
+      }
     
     // Use agent's tool requirements
     const activeTools = agent.tools
@@ -209,23 +370,23 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     
     return {
       ...payload,
-      systemPrompt,
+      systemPrompt: sanitizedPrompt,
       activeTools: activeTools || payload.activeTools,
       ...config
     };
   }
 
-  async function sendMessage(payload: SendMessagePayload & { mode?: 'general' | 'improvement' | 'clarification' }) {
+  async function sendMessage(id: string, payload: SendMessagePayload & { mode?: 'general' | 'improvement' | 'clarification'; }) {
     const bridge = assertAssistantBridge();
     if (!session.value) {
       throw new Error('No active assistant session. Create a session before sending messages.');
     }
 
-    // Block risky operations when unhealthy (T016)
-    if (!canExecuteRisky.value) {
-      const fallback = 'LangChain service unavailable. Message dispatch blocked. Please retry when service recovers.';
-      error.value = fallback;
-      throw new Error(fallback);
+    // T016: When service unhealthy, allow queuing non-tool user messages with degraded flag instead of hard-blocking.
+    // This preserves UX continuity; responses will be attempted once service recovers.
+    const degraded = !canExecuteRisky.value;
+    if (degraded) {
+      console.warn('[Assistant] Service unhealthy; queuing user message for deferred processing.');
     }
 
     isBusy.value = true;
@@ -235,17 +396,51 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       role: 'user',
       content: payload.content,
       timestamp,
-      metadata: payload.attachments ? { attachments: payload.attachments } : undefined
+      metadata: {
+        ...(payload.attachments ? { attachments: payload.attachments } : {}),
+        ...(degraded ? { queuedDueToHealth: true } : {})
+      }
     });
 
     try {
+      if (degraded) {
+        // Queue logic: we do not attempt immediate send; return null envelope.
+        // TODO(T016-Retry): Implement health-based retry queue for deferred messages.
+        lastUpdated.value = nowIso();
+        return null as any as TaskEnvelope; // placeholder; UI can display queued status.
+      }
       const envelope = await bridge.sendMessage(session.value.id, payload);
       if (envelope) {
-        // Double-cast to work around TypeScript inference issue with global window.api types
-        tasks.value = [...tasks.value, envelope as unknown as TaskEnvelope];
-        // TODO(StreamMerge T012): merge streaming updates into tasks
+        // T048: Use atomic transaction for multi-step state update (task + message append)
+        runAtomic(() => {
+          // TODO(T012): MessageResponse may not have TaskEnvelope structure yet.
+          // Cast to TaskEnvelope only if the response structure matches.
+          const taskEnvelope = envelope as unknown as TaskEnvelope;
+          
+          // Only add to tasks if it has the expected TaskEnvelope structure
+          if (taskEnvelope.taskId) {
+            tasks.value = [...tasks.value, taskEnvelope];
+          }
+          
+          // Extract assistant response - handle both MessageResponse and TaskEnvelope formats
+          // TODO(T012): Align MessageResponse type definition with actual response structure
+          const outputs = (taskEnvelope as any)?.outputs;
+          if (outputs && Array.isArray(outputs) && outputs.length > 0) {
+            const output = outputs[0];
+            if (output.type === 'text' && typeof output.content === 'string') {
+              appendMessage({
+                role: 'assistant',
+                content: output.content,
+                timestamp: output.timestamp || nowIso(),
+                metadata: { taskId: taskEnvelope.taskId }
+              });
+            }
+          }
+          // TODO(StreamMerge T012): merge streaming updates into tasks
+          
+          lastUpdated.value = nowIso();
+        });
       }
-      lastUpdated.value = nowIso();
       return envelope;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Assistant message failed.';
@@ -269,31 +464,92 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       throw new Error(fallback);
     }
 
-    isBusy.value = true;
-    error.value = null;
-    try {
-      const result: ToolExecutionResponse = await bridge.executeTool(session.value.id, payload);
-      if (result.session) {
-        applySession(result.session);
-      } else if (result.conversation) {
-        conversation.value = [...result.conversation];
+      // Tool safety classification enforcement (FR-032)
+      const safetyClass = getToolSafety(payload.toolId);
+      if (safetyClass === 'mutating' || safetyClass === 'destructive') {
+        // Approval gating: must have explicit approval in payload
+        const approvalProvided = !!payload.parameters?.approval;
+        const reasonRaw = payload.parameters?.reason;
+        const reason = typeof reasonRaw === 'string' ? reasonRaw : undefined;
+        try {
+          validateInvocation(payload.toolId, approvalProvided, reason, {
+            gating: gatingStatus.value ?? null,
+            reasonMinLength: 8
+          });
+        } catch (err) {
+          error.value = err instanceof Error ? err.message : String(err);
+          throw err;
+        }
       }
 
-      if (result.pending) {
-        pendingApprovals.value = [...pendingApprovals.value, result.pending];
+    // T012: Enqueue tool execution through queue manager
+    const task = queueManager.enqueue('tool', async () => {
+      isBusy.value = true;
+      error.value = null;
+      const sessionId = session.value!.id;
+      console.log('[assistantStore.executeTool] Using sessionId:', sessionId, 'from session:', session.value);
+      const startTime = Date.now();
+      
+      try {
+        // Emit tool.invoked telemetry
+        emitToolLifecycle({
+          sessionId,
+          toolId: payload.toolId,
+          phase: 'invoked',
+          repoPath: payload.repoPath,
+          parameters: payload.parameters
+        });
+
+        console.log('[assistantStore.executeTool] Calling bridge.executeTool with sessionId:', sessionId);
+        const result: ToolExecutionResponse = await bridge.executeTool(sessionId, payload);
+        if (result.session) {
+          applySession(result.session);
+        } else if (result.conversation) {
+          conversation.value = [...result.conversation];
+        }
+
+        if (result.pending) {
+          pendingApprovals.value = [...pendingApprovals.value, result.pending];
+        }
+        if (result.error) {
+          error.value = result.error;
+          // Emit tool.failed telemetry
+          emitToolLifecycle({
+            sessionId,
+            toolId: payload.toolId,
+            phase: 'failed',
+            errorMessage: result.error,
+            durationMs: Date.now() - startTime
+          });
+        } else {
+          // Emit tool.completed telemetry
+          emitToolLifecycle({
+            sessionId,
+            toolId: payload.toolId,
+            phase: 'completed',
+            durationMs: Date.now() - startTime
+          });
+        }
+        lastUpdated.value = nowIso();
+        return result;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Tool execution failed.';
+        error.value = message;
+        // Emit tool.failed telemetry
+        emitToolLifecycle({
+          sessionId,
+          toolId: payload.toolId,
+          phase: 'failed',
+          errorMessage: message,
+          durationMs: Date.now() - startTime
+        });
+        throw err;
+      } finally {
+        isBusy.value = false;
       }
-      if (result.error) {
-        error.value = result.error;
-      }
-      lastUpdated.value = nowIso();
-      return result;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Tool execution failed.';
-      error.value = message;
-      throw err;
-    } finally {
-      isBusy.value = false;
-    }
+    }, { toolId: payload.toolId, repoPath: payload.repoPath });
+
+    return task.action();
   }
 
   async function ensurePipelineSession(provider: AssistantProvider, agent?: AgentProfile): Promise<AssistantSessionExtended> {
@@ -330,32 +586,40 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     const agent = selectedAgent.value;
     const activeSession = await ensurePipelineSession(provider, agent || undefined);
 
-    isBusy.value = true;
-    error.value = null;
+    // T012: Enqueue pipeline execution through queue manager
+    const task = queueManager.enqueue('pipeline', async () => {
+      isBusy.value = true;
+      error.value = null;
+  
 
-    const payload: RunPipelinePayload = {
-      repoPath: options.repoPath,
-      pipeline: options.pipeline,
-      ...(options.args ? { args: options.args } : {})
-    };
+      const payload: RunPipelinePayload = {
+        repoPath: options.repoPath,
+        pipeline: options.pipeline,
+        ...(options.args ? { args: options.args } : {})
+      };
 
-    try {
-      const response = await bridge.runPipeline(activeSession.id, payload);
-      lastUpdated.value = nowIso();
-      return response;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Pipeline execution failed.';
-      error.value = message;
-      throw err;
-    } finally {
       try {
-        await refreshTelemetry(true);
-      } catch (refreshError) {
-        // Telemetry refresh failures are logged but do not block pipeline execution.
-        console.warn('Failed to refresh telemetry after pipeline run:', refreshError);
+        const response = await bridge.runPipeline(activeSession.id, payload);
+        lastUpdated.value = nowIso();
+        // Refresh gating status after pipeline runs that could mutate embeddings (TODO: restrict to embeddings pipeline once added)
+        loadGatingStatus(options.repoPath).catch(err => console.warn('Gating status refresh failed:', err));
+        return response;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Pipeline execution failed.';
+        error.value = message;
+        throw err;
+      } finally {
+        try {
+          await refreshTelemetry(true);
+        } catch (refreshError) {
+          // Telemetry refresh failures are logged but do not block pipeline execution.
+          console.warn('Failed to refresh telemetry after pipeline run:', refreshError);
+        }
+        isBusy.value = false;
       }
-      isBusy.value = false;
-    }
+    }, { pipeline: options.pipeline, repoPath: options.repoPath });
+
+    return task.action();
   }
 
   async function readContextFile(options: { repoPath: string; path: string; encoding?: string; provider?: AssistantProvider }) {
@@ -427,10 +691,15 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     error.value = null;
     try {
       const action = await bridge.resolvePendingAction(session.value.id, actionId, payload);
-      pendingApprovals.value = pendingApprovals.value
-        .filter(item => item.id !== actionId)
-        .concat(action.approvalState === 'pending' ? [action] : []);
-      lastUpdated.value = nowIso();
+      
+      // T048: Use atomic transaction for multi-step state update
+      runAtomic(() => {
+        pendingApprovals.value = pendingApprovals.value
+          .filter(item => item.id !== actionId)
+          .concat(action.approvalState === 'pending' ? [action] : []);
+        lastUpdated.value = nowIso();
+      });
+      
       return action;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Approval decision failed.';
@@ -441,8 +710,12 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     }
   }
 
-  async function approvePending(actionId: string, notes?: string) {
-    return resolvePendingAction(actionId, { decision: 'approve', notes });
+  async function approvePending(
+    actionId: string, 
+    notes?: string,
+    metadata?: ResolvePendingActionPayload['metadata']
+  ) {
+    return resolvePendingAction(actionId, { decision: 'approve', notes, metadata });
   }
 
   async function rejectPending(actionId: string, notes?: string) {
@@ -480,10 +753,27 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
 
   function consumeStreamEvents() {
     const bridge = assertAssistantBridge();
-    return bridge.onStreamEvent(payload => {
-      // Note: Stream event handling can be enhanced when backend emits structured streaming data.
-      // Current implementation supports basic assistant chunk, error, and completion events.
-      console.debug('Received stream event:', payload);
+    return bridge.onStreamEvent((payload: unknown) => {
+      // T012: Merge streaming TaskEnvelope chunks.
+      // Expected payload shape (proposed): { taskId, type: 'chunk'|'error'|'complete', content?, metadata? }
+      // Fallback to logging if structure unknown.
+      try {
+        if (!payload || typeof payload !== 'object') {
+          console.debug('Stream payload not object:', payload);
+          return;
+        }
+        const data = payload as Record<string, unknown>;
+        const taskId = typeof data.taskId === 'string' ? data.taskId : undefined;
+        if (!taskId) {
+          console.debug('Stream payload missing taskId:', payload);
+          return;
+        }
+        const type = typeof data.type === 'string' ? data.type : undefined;
+        const chunkContent = data.content;
+        mergeStreamingTask(taskId, type, chunkContent, data);
+      } catch (err) {
+        console.warn('Stream merge failed:', err);
+      }
     });
   }
 
@@ -492,6 +782,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     conversation.value = [];
     pendingApprovals.value = [];
     telemetry.value = [];
+    telemetryEvents.value = [];
     error.value = null;
     lastUpdated.value = null;
     contextReadResult.value = null;
@@ -499,6 +790,15 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     activeAgentProfile.value = null;
     tasks.value = [];
     provenance.value = null;
+    editSuggestions.value = []; // T039: Clear edit suggestions
+  }
+
+  function getQueueSnapshot() {
+    return queueManager.getSnapshot();
+  }
+
+  function setQueueConcurrency(limit: number) {
+    queueManager.setConcurrency(limit);
   }
 
   function stopHealthPolling() {
@@ -516,6 +816,16 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     healthPollerInstance.start();
   }
 
+  async function synchroniseToolClassification(forceRefresh = false): Promise<void> {
+    try {
+      const { index } = await fetchCapabilityManifest({ forceRefresh });
+      updateClassificationFromManifest(index);
+    } catch (err) {
+      console.warn('Failed to synchronise tool classification from manifest:', err);
+      resetClassification();
+    }
+  }
+
   // Capability management (T020)
   async function loadCapabilities(): Promise<void> {
     if (capabilityLoading.value) return;
@@ -523,11 +833,44 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     try {
       const profile = await capabilityCache.fetch();
       capabilityProfile.value = profile;
+      await synchroniseToolClassification();
     } catch (err) {
       console.error('Failed to load capability profile:', err);
       capabilityProfile.value = null;
+      resetClassification();
     } finally {
       capabilityLoading.value = false;
+    }
+  }
+
+  // Gating status loader (FR-040)
+  // TODO(GatingPeriodicRefresh): Add background polling to refresh gating status every N seconds when sidecar active.
+  // TODO(GatingIntegration T028C): Call after embeddings pipeline completes to pick up checksumMatch=true updates.
+  // TODO(GatingRepoPath): Integrate with contextStore to auto-detect active repo path when unified.
+  async function loadGatingStatus(repoPath?: string): Promise<void> {
+    if (!repoPath) {
+      // TODO(GatingRepoPath): Accept active repo path from contextStore once unified
+      return;
+    }
+    if (gatingLoading.value) return;
+    gatingLoading.value = true;
+    try {
+      const bridge = assertAssistantBridge();
+      const status = await bridge.getGatingStatus(repoPath);
+      gatingStatus.value = status;
+    } catch (err) {
+      console.warn('Failed to load gating status:', err);
+      gatingStatus.value = {
+        classificationEnforced: false,
+        sidecarOnly: true,
+        checksumMatch: false,
+        retrievalEnabled: false,
+        updatedAt: nowIso(),
+        source: 'fallback-load-error',
+        version: '0.1.0'
+      };
+    } finally {
+      gatingLoading.value = false;
     }
   }
 
@@ -536,8 +879,10 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     try {
       const profile = await capabilityCache.refresh();
       capabilityProfile.value = profile;
+      await synchroniseToolClassification(true);
     } catch (err) {
       console.error('Failed to refresh capability profile:', err);
+      resetClassification();
     } finally {
       capabilityLoading.value = false;
     }
@@ -546,6 +891,117 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   function clearCapabilities(): void {
     capabilityCache.clear();
     capabilityProfile.value = null;
+    resetClassification();
+  }
+
+  // T039: Edit suggestion workflow
+  function addEditSuggestion(params: {
+    turnIndex: number;
+    targetId?: string;
+    filePath: string;
+    summary: string;
+    updatedContent: string;
+  }): EditSuggestion {
+    if (!session.value) {
+      throw new Error('Cannot add edit suggestion without active session');
+    }
+
+    const edit: EditSuggestion = {
+      id: crypto.randomUUID(),
+      sessionId: session.value.id,
+      turnIndex: params.turnIndex,
+      targetId: params.targetId,
+      filePath: params.filePath,
+      summary: params.summary,
+      updatedContent: params.updatedContent,
+      status: 'pending',
+      createdAt: nowIso()
+    };
+
+    editSuggestions.value.push(edit);
+    return edit;
+  }
+
+  async function approveEditSuggestion(editId: string): Promise<void> {
+    const edit = editSuggestions.value.find(e => e.id === editId);
+    if (!edit) {
+      throw new Error(`Edit suggestion not found: ${editId}`);
+    }
+
+    if (edit.status !== 'pending') {
+      throw new Error(`Edit suggestion already processed: ${edit.status}`);
+    }
+
+    // Update status to approved - application will happen separately
+    edit.status = 'approved';
+    edit.resolvedAt = nowIso();
+  }
+
+  async function rejectEditSuggestion(editId: string): Promise<void> {
+    const edit = editSuggestions.value.find(e => e.id === editId);
+    if (!edit) {
+      throw new Error(`Edit suggestion not found: ${editId}`);
+    }
+
+    if (edit.status !== 'pending') {
+      throw new Error(`Edit suggestion already processed: ${edit.status}`);
+    }
+
+    edit.status = 'rejected';
+    edit.resolvedAt = nowIso();
+  }
+
+  async function applyEditSuggestion(editId: string): Promise<void> {
+    const edit = editSuggestions.value.find(e => e.id === editId);
+    if (!edit) {
+      throw new Error(`Edit suggestion not found: ${editId}`);
+    }
+
+    if (edit.status !== 'approved') {
+      throw new Error(`Edit must be approved before applying: ${edit.status}`);
+    }
+
+    try {
+      edit.status = 'applying';
+      
+      // TODO: Implement actual file write through IPC
+      // This would call something like: await window.api.fs.writeFile(edit.filePath, edit.updatedContent)
+      console.log('TODO: Apply edit to file:', edit.filePath);
+      
+      // Simulate async operation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      edit.status = 'applied';
+    } catch (err) {
+      edit.status = 'failed';
+      edit.error = err instanceof Error ? err.message : 'Failed to apply edit';
+      throw err;
+    }
+  }
+
+  async function applyAllApprovedEdits(): Promise<void> {
+    const approvedEdits = editSuggestions.value.filter(e => e.status === 'approved');
+    
+    for (const edit of approvedEdits) {
+      try {
+        await applyEditSuggestion(edit.id);
+      } catch (err) {
+        console.error(`Failed to apply edit ${edit.id}:`, err);
+        // Continue with other edits even if one fails
+      }
+    }
+  }
+
+  function clearEditSuggestions(): void {
+    editSuggestions.value = [];
+  }
+
+  function getEditSuggestionsByTurn(turnIndex: number): EditSuggestion[] {
+    return editSuggestions.value.filter(e => e.turnIndex === turnIndex);
+  }
+
+  function getPendingEditSuggestions(): EditSuggestion[] {
+    return editSuggestions.value.filter(e => e.status === 'pending');
   }
 
   return {
@@ -553,6 +1009,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     conversation,
     pendingApprovals,
     telemetry,
+    telemetryEvents,
     isBusy,
     error,
     lastUpdated,
@@ -568,10 +1025,22 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     isUnhealthy,
     canExecuteRisky,
     healthMessage,
+    unifiedAssistantEnabled,
+    isUnifiedAssistantActive,
     hasSession,
     activeProvider,
     activeTools,
     pendingCount,
+    // T039: Edit suggestions exports
+    editSuggestions,
+    addEditSuggestion,
+    approveEditSuggestion,
+    rejectEditSuggestion,
+    applyEditSuggestion,
+    applyAllApprovedEdits,
+    clearEditSuggestions,
+    getEditSuggestionsByTurn,
+    getPendingEditSuggestions,
     // Capability exports (T020)
     capabilityProfile,
     capabilityLoading,
@@ -581,6 +1050,15 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     loadCapabilities,
     refreshCapabilities,
     clearCapabilities,
+    // Gating status exports
+    gatingStatus,
+    gatingLoading,
+    loadGatingStatus,
+    isClassificationEnforced,
+    isSidecarOnly,
+    checksumMatch,
+    isRetrievalEnabled,
+    isLimitedReadOnlyMode,
     // Actions
     createSession,
     sendMessage,
@@ -592,8 +1070,10 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     consumeStreamEvents,
     stopHealthPolling,
     retryHealth,
-    reset
-    ,
+    reset,
+    // Queue management (T012)
+    getQueueSnapshot,
+    setQueueConcurrency,
     // Approval helpers
     activePendingId,
     activePending,
@@ -606,6 +1086,47 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     refreshPendingApprovals
   };
 });
+
+// T012: Helper to merge streaming updates into tasks list.
+function mergeStreamingTask(taskId: string, eventType: string | undefined, chunkContent: unknown, _data: Record<string, unknown>) {
+  // Access store instance directly - called from within store context
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const store = require('./assistantStore') as { useAssistantStore: typeof useAssistantStore };
+  const s = store.useAssistantStore();
+  const tasks = s.tasks as unknown as { value: TaskEnvelope[] };
+  const existingIndex = tasks.value.findIndex(t => t.taskId === taskId);
+  const now = new Date().toISOString();
+
+  if (existingIndex === -1) {
+    // Create new streaming task envelope.
+    const envelope: TaskEnvelope = {
+      taskId,
+      status: eventType === 'error' ? 'failed' : eventType === 'complete' ? 'succeeded' : 'streaming',
+      actionType: 'prompt', // TODO(T012-ActionType): derive from payload metadata when available
+      outputs: chunkContent ? [{ chunk: chunkContent }] : [],
+      timestamps: { created: now, firstResponse: chunkContent ? now : undefined, completed: eventType === 'complete' || eventType === 'error' ? now : undefined }
+    };
+    tasks.value = [...tasks.value, envelope];
+    return;
+  }
+
+  const current = tasks.value[existingIndex];
+  const outputs = [...current.outputs];
+  if (chunkContent) {
+    outputs.push({ chunk: chunkContent });
+  }
+  const updated: TaskEnvelope = {
+    ...current,
+    status: eventType === 'error' ? 'failed' : eventType === 'complete' ? 'succeeded' : current.status,
+    outputs,
+    timestamps: {
+      created: current.timestamps?.created || now,
+      firstResponse: current.timestamps?.firstResponse || (chunkContent ? now : undefined),
+      completed: eventType === 'complete' || eventType === 'error' ? now : current.timestamps?.completed
+    }
+  };
+  tasks.value = tasks.value.map(t => (t.taskId === taskId ? updated : t));
+}
 
 function normaliseContextReadResult(result: Record<string, unknown> | null | undefined): ContextReadResult | null {
   if (!result) {

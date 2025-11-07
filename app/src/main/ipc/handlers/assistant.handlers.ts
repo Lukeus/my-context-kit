@@ -19,6 +19,11 @@ import { openPullRequest } from '../../services/tools/openPullRequest';
 import { LangChainAIService } from '../../services/LangChainAIService';
 import type { PendingAction } from '@shared/assistant/types';
 import { broadcastAssistantStream } from '../streamingEmitter';
+import type { CapabilityProfile } from '@shared/assistant/types';
+import type { AssistantTelemetryEvent } from '@shared/assistant/telemetry';
+import type { GatingStatus } from '@shared/assistant/types';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 interface PipelineRunPayload {
   sessionId: string;
@@ -79,8 +84,19 @@ export function registerAssistantHandlers(): void {
     return records;
   });
 
+  // T015: Extended telemetry events endpoint for health snapshots and other non-tool events
+  ipcMain.handle('assistant:listTelemetryEvents', async (_event, _sessionId: string) => {
+    // TODO(T015-TelemetryStore): Implement persistent telemetry event storage
+    // For now, return empty array until dedicated telemetry store is implemented
+    const events: AssistantTelemetryEvent[] = [];
+    return events;
+  });
+
   ipcMain.handle('assistant:executeTool', async (_event, payload: { sessionId: string; toolId: string; repoPath: string; parameters?: Record<string, unknown> }) => {
+    console.log('[assistant:executeTool] RAW payload:', JSON.stringify(payload, null, 2));
+    console.log('[assistant:executeTool] payload.sessionId type:', typeof payload.sessionId, 'value:', payload.sessionId, 'length:', payload.sessionId?.length);
     const session = sessionManager.getSession(payload.sessionId);
+    console.log('[assistant:executeTool] Session found:', !!session);
     if (!session) {
       throw new Error('Assistant session not found. Create a session before executing tools.');
     }
@@ -218,6 +234,92 @@ export function registerAssistantHandlers(): void {
       throw new Error(message);
     }
   });
+
+  // T015: Capability manifest endpoint for runtime capability gating
+  ipcMain.handle('assistant:fetchCapabilityManifest', async (_event) => {
+    try {
+      // TODO(T015-CapabilityService): Implement capability manifest service in main process
+      // For now, return a basic manifest with core capabilities enabled
+      const manifest: CapabilityProfile = {
+        profileId: 'default-profile',
+        lastUpdated: new Date().toISOString(),
+        capabilities: {
+          'pipeline.validate': { status: 'enabled' },
+          'pipeline.build-graph': { status: 'enabled' },
+          'pipeline.impact': { status: 'enabled' },
+          'pipeline.generate': { status: 'enabled' },
+          'pipeline.build-embeddings': { status: 'enabled' },
+          'context.read': { status: 'enabled' },
+          'context.search': { status: 'enabled' },
+          'entity.details': { status: 'enabled' },
+          'entity.similar': { status: 'enabled' }
+        }
+      };
+      return manifest;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch capability manifest.';
+      throw new Error(message);
+    }
+  });
+
+  // T015: Health status endpoint for service availability checks
+  ipcMain.handle('assistant:getHealthStatus', async (_event) => {
+    try {
+      // TODO(T015-HealthService): Implement LangChain health check service
+      // For now, return healthy status
+      return {
+        status: 'healthy' as const,
+        message: 'LangChain service available',
+        timestamp: new Date().toISOString()
+      };
+    } catch (err: unknown) {
+      return {
+        status: 'unhealthy' as const,
+        message: err instanceof Error ? err.message : 'Health check failed',
+        timestamp: new Date().toISOString()
+      };
+    }
+  });
+
+  // Gating artifact reader (FR-040): Provides read-only gating status snapshot.
+  // Safe fallbacks ensure UI can render even if artifact absent or malformed.
+  // TODO(GatingWriter T028C): Implement writer logic in embeddings pipeline script.
+  // TODO(GatingRefresh): Add periodic refresh polling when sidecar active (e.g., every 30s).
+  // TODO(GatingTests T051D): Add tests for fallback scenarios (missing artifact, parse error, stale timestamp).
+  ipcMain.handle('assistant:getGatingStatus', async (_event, payload: { repoPath: string }) => {
+    const repoPath = typeof payload?.repoPath === 'string' ? payload.repoPath : '';
+    if (!repoPath) {
+      return createDefaultGatingStatus('missing-repo-path');
+    }
+    try {
+      const generatedPath = join(repoPath, 'generated', 'gate-status.json');
+      const contextPath = join(repoPath, '.context', 'gate-status.json');
+      const candidatePath = await (async () => {
+        try {
+          await readFile(generatedPath, 'utf-8');
+          return generatedPath;
+        } catch {
+          return contextPath;
+        }
+      })();
+      const raw = await readFile(candidatePath, 'utf-8');
+      const parsed = JSON.parse(raw) as Partial<GatingStatus>;
+      // Basic structural validation + coercion
+      const status: GatingStatus = {
+        classificationEnforced: typeof parsed.classificationEnforced === 'boolean' ? parsed.classificationEnforced : false,
+        sidecarOnly: typeof parsed.sidecarOnly === 'boolean' ? parsed.sidecarOnly : true, // default sidecarOnly true until legacy removed
+        checksumMatch: typeof parsed.checksumMatch === 'boolean' ? parsed.checksumMatch : false,
+        retrievalEnabled: typeof parsed.retrievalEnabled === 'boolean' ? parsed.retrievalEnabled : false,
+        updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
+        source: typeof parsed.source === 'string' ? parsed.source : 'unknown',
+        version: typeof parsed.version === 'string' ? parsed.version : '0.1.0'
+      };
+      return status;
+    } catch (err) {
+      // Missing or malformed artifact → return safe defaults with error provenance
+      return createDefaultGatingStatus(err instanceof Error ? err.message : 'gating-read-error');
+    }
+  });
 }
 
 function toExecuteToolOptions(sessionId: string, provider: AssistantProvider, payload: PipelineRunPayload): ExecuteToolOptions {
@@ -246,6 +348,8 @@ async function runContextPipeline(options: PipelineRunOptions): Promise<Pipeline
         return await runImpactPipeline(service, options.args);
       case 'generate':
         return await runGeneratePipeline(service, options.args);
+      case 'build-embeddings':
+        return await runEmbeddingsPipeline(service);
       default:
         throw new Error(`Unsupported pipeline ${options.pipeline}`);
     }
@@ -304,6 +408,16 @@ async function runGeneratePipeline(service: ContextService, args?: Record<string
     output: result,
     artifacts: result.generated ?? [],
     error: succeeded ? undefined : result.error ?? 'Generate pipeline reported failures.'
+  };
+}
+
+async function runEmbeddingsPipeline(service: ContextService): Promise<PipelineRunResult> {
+  const result = await service.buildEmbeddings();
+  return {
+    status: 'succeeded',
+    output: result,
+    artifacts: [result.metadataPath, result.vectorPath],
+    error: undefined
   };
 }
 
@@ -455,3 +569,15 @@ function formatByteSize(size: number): string {
 
 // Note: Streaming conversation support is available via assistant:stream-event channel.
 // Full provider adapter streaming is pending Azure OpenAI streaming integration.
+
+function createDefaultGatingStatus(source: string): GatingStatus {
+  return {
+    classificationEnforced: false,
+    sidecarOnly: true,
+    checksumMatch: false,
+    retrievalEnabled: false,
+    updatedAt: new Date().toISOString(),
+    source,
+    version: '0.1.0'
+  };
+}

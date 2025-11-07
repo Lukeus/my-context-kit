@@ -109,6 +109,11 @@ function entryTimestamp(entry: ConversationTurn): string {
   }
   return entry.timestamp;
 }
+
+function isQueued(entry: ConversationTurn): boolean {
+  const meta = entry.metadata;
+  return !!(meta && typeof meta === 'object' && (meta as Record<string, unknown>).queuedDueToHealth);
+}
 </script>
 
 <template>
@@ -132,7 +137,14 @@ function entryTimestamp(entry: ConversationTurn): string {
         class="border border-surface-variant rounded-m3-md bg-white shadow-elevation-1 divide-y divide-surface-variant"
       >
         <div class="px-4 py-2 flex items-center justify-between bg-surface-2">
-          <span class="text-[11px] font-semibold text-secondary-700">{{ roleLabel(entry.role) }}</span>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-semibold text-secondary-700">{{ roleLabel(entry.role) }}</span>
+            <span
+              v-if="isQueued(entry)"
+              class="text-[10px] px-1.5 py-0.5 rounded-full bg-warning-container text-on-warning-container font-medium"
+              title="Queued due to service health degradation; will resend automatically when healthy."
+            >Queued</span>
+          </div>
           <span class="text-[10px] text-secondary-500">{{ formatTimestamp(entryTimestamp(entry)) }}</span>
         </div>
         <div class="px-4 py-3 space-y-2">

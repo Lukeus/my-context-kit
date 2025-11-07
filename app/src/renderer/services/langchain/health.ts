@@ -50,17 +50,21 @@ export class LangChainHealthPoller {
     this.maxInterval = options.maxIntervalMs ?? 60000; // 60s cap
     this.initialDelay = options.initialDelayMs ?? 0;
     this.currentInterval = this.baseInterval;
-    this.fetchFn = options.fetchFn ?? fetch;
+    // Bind fetch to window to preserve 'this' context
+    this.fetchFn = options.fetchFn ?? fetch.bind(window);
   }
 
   start(): void {
     if (this.running) return;
     this.running = true;
-    if (this.initialDelay > 0) {
-      this.timer = setTimeout(() => this.scheduleNext(), this.initialDelay);
-    } else {
-      this.scheduleNext();
-    }
+    // Poll immediately on start, then schedule next
+    void this.pollOnce().then(() => {
+      if (this.initialDelay > 0) {
+        this.timer = setTimeout(() => this.scheduleNext(), this.initialDelay);
+      } else {
+        this.scheduleNext();
+      }
+    });
   }
 
   stop(): void {
@@ -104,12 +108,15 @@ export class LangChainHealthPoller {
       if (res.ok) {
         raw = await res.json();
         ok = true;
+        console.log('[HealthPoller] Raw health response:', JSON.stringify(raw, null, 2));
       }
-    } catch {
+    } catch (err) {
       // network failure treated as unhealthy
+      console.error('[HealthPoller] Health check failed:', err);
     }
 
     const normalised = this.normalise(raw, ok, latency);
+    console.log('[HealthPoller] Normalised health:', normalised);
     this.lastHealth = normalised;
     this.emit(normalised);
 
