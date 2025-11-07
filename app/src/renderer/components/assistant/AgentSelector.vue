@@ -87,29 +87,29 @@ function closeDropdown() {
 </script>
 
 <template>
-  <div class="relative">
+  <div class="relative inline-block w-[220px] max-w-[220px]">
     <!-- Selector Button -->
     <button
       ref="buttonRef"
-      class="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm border border-surface-variant rounded-m3-md bg-surface-1 hover:bg-surface-2 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+      class="flex items-center justify-between gap-2 px-3 py-1.5 text-xs border border-surface-variant rounded-m3-md bg-surface-1 hover:bg-surface-2 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 w-full max-w-full overflow-hidden"
       :class="{ 'border-primary-500': showDropdown }"
       :disabled="isLoading"
       @click="toggleDropdown"
     >
-      <div class="flex items-center gap-2 flex-1 min-w-0">
+      <div class="flex items-center gap-2 flex-shrink-0">
         <span v-if="selectedAgent?.metadata.icon" class="text-lg flex-shrink-0">
           {{ selectedAgent.metadata.icon }}
         </span>
         <span v-else class="flex-shrink-0 text-secondary-500">🤖</span>
         
-        <div class="flex-1 text-left min-w-0">
+        <div class="flex-1 text-left min-w-0 overflow-hidden">
           <div class="font-medium text-secondary-900 truncate">
             {{ selectedAgent?.metadata.name ?? (contextStore.repoPath ? 'Select Agent' : 'Configure Repository') }}
           </div>
-          <div v-if="selectedAgent" class="text-[11px] text-secondary-600 truncate">
+          <div v-if="selectedAgent" class="text-[11px] text-secondary-600 truncate hidden sm:block">
             {{ selectedAgent.metadata.description }}
           </div>
-          <div v-else-if="!contextStore.repoPath" class="text-[11px] text-secondary-500 truncate">
+          <div v-else-if="!contextStore.repoPath" class="text-[11px] text-secondary-500 truncate hidden sm:block">
             Set up a repository first
           </div>
         </div>
@@ -291,3 +291,5 @@ function closeDropdown() {
   transform: translateY(-4px);
 }
 </style>
+
+<!-- TODO(AgentSelector-Responsive): Make width adaptive based on available header space and breakpoints; consider collapsing description on very narrow widths. -->

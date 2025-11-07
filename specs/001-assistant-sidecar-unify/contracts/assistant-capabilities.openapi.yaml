@@ -1,0 +1,49 @@
+openapi: 3.1.0
+info:
+  title: Assistant Capability Manifest API
+  version: 0.1.0
+paths:
+  /capabilities/manifest:
+    get:
+      summary: Retrieve capability manifest
+      operationId: getCapabilityManifest
+      responses:
+        '200':
+          description: Capability manifest retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityManifest'
+  /capabilities/manifest/refresh:
+    post:
+      summary: Force refresh of capability manifest
+      operationId: refreshCapabilityManifest
+      responses:
+        '200':
+          description: Manifest refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityManifest'
+components:
+  schemas:
+    CapabilityManifest:
+      type: object
+      properties:
+        version: { type: string }
+        supportedTools: { type: array, items: { type: string } }
+        unsupportedTools: { type: array, items: { type: string } }
+        providerCapabilities:
+          type: array
+          items:
+            type: object
+            properties:
+              provider: { type: string }
+              streaming: { type: boolean }
+              tools: { type: array, items: { type: string } }
+              embeddings: { type: boolean }
+              tokenMetadata: { type: boolean }
+              limitedMode: { type: boolean }
+            required: [provider, streaming, tools, embeddings, tokenMetadata, limitedMode]
+        generatedAt: { type: string, format: date-time }
+      required: [version, supportedTools, providerCapabilities, generatedAt]

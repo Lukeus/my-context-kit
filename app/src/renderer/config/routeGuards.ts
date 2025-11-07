@@ -30,7 +30,7 @@ export const requiresEntity: RouteGuard = async () => {
 /**
  * Guard that checks if user has specific permissions
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export const requiresPermissions = (_permissions: string[]): RouteGuard => {
   return async () => {
     // Note: Permission checking requires integration with CONST-CTX-SYNC governance model.

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useAIStore } from '../stores/aiStore';
 import { useContextStore } from '../stores/contextStore';
+import { ModalHeader } from './shared';
 
 type AssistantMode = 'improvement' | 'clarification' | 'general';
 
@@ -10,7 +11,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits<{ close: []; 'open-settings': [] }>();
+const emit = defineEmits<{ close: []; 'open-settings': []; 'open-unified': [] }>();
 
 const aiStore = useAIStore();
 const contextStore = useContextStore();
@@ -18,6 +19,8 @@ const contextStore = useContextStore();
 const question = ref('');
 const mode = ref<AssistantMode>('general');
 const focusActive = ref(false);
+// T045: Deprecation notice state
+const showDeprecationNotice = ref(true);
 
 const activeEntity = computed(() => contextStore.activeEntity);
 const canFocusActive = computed(() => Boolean(contextStore.activeEntityId));
@@ -34,6 +37,8 @@ function resetComposer() {
 watch(() => props.show, async (visible) => {
   if (visible) {
     await aiStore.initialize();
+    // T045: Show deprecation notice when modal opens
+    showDeprecationNotice.value = true;
   }
   resetComposer();
 });
@@ -93,50 +98,36 @@ function openSettings() {
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div
-        v-if="show"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      >
+      <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-[960px] max-w-[95vw] max-h-[92vh] flex flex-col border border-surface-variant">
-          <!-- Header -->
-          <div class="px-6 py-5 border-b border-surface-variant bg-surface-2 flex items-center justify-between">
-            <div>
-              <h2 class="text-xl font-semibold text-secondary-900">Context Assistant</h2>
-              <p class="text-sm text-secondary-600 mt-1">Grounded suggestions and clarifications from the entire repository snapshot.</p>
+          <!-- T045: Deprecation Notice -->
+          <div v-if="showDeprecationNotice" class="px-4 py-3 bg-warning-container border-b border-warning flex items-start justify-between" role="alert">
+            <div class="flex items-start gap-3">
+              <span class="text-2xl">⚠️</span>
+              <div class="flex-1">
+                <p class="text-sm font-semibold text-on-warning-container">This assistant interface is deprecated</p>
+                <p class="text-xs text-on-warning-container mt-1">Please use the new Unified Assistant for better performance, streaming support, and enhanced features.</p>
+                <button class="mt-2 text-xs px-3 py-1 rounded-m3-sm bg-warning text-on-warning hover:bg-warning/80 transition-colors" @click="emit('open-unified')">Switch to Unified Assistant</button>
+              </div>
             </div>
-            <div class="flex items-center gap-2">
-              <button
-                class="p-2 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors"
-                title="AI Settings"
-                @click.stop="openSettings"
-              >
+            <button class="p-1 text-on-warning-container hover:bg-warning/20 rounded" aria-label="Dismiss deprecation notice" @click="showDeprecationNotice = false">✕</button>
+          </div>
+
+          <!-- Header -->
+          <ModalHeader
+            title="Context Assistant"
+            subtitle="Grounded suggestions and clarifications from the entire repository snapshot."
+            variant="modal"
+            @close="closeModal"
+          >
+            <template #actions>
+              <button class="p-2 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50" title="AI Settings" aria-label="Open AI settings" @click.stop="openSettings">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 6.75a.75.75 0 011.5 0v.61a5.001 5.001 0 012.757 1.633l.432-.249a.75.75 0 11.75 1.299l-.432.249c.098.396.148.81.148 1.233s-.05.837-.148 1.233l.432.249a.75.75 0 11-.75 1.299l-.432-.249A5.001 5.001 0 0112.75 16.64v.61a.75.75 0 01-1.5 0v-.61a5.001 5.001 0 01-2.757-1.633l-.432.249a.75.75 0 01-.75-1.299l.432-.249A5.008 5.008 0 017.25 12c0-.423.05-.837.148-1.233l-.432-.249a.75.75 0 01.75-1.299l.432.249A5.001 5.001 0 0111.25 7.36v-.61zM12 9.75A2.25 2.25 0 1014.25 12 2.253 2.253 0 0012 9.75z" />
                 </svg>
               </button>
-              <button
-                class="p-2 rounded-m3-md text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 transition-colors"
-                title="Close assistant"
-                @click.stop="closeModal"
-              >
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <!-- Error banner -->
-          <div v-if="aiStore.error" class="mx-6 mt-4 mb-2 bg-error-50 border border-error-200 rounded-m3-md px-4 py-3 flex items-start gap-3">
-            <svg class="w-5 h-5 text-error-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-            <div class="flex-1">
-              <p class="text-sm text-error-700 font-medium">{{ aiStore.error }}</p>
-              <button
-                class="mt-2 text-xs text-error-600 hover:text-error-800 underline"
-                @click="aiStore.acknowledgeError()"
-              >Dismiss</button>
-            </div>
-          </div>
+            </template>
+          </ModalHeader>
 
           <!-- Conversation -->
           <div class="flex-1 overflow-y-auto px-6 py-5 space-y-4 bg-surface">
@@ -148,7 +139,6 @@ function openSettings() {
                 <li>"Clarify how <span class="font-mono">FEAT-001</span> impacts services and packages."</li>
               </ul>
             </div>
-
             <div
               v-for="message in aiStore.conversation"
               :key="message.id"
@@ -168,9 +158,7 @@ function openSettings() {
                 </div>
                 <span class="text-[10px] text-secondary-400 uppercase tracking-wide">{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
               </div>
-
               <p class="text-sm text-secondary-900 leading-relaxed whitespace-pre-wrap">{{ message.content }}</p>
-
               <div v-if="message.suggestions && message.suggestions.length" class="mt-3">
                 <h4 class="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">Improvement ideas</h4>
                 <ul class="space-y-1">
@@ -187,7 +175,6 @@ function openSettings() {
                   </li>
                 </ul>
               </div>
-
               <div v-if="message.clarifications && message.clarifications.length" class="mt-3">
                 <h4 class="text-xs font-semibold text-tertiary-800 uppercase tracking-wide mb-1">Clarifications needed</h4>
                 <ul class="space-y-1">
@@ -198,7 +185,6 @@ function openSettings() {
                   >{{ item }}</li>
                 </ul>
               </div>
-
               <div v-if="message.followUps && message.followUps.length" class="mt-3">
                 <h4 class="text-xs font-semibold text-secondary-700 uppercase tracking-wide mb-1">Suggested follow-ups</h4>
                 <ul class="space-y-1">
@@ -209,7 +195,6 @@ function openSettings() {
                   >{{ item }}</li>
                 </ul>
               </div>
-
               <div v-if="message.references && message.references.length" class="mt-3 flex flex-wrap gap-2">
                 <span
                   v-for="(reference, index) in message.references"
@@ -219,7 +204,6 @@ function openSettings() {
                 >{{ reference.type }} · {{ reference.id }}</span>
               </div>
             </div>
-
             <div v-if="aiStore.isLoading" class="flex items-center gap-2 text-sm text-secondary-600">
               <span class="inline-block animate-spin rounded-m3-md-full h-4 w-4 border-2 border-secondary-300 border-t-secondary-600"></span>
               Thinking through the repository snapshot...
@@ -230,92 +214,110 @@ function openSettings() {
           <div class="border-t border-surface-variant bg-surface-2 px-6 py-5 space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-2 bg-surface-3 border border-surface-variant rounded-m3-md px-2 py-1">
-                <button
-                  v-for="option in ['general', 'improvement', 'clarification']"
-                  :key="option"
-                  class="px-3 py-1 text-xs font-medium rounded-m3-md transition-colors"
-                  :class="mode === option ? 'bg-primary-600 text-white shadow-elevation-1' : 'text-secondary-700 hover:bg-surface-4'"
-                  @click="mode = option as AssistantMode"
-                >{{ option }}</button>
+                <button class="text-xs px-2 py-1 rounded-m3-sm bg-primary-50 hover:bg-primary-100 text-primary-700 font-medium" @click="quickPrompt('improvement')">Suggest Improvements</button>
+                <button class="text-xs px-2 py-1 rounded-m3-sm bg-tertiary-50 hover:bg-tertiary-100 text-tertiary-700 font-medium" @click="quickPrompt('clarification')">Request Clarification</button>
               </div>
-              <label class="flex items-center gap-2 text-xs text-secondary-700">
-                <input
-                  type="checkbox"
-                  class="h-4 w-4 rounded-m3-md border-surface-variant text-primary-600 focus:ring-primary-400"
-                  v-model="focusActive"
-                  :disabled="!canFocusActive"
-                />
-                <span>
-                  Focus on {{ canFocusActive ? activeEntity?.id : 'active entity (select one)' }}
-                </span>
-              </label>
-            </div>
-
-            <textarea
-              v-model="question"
-              rows="3"
-              class="w-full px-4 py-3 bg-surface-1 border border-surface-variant rounded-m3-md text-sm text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-elevation-1"
-              placeholder="Ask for improvements or clarifications across the context repository..."
-              @keydown="handleKeydown"
-            ></textarea>
-
-            <div class="flex items-center justify-between gap-3 flex-wrap">
-              <div class="flex items-center gap-2 text-xs text-secondary-600">
-                <button
-                  class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-md border border-surface-variant transition-colors"
-                  @click="quickPrompt('improvement')"
-                >Suggest improvements</button>
-                <button
-                  class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 rounded-m3-md border border-surface-variant transition-colors"
-                  @click="quickPrompt('clarification')"
-                >Ask for clarifications</button>
-              </div>
-              <div class="flex items-center gap-2">
-                <button
-                  class="px-3 py-2 text-xs text-secondary-600 hover:text-secondary-900 hover:bg-surface-3 rounded-m3-md"
-                  @click="aiStore.clearConversation()"
-                >Clear conversation</button>
-                <button
-                  class="px-5 py-2.5 text-sm font-medium bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white rounded-m3-md transition-all shadow-elevation-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  :disabled="isSendDisabled"
-                  @click="sendQuestion"
-                >
-                  {{ aiStore.isLoading ? 'Sending…' : 'Send (Ctrl+Enter)' }}
-                </button>
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1 text-xs text-secondary-700">
+                  <input type="checkbox" v-model="focusActive" :disabled="!canFocusActive" />
+                  <span>Focus active</span>
+                </label>
+                <select v-model="mode" class="text-xs px-2 py-1 border border-surface-variant rounded-m3-md bg-surface-1">
+                  <option value="general">General</option>
+                  <option value="improvement">Improvement</option>
+                  <option value="clarification">Clarification</option>
+                </select>
               </div>
             </div>
-
-            <div v-if="aiStore.usageHistory.length" class="text-[10px] text-secondary-500">
-              Last response: {{ aiStore.usageHistory[aiStore.usageHistory.length - 1].totalTokens }} tokens • prompt {{ aiStore.usageHistory[aiStore.usageHistory.length - 1].promptTokens }}, completion {{ aiStore.usageHistory[aiStore.usageHistory.length - 1].completionTokens }}
+            <div>
+              <textarea
+                v-model="question"
+                @keydown="handleKeydown"
+                rows="3"
+                class="w-full text-sm px-3 py-2 border border-surface-variant rounded-m3-md bg-surface-1 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                placeholder="Ask for guidance, improvements, or clarifications... (Ctrl+Enter to send)"
+              />
+            </div>
+            <div class="flex items-center justify-end gap-3">
+              <button class="px-4 py-2 rounded-m3-md text-sm bg-surface-variant hover:bg-surface-variant/80 text-secondary-800" @click="closeModal">Close</button>
+              <button class="px-4 py-2 rounded-m3-md text-sm bg-primary text-on-primary hover:bg-primary/90 disabled:opacity-50" :disabled="isSendDisabled" @click="sendQuestion">Send</button>
             </div>
           </div>
         </div>
       </div>
     </Transition>
   </Teleport>
+  <!-- TODO(T086-Final): Remove entire legacy modal after UnifiedAssistant fully replaces usage & tests. -->
 </template>
+<script setup lang="ts">
+// DEPRECATED COMPONENT (T086)
+// ---------------------------------------------------------------------------
+// This legacy modal has been superseded by the unified assistant implementation.
+// It remains as a minimal stub until all tests referencing it (legacy usage) are
+// migrated or removed. It should not be used for new features.
+// TODO(T086-Final): Delete this file after confirming no test or runtime references.
+// See `UnifiedAssistant.vue` + `assistantStore` for the active implementation.
 
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s ease;
+import { ref, computed, onMounted } from 'vue';
+import { useAIStore } from '@/stores/aiStore';
+import ModalHeader from '@/components/ModalHeader.vue';
+
+interface Props { show: boolean }
+const props = defineProps<Props>();
+const emit = defineEmits<{ close: []; 'open-unified': [] }>();
+
+const aiStore = useAIStore();
+
+// Local state
+const question = ref('');
+const mode = ref<'general' | 'improvement' | 'clarification'>('general');
+const focusActive = ref(false);
+const showDeprecationNotice = ref(true);
+
+// Computed
+const canFocusActive = computed(() => !!aiStore.activeEntityId);
+const isSendDisabled = computed(() => !question.value.trim() || aiStore.isLoading);
+
+function closeModal() { emit('close'); }
+function openSettings() { aiStore.openSettings(); }
+
+function quickPrompt(targetMode: 'improvement' | 'clarification') {
+  mode.value = targetMode;
+  if (targetMode === 'improvement') {
+    question.value = 'Review current focus and suggest actionable improvements with impact reasoning.';
+  } else if (targetMode === 'clarification') {
+    question.value = 'Identify unclear or ambiguous areas needing clarification within the active focus.';
+  }
 }
 
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
+function sendQuestion() {
+  if (isSendDisabled.value) return;
+  aiStore.ask({
+    content: question.value.trim(),
+    mode: mode.value,
+    focusId: focusActive.value && canFocusActive.value ? aiStore.activeEntityId : undefined,
+  });
+  question.value = '';
 }
 
-.modal-enter-active > div > div,
-.modal-leave-active > div > div {
-  transition: transform 0.2s ease;
+function handleKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    sendQuestion();
+  }
 }
 
-.modal-enter-from > div > div {
-  transform: scale(0.95);
-}
-
-.modal-leave-to > div > div {
-  transform: scale(0.95);
-}
-</style>
+onMounted(() => {
+  // Provide a gentle reminder of deprecation in telemetry (if available)
+  // TODO(T086-Telemetry): Route this to assistant telemetry service once unified.
+  if (aiStore.addTelemetryEvent) {
+    try {
+      aiStore.addTelemetryEvent({
+        type: 'legacy.modal.viewed',
+        timestamp: Date.now(),
+        metadata: { component: 'AIAssistantModal' }
+      });
+    } catch {/* ignore */}
+  }
+});
+</script>

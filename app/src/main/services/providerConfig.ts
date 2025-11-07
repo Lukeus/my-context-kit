@@ -5,7 +5,7 @@ import type {
   ToolDescriptor
 } from '@shared/assistant/types';
 
-const PIPELINE_OPTIONS = ['validate', 'build-graph', 'impact', 'generate'] as const;
+const PIPELINE_OPTIONS = ['validate', 'build-graph', 'impact', 'generate', 'build-embeddings'] as const;
 
 function readBooleanEnv(name: string, defaultValue: boolean): boolean {
   const raw = process.env[name];
@@ -44,7 +44,7 @@ const BASE_TOOLS: ToolDescriptor[] = [
   {
     id: 'pipeline.run',
     title: 'Run Context Pipeline',
-    description: 'Execute a deterministic context pipeline (validate, build graph, impact, generate).',
+    description: 'Execute a deterministic context pipeline (validate, build graph, impact, generate, build embeddings).',
     capability: 'execute',
     requiresApproval: false,
     allowedProviders: ['azure-openai', 'ollama'],

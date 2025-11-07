@@ -2,7 +2,9 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "allowJs": true,
+    // TODO(T005): Confirm if JS files still required; remove to strengthen type guarantees if legacy JS eliminated.
     "sourceMap": true,
+    // TODO(T005): Consider enabling inlineSources + declaration maps for improved debugging of generated types.
     "outDir": "dist"
   }
 }

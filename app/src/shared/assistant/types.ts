@@ -1,6 +1,6 @@
 export type AssistantProvider = 'azure-openai' | 'ollama';
 
-export type AssistantPipelineName = 'validate' | 'build-graph' | 'impact' | 'generate';
+export type AssistantPipelineName = 'validate' | 'build-graph' | 'impact' | 'generate' | 'build-embeddings';
 
 export type AssistantRole = 'system' | 'user' | 'assistant';
 
@@ -133,6 +133,23 @@ export interface AssistantSessionExtended extends AssistantSession {
   telemetryContext?: Record<string, unknown>; // Correlation identifiers TODO(TelemetryTyping): introduce structured type
   capabilityFlags?: Record<string, CapabilityEntry>; // Convenience mirror of profile.capabilities
   tasks?: TaskEnvelope[]; // Aggregated LangChain task envelopes
+}
+
+// ---------------------------------------------------------------------------
+// Gating Artifact Model (FR-040 / FR-039)
+// ---------------------------------------------------------------------------
+// Represents read-only gating status loaded from gate-status.json within the
+// context repository .context directory. All fields optional to allow safe
+// fallback when artifact missing or partially written.
+// TODO(GatingWrite): Writer logic will live in embeddings pipeline script.
+export interface GatingStatus {
+  classificationEnforced?: boolean; // true => destructive/mutating tools require approval & reason length enforced
+  sidecarOnly?: boolean; // true => only sidecar-backed operations permitted; legacy paths disabled
+  checksumMatch?: boolean; // true => last embeddings build matched stable checksum (FR-039 determinism achieved)
+  retrievalEnabled?: boolean; // true => RAG retrieval tools may be activated (TODO:RAG_ENABLE gating)
+  updatedAt?: string; // ISO timestamp of artifact write
+  source?: string; // optional provenance indicator (e.g. 'embeddings.pipeline', 'manual')
+  version?: string; // semantic version of artifact schema
 }
 
 // Utility guard helpers

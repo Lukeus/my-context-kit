@@ -132,3 +132,6 @@ The app has **TWO separate AI assistant implementations** that need unification:
 - Always add telemetry logging for tool invocations
 - Use approval workflows for risky operations
 - Support streaming and non-streaming modes
+ - Route tooling and pipeline execution through the LangChain/FastAPI sidecar (no direct model calls from renderer)
+ - Use capability manifest + health polling helpers for conditional execution (see `services/langchain/` and planned `services/sidecar/`)
+ - Avoid adding new logic to `aiStore`; add a migration checkpoint instead.

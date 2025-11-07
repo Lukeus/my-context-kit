@@ -62,21 +62,38 @@ export class AssistantSessionManager {
     let langchainSessionId: string | null = null;
     let capabilityFlags = {} as Record<string, any>;
     try {
+      console.log('[assistantSessionManager] Creating LangChain session with payload:', {
+        userId: 'local-user',
+        clientVersion: lcConfig.telemetryDefaults.appVersion,
+        provider: options.provider,
+        systemPrompt: options.systemPrompt?.substring(0, 100),
+        activeTools: options.activeTools
+      });
+      
       const remote = await client.createSession({
-        userId: 'local-user', // TODO(UserId): Replace with authenticated user
-        clientVersion: lcConfig.telemetryDefaults.appVersion
+        userId: 'local-user',
+        clientVersion: lcConfig.telemetryDefaults.appVersion,
+        provider: options.provider,
+        systemPrompt: options.systemPrompt,
+        activeTools: options.activeTools
       });
       langchainSessionId = remote.sessionId;
       if (remote.capabilityProfile?.capabilities) {
         capabilityFlags = remote.capabilityProfile.capabilities;
       }
-    } catch {
+    } catch (err) {
+      console.error('[assistantSessionManager] Failed to create remote session:', err);
       // Non-fatal: allow local session creation while remote unavailable
       // TODO(RemoteFallback): surface health indicator to store
     }
 
+    // Use the LangChain session ID as the primary session ID for consistency
+    // If LangChain service is unavailable, fall back to a local UUID
+    const sessionId = langchainSessionId ?? randomUUID();
+    console.log('[assistantSessionManager] Using session ID:', sessionId, '(from LangChain:', langchainSessionId, ')');
+
     const session: AssistantSessionExtended = {
-      id: randomUUID(),
+      id: sessionId,
       provider: options.provider,
       systemPrompt: options.systemPrompt,
       messages: seededConversation,
@@ -97,6 +114,7 @@ export class AssistantSessionManager {
     };
 
     this.sessions.set(session.id, session);
+    console.log('[assistantSessionManager] Session stored with ID:', session.id, 'Total sessions:', this.sessions.size);
     return session;
   }
 
@@ -150,7 +168,13 @@ export class AssistantSessionManager {
     this.appendUserTurn(sessionId, { content, metadata: { mode } });
     const client = createLangChainClient(resolveLangChainConfig().baseUrl);
     try {
-      const envelope = await client.postMessage(lcId, { content, mode });
+      const response = await client.postMessage(lcId, { content, mode });
+      console.log('[assistantSessionManager] Received response from LangChain:', response);
+      
+      // The response might be wrapped in { task: TaskEnvelope } structure
+      const envelope = (response as any).task || response;
+      console.log('[assistantSessionManager] Extracted envelope:', envelope);
+      
       this.updateSession(sessionId, current => ({
         ...current,
         tasks: [...(current.tasks || []), envelope],
