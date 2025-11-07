@@ -641,7 +641,7 @@ async function handleAskAboutEntity(entityId: string) {
       userId: 'local-user',
       provider: 'azure-openai',
       systemPrompt: 'You are an intelligent assistant for a context repository. Help users understand entities, their relationships, and impact. Focus on clarity and actionable insights.',
-      activeTools: ['context.read', 'context.search', 'pipeline.validate', 'pipeline.build-graph', 'pipeline.impact', 'pipeline.generate']
+      activeTools: ['context.read', 'context.search', 'pipeline.validate', 'pipeline.build-graph', 'pipeline.build-embeddings', 'pipeline.impact', 'pipeline.generate']
     });
   }
   

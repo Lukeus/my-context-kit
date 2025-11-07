@@ -33,6 +33,13 @@ export interface ExecuteToolPayload {
 export interface ResolvePendingActionPayload {
   decision: 'approve' | 'reject';
   notes?: string;
+  metadata?: {
+    isDestructive?: boolean;
+    reasonLength?: number;
+    confirm1At?: string | null;
+    confirm2At?: string | null;
+    [key: string]: unknown;
+  };
 }
 
 export interface MessageResponse {
@@ -90,7 +97,12 @@ export function createAssistantBridge(ipcRenderer: IpcRenderer): AssistantBridge
   return {
     createSession: (payload) => ipcRenderer.invoke('assistant:createSession', payload),
     sendMessage: (sessionId, payload) => ipcRenderer.invoke('assistant:sendMessage', { sessionId, ...payload }),
-    executeTool: (sessionId, payload) => ipcRenderer.invoke('assistant:executeTool', { sessionId, ...payload }),
+    executeTool: (sessionId, payload) => {
+      console.log('[assistantBridge.executeTool] Received sessionId:', sessionId, 'payload:', payload);
+      const combined = { sessionId, ...payload };
+      console.log('[assistantBridge.executeTool] Sending to IPC:', combined);
+      return ipcRenderer.invoke('assistant:executeTool', combined);
+    },
     resolvePendingAction: (sessionId, actionId, payload) =>
       ipcRenderer.invoke('assistant:resolvePendingAction', { sessionId, actionId, ...payload }),
     listTelemetry: (sessionId) => ipcRenderer.invoke('assistant:listTelemetry', { sessionId }),

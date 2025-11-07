@@ -58,6 +58,14 @@ export interface GenerateResult {
   paths: Record<string, string>;
 }
 
+export interface EmbeddingsBuildResult {
+  checksum: string;
+  fileCount: number;
+  entryCount: number;
+  metadataPath: string;
+  vectorPath: string;
+}
+
 /**
  * Service for managing context repository operations
  */
@@ -189,6 +197,57 @@ export class ContextService {
       throw new PipelineError(
         execError.message || 'Impact analysis failed',
         'impact'
+      );
+    }
+  }
+
+  /**
+   * Builds deterministic embeddings artifacts for the repository corpus.
+   */
+  async buildEmbeddings(): Promise<EmbeddingsBuildResult> {
+    const pipelinePath = path.join(this.repoPath, '.context', 'pipelines', 'build-embeddings.mjs');
+
+    if (!existsSync(pipelinePath)) {
+      throw new PipelineError(
+        'Embeddings pipeline not found',
+        'build-embeddings',
+        { pipelinePath }
+      );
+    }
+
+    try {
+      const result = await execa('node', [pipelinePath], {
+        cwd: this.repoPath
+      });
+      const parsed = JSON.parse(result.stdout) as Partial<EmbeddingsBuildResult> & Record<string, unknown>;
+      if (!parsed.checksum || typeof parsed.checksum !== 'string') {
+        throw new PipelineError('Embeddings pipeline did not return checksum.', 'build-embeddings', { payload: parsed });
+      }
+      return {
+        checksum: parsed.checksum,
+        fileCount: Number(parsed.fileCount ?? 0),
+        entryCount: Number(parsed.entryCount ?? 0),
+        metadataPath: typeof parsed.metadataPath === 'string' ? parsed.metadataPath : path.join(this.repoPath, 'generated', 'embeddings', 'metadata.json'),
+        vectorPath: typeof parsed.vectorPath === 'string' ? parsed.vectorPath : path.join(this.repoPath, 'generated', 'embeddings', 'corpus.jsonl')
+      };
+    } catch (error: unknown) {
+      const execError = error as { stdout?: string; message?: string };
+      let message = execError.message || 'Embeddings pipeline failed';
+
+      if (execError.stdout) {
+        try {
+          const parsed = JSON.parse(execError.stdout) as { error?: string };
+          if (parsed?.error) {
+            message = parsed.error;
+          }
+        } catch {
+          // ignore parse failures
+        }
+      }
+
+      throw new PipelineError(
+        message,
+        'build-embeddings'
       );
     }
   }

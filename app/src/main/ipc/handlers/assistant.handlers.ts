@@ -93,7 +93,10 @@ export function registerAssistantHandlers(): void {
   });
 
   ipcMain.handle('assistant:executeTool', async (_event, payload: { sessionId: string; toolId: string; repoPath: string; parameters?: Record<string, unknown> }) => {
+    console.log('[assistant:executeTool] RAW payload:', JSON.stringify(payload, null, 2));
+    console.log('[assistant:executeTool] payload.sessionId type:', typeof payload.sessionId, 'value:', payload.sessionId, 'length:', payload.sessionId?.length);
     const session = sessionManager.getSession(payload.sessionId);
+    console.log('[assistant:executeTool] Session found:', !!session);
     if (!session) {
       throw new Error('Assistant session not found. Create a session before executing tools.');
     }
@@ -245,6 +248,7 @@ export function registerAssistantHandlers(): void {
           'pipeline.build-graph': { status: 'enabled' },
           'pipeline.impact': { status: 'enabled' },
           'pipeline.generate': { status: 'enabled' },
+          'pipeline.build-embeddings': { status: 'enabled' },
           'context.read': { status: 'enabled' },
           'context.search': { status: 'enabled' },
           'entity.details': { status: 'enabled' },
@@ -288,8 +292,17 @@ export function registerAssistantHandlers(): void {
       return createDefaultGatingStatus('missing-repo-path');
     }
     try {
-      const gatingPath = join(repoPath, '.context', 'gate-status.json');
-      const raw = await readFile(gatingPath, 'utf-8');
+      const generatedPath = join(repoPath, 'generated', 'gate-status.json');
+      const contextPath = join(repoPath, '.context', 'gate-status.json');
+      const candidatePath = await (async () => {
+        try {
+          await readFile(generatedPath, 'utf-8');
+          return generatedPath;
+        } catch {
+          return contextPath;
+        }
+      })();
+      const raw = await readFile(candidatePath, 'utf-8');
       const parsed = JSON.parse(raw) as Partial<GatingStatus>;
       // Basic structural validation + coercion
       const status: GatingStatus = {
@@ -335,6 +348,8 @@ async function runContextPipeline(options: PipelineRunOptions): Promise<Pipeline
         return await runImpactPipeline(service, options.args);
       case 'generate':
         return await runGeneratePipeline(service, options.args);
+      case 'build-embeddings':
+        return await runEmbeddingsPipeline(service);
       default:
         throw new Error(`Unsupported pipeline ${options.pipeline}`);
     }
@@ -393,6 +408,16 @@ async function runGeneratePipeline(service: ContextService, args?: Record<string
     output: result,
     artifacts: result.generated ?? [],
     error: succeeded ? undefined : result.error ?? 'Generate pipeline reported failures.'
+  };
+}
+
+async function runEmbeddingsPipeline(service: ContextService): Promise<PipelineRunResult> {
+  const result = await service.buildEmbeddings();
+  return {
+    status: 'succeeded',
+    output: result,
+    artifacts: [result.metadataPath, result.vectorPath],
+    error: undefined
   };
 }
 

@@ -32,6 +32,12 @@ const pipelineOptions: PipelineOption[] = [
     capabilityId: 'pipeline.build-graph'
   },
   {
+    id: 'build-embeddings',
+    label: 'Build embeddings corpus',
+    description: 'Generates deterministic embeddings artifacts and checksum for retrieval gating.',
+    capabilityId: 'pipeline.build-embeddings'
+  },
+  {
     id: 'impact',
     label: 'Impact analysis',
     description: 'Evaluates ripple effects for specific entities that recently changed.',

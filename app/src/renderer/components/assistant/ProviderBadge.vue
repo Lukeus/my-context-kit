@@ -1,12 +1,10 @@
 <template>
   <span
-    :class="[
-      'inline-flex items-center gap-1 px-2 py-1 rounded-m3-sm text-xs font-medium transition-colors',
-      provider === 'azure-openai' ? 'bg-[#E6F2FF] text-[#0078D4]' : 'bg-[#F5F5F5] text-[#000000]'
-    ]"
+    class="inline-flex items-center gap-1 px-2 py-1 rounded-m3-sm text-xs font-medium transition-colors"
+    :style="{ backgroundColor: colors.bgColor, color: colors.color }"
     :title="description"
     role="status"
-    aria-label="`Current provider: ${displayName}`"
+    :aria-label="`Current provider: ${displayName}`"
   >
     <span class="text-sm">{{ icon }}</span>
     <span class="font-semibold">{{ shortName }}</span>
@@ -17,7 +15,7 @@
 import { computed } from 'vue';
 import type { AssistantProvider } from '@shared/assistant/types';
 import {
-  getProviderToken,
+  getProviderColors,
   getProviderDisplayName,
   getProviderShortName,
   getProviderIcon,
@@ -30,10 +28,10 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// Computed
-const token = computed(() => getProviderToken(props.provider));
+// Computed values derived from provider metadata
 const displayName = computed(() => getProviderDisplayName(props.provider));
 const shortName = computed(() => getProviderShortName(props.provider));
 const icon = computed(() => getProviderIcon(props.provider));
 const description = computed(() => getProviderDescription(props.provider));
+const colors = computed(() => getProviderColors(props.provider));
 </script>

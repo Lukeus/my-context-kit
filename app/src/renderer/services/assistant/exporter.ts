@@ -7,6 +7,7 @@
 
 import type {
   AssistantSessionExtended,
+  ConversationTurn,
   ToolInvocationRecord
 } from '@shared/assistant/types';
 import type { AssistantTelemetryEvent } from '@shared/assistant/telemetry';
@@ -152,6 +153,10 @@ function exportJSON(
   telemetryEvents: AssistantTelemetryEvent[] | undefined,
   options: Required<ExportOptions>
 ): string {
+  const canonicalMessages = session.messages.map((turn, index) =>
+    toCanonicalMessage(session.id, turn, index)
+  );
+
   const data: Record<string, unknown> = {
     version: '1.0.0',
     exportedAt: new Date().toISOString(),
@@ -161,7 +166,7 @@ function exportJSON(
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       ...(options.includeSystemPrompt && { systemPrompt: session.systemPrompt }),
-      messages: session.messages,
+      messages: canonicalMessages,
       ...(options.includeMetadata && {
         activeTools: session.activeTools.map(t => ({ id: t.id, title: t.title })),
         tasks: session.tasks
@@ -283,6 +288,55 @@ export function exportAndDownload(
   const filename = generateExportFilename(session, opts.format);
   
   downloadExport(content, filename);
+}
+
+function toCanonicalMessage(sessionId: string, turn: ConversationTurn, index: number) {
+  const metadata = isRecord(turn.metadata) ? turn.metadata : {};
+  const messageId = resolveMessageId(sessionId, turn, metadata, index);
+  const safetyClass = typeof metadata.safetyClass === 'string' ? metadata.safetyClass : null;
+  const toolCandidate = 'tool' in metadata ? metadata.tool : undefined;
+  const toolMeta = isRecord(toolCandidate) ? toolCandidate : null;
+  const approvalsCandidate = 'approvals' in metadata ? metadata.approvals : undefined;
+  const approvals = Array.isArray(approvalsCandidate) ? approvalsCandidate : [];
+
+  return {
+    id: messageId,
+    role: turn.role,
+    content: turn.content,
+    createdAt: turn.timestamp,
+    safetyClass,
+    toolMeta,
+    approvals
+  };
+}
+
+function resolveMessageId(
+  sessionId: string,
+  turn: ConversationTurn,
+  metadata: Record<string, unknown>,
+  index: number
+): string {
+  const metadataWithIds = metadata as Record<string, unknown>;
+  const metadataId = typeof metadataWithIds.id === 'string' ? metadataWithIds.id : null;
+  const metadataMessageId = typeof metadataWithIds.messageId === 'string' ? metadataWithIds.messageId : null;
+  const directId = metadataId ?? metadataMessageId;
+  const turnIdCandidate = (turn as Partial<ConversationTurn> & { id?: unknown }).id;
+  const turnId = typeof turnIdCandidate === 'string' ? turnIdCandidate : null;
+
+  if (directId) {
+    return directId;
+  }
+
+  if (turnId) {
+    return turnId;
+  }
+
+  const paddedIndex = String(index + 1).padStart(4, '0');
+  return `${sessionId}-msg-${paddedIndex}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 // Example usage:

@@ -65,6 +65,7 @@ class AssistantSession:
     def agent(self) -> LangChainAgent:
         """Lazy-initialize LangChain agent."""
         if self._agent is None:
+            print(f"[AssistantSession] Creating agent with active_tools: {self.active_tools}")
             self._agent = create_agent(
                 provider=self.provider,
                 system_prompt=self.system_prompt,

@@ -197,7 +197,10 @@ export class ToolOrchestrator {
         metadata: {
           pipeline,
           repoPath: options.repoPath,
-          result: pipelineResult
+          result: pipelineResult,
+          ...(pipeline === 'build-embeddings' && pipelineResult.output && typeof pipelineResult.output === 'object'
+            ? { checksum: (pipelineResult.output as Record<string, unknown>).checksum }
+            : {})
         }
       };
 
@@ -322,7 +325,7 @@ export class ToolOrchestrator {
       throw new Error('pipeline parameter must be a string.');
     }
 
-    const allowed: AssistantPipelineName[] = ['validate', 'build-graph', 'impact', 'generate'];
+    const allowed: AssistantPipelineName[] = ['validate', 'build-graph', 'impact', 'generate', 'build-embeddings'];
     if (!allowed.includes(raw as AssistantPipelineName)) {
       throw new Error(`Pipeline ${raw} is not supported.`);
     }
@@ -344,6 +347,14 @@ export class ToolOrchestrator {
 
   private describePipelineOutcome(pipeline: AssistantPipelineName, result: PipelineRunResult): string {
     if (result.status === 'succeeded') {
+      if (pipeline === 'build-embeddings') {
+        const checksum = typeof (result.output as Record<string, unknown> | undefined)?.checksum === 'string'
+          ? (result.output as Record<string, unknown>).checksum as string
+          : undefined;
+        return checksum
+          ? `Pipeline build-embeddings completed successfully (checksum ${checksum}).`
+          : 'Pipeline build-embeddings completed successfully.';
+      }
       return `Pipeline ${pipeline} completed successfully.`;
     }
 

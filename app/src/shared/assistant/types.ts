@@ -1,6 +1,6 @@
 export type AssistantProvider = 'azure-openai' | 'ollama';
 
-export type AssistantPipelineName = 'validate' | 'build-graph' | 'impact' | 'generate';
+export type AssistantPipelineName = 'validate' | 'build-graph' | 'impact' | 'generate' | 'build-embeddings';
 
 export type AssistantRole = 'system' | 'user' | 'assistant';
 

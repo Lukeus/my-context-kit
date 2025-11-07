@@ -1,0 +1,271 @@
+{
+  "generatedAt": "2025-11-07T14:39:04.822Z",
+  "version": "1.0.0",
+  "summary": {
+    "totalRequirements": 30,
+    "covered": 30,
+    "missing": 0,
+    "coverageRatio": 1
+  },
+  "requirements": [
+    {
+      "id": "FR-001",
+      "tasks": [
+        "T028F",
+        "T052G"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-002",
+      "tasks": [
+        "T028M",
+        "T049A",
+        "T052H"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-003",
+      "tasks": [
+        "T015",
+        "T028C",
+        "T028I"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-004",
+      "tasks": [
+        "T051D"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-005",
+      "tasks": [
+        "T028G",
+        "T028H",
+        "T051C"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-006",
+      "tasks": [
+        "T029A",
+        "T077A",
+        "T077B"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-009",
+      "tasks": [
+        "T052F"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-010",
+      "tasks": [
+        "T017A",
+        "T052I"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-011",
+      "tasks": [
+        "T020",
+        "T028C",
+        "T028D",
+        "T052A"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-014",
+      "tasks": [
+        "T028J",
+        "T050A"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-017",
+      "tasks": [
+        "T051A",
+        "T051D"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-019",
+      "tasks": [
+        "T028J",
+        "T052C"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-020",
+      "tasks": [
+        "T028K"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-022",
+      "tasks": [
+        "T017A",
+        "T022",
+        "T064A"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-023",
+      "tasks": [
+        "T029A",
+        "T052D"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-028",
+      "tasks": [
+        "T028E",
+        "T052B",
+        "T086A"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-030",
+      "tasks": [
+        "T066A"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-031",
+      "tasks": [
+        "T048",
+        "T051B"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-032",
+      "tasks": [
+        "T017A",
+        "T028G",
+        "T028H",
+        "T066C",
+        "T066E"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-034",
+      "tasks": [
+        "T028K",
+        "T028O",
+        "T086A"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-035",
+      "tasks": [
+        "T028F",
+        "T052E"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-037",
+      "tasks": [
+        "T017A",
+        "T052I"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-038",
+      "tasks": [
+        "T028D",
+        "T028E",
+        "T052L",
+        "T065A"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-039",
+      "tasks": [
+        "T028A",
+        "T028B",
+        "T052M",
+        "T081",
+        "T090A"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-040",
+      "tasks": [
+        "T028A",
+        "T028B",
+        "T028C",
+        "T052J",
+        "T081",
+        "T090B"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-041",
+      "tasks": [
+        "T028L",
+        "T052K",
+        "T066B",
+        "T066D"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "FR-043",
+      "tasks": [
+        "T028G",
+        "T052N"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "SC-001",
+      "tasks": [
+        "T028C",
+        "T028I"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "SC-002",
+      "tasks": [
+        "T022",
+        "T028M",
+        "T052O"
+      ],
+      "status": "covered"
+    },
+    {
+      "id": "SC-005",
+      "tasks": [
+        "T028L"
+      ],
+      "status": "covered"
+    }
+  ]
+}

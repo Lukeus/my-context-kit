@@ -4,7 +4,7 @@
 // Integrates with capability manifest to determine available operations when
 // sidecar is degraded or unavailable.
 // TODO(T020-Retry): Implement exponential backoff for health checks.
-// TODO(T020-UI): Wire health status into FallbackBanner.vue component.
+// TODO(T020-UI): Wire health status into DegradedModeBanner.vue component.
 
 import type { HealthStatusResponse } from '@/../preload/assistantBridge';
 
@@ -166,7 +166,7 @@ export function getHealthStatusMessage(health: SidecarHealthCheck): string {
 /**
  * Determine if fallback mode banner should be shown.
  */
-export function shouldShowFallbackBanner(health: SidecarHealthCheck): boolean {
+export function shouldShowDegradedModeBanner(health: SidecarHealthCheck): boolean {
   return health.fallbackMode && (health.status === 'degraded' || health.status === 'unavailable');
 }
 
@@ -277,7 +277,7 @@ export function createHealthPoller(options: {
 // Example usage:
 // const poller = createHealthPoller({ intervalMs: 10000 });
 // poller.on(health => {
-//   if (shouldShowFallbackBanner(health)) {
+//   if (shouldShowDegradedModeBanner(health)) {
 //     showBanner(getHealthStatusMessage(health));
 //   }
 // });
