@@ -8,6 +8,11 @@ const C4DiagramBuilder = () => import('../components/C4DiagramBuilder.vue');
 const WelcomeDocumentation = () => import('../components/WelcomeDocumentation.vue');
 const GraphView = () => import('../components/GraphView.vue');
 const GitPanel = () => import('../components/GitPanel.vue');
+const AgentLibrary = () => import('../components/assistant/AgentLibrary.vue');
+const ContextKitHub = () => import('../components/ContextKit/ContextKitHub.vue');
+const EnterpriseDashboard = () => import('../components/EnterpriseDashboard.vue');
+const EnterpriseSettings = () => import('../components/EnterpriseSettings.vue');
+const ConstitutionViewer = () => import('../components/ConstitutionViewer.vue');
 
 /**
  * Convert our enterprise routes to Vue Router format
@@ -15,11 +20,17 @@ const GitPanel = () => import('../components/GitPanel.vue');
 function convertToVueRoutes(): RouteRecordRaw[] {
   const componentMap: Record<string, any> = {
     'hub': DeveloperHub,
+    'entities': DeveloperHub, // TODO: Create dedicated entities view
     'c4': C4DiagramBuilder,
     'c4-diagram': C4DiagramBuilder,
     'docs': WelcomeDocumentation,
     'graph': GraphView,
-    'git': GitPanel
+    'git': GitPanel,
+    'agents': AgentLibrary,
+    'contextkit': ContextKitHub,
+    'enterprise': EnterpriseDashboard,
+    'enterprise-settings': EnterpriseSettings,
+    'enterprise-constitution': ConstitutionViewer
   };
 
   return routes.map(route => {

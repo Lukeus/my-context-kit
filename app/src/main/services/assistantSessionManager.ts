@@ -89,7 +89,7 @@ async function getSidecarConfig(repoPath?: string): Promise<ProviderConfig | nul
         temperature: config.temperature || 0.7,
         maxTokens: config.maxTokens,
       };
-    } catch (err) {
+    } catch {
       console.log('[getSidecarConfig] No sidecar config file, will use defaults');
       return null;
     }
@@ -245,11 +245,16 @@ export class AssistantSessionManager {
     const client = createLangChainClient(resolveLangChainConfig().baseUrl);
     try {
       const response = await client.postMessage(lcId, { content, mode });
-      console.log('[assistantSessionManager] Received response from LangChain:', response);
+      console.log('[assistantSessionManager] Received response from LangChain:', JSON.stringify(response, null, 2));
       
       // The response might be wrapped in { task: TaskEnvelope } structure
       const envelope = (response as any).task || response;
-      console.log('[assistantSessionManager] Extracted envelope:', envelope);
+      console.log('[assistantSessionManager] Extracted envelope:', JSON.stringify(envelope, null, 2));
+      
+      if (!envelope || !envelope.taskId) {
+        console.error('[assistantSessionManager] Invalid envelope - missing taskId:', envelope);
+        return null;
+      }
       
       this.updateSession(sessionId, current => ({
         ...current,
@@ -257,7 +262,9 @@ export class AssistantSessionManager {
         updatedAt: new Date().toISOString()
       }));
       return envelope;
-    } catch {
+    } catch (error) {
+      console.error('[assistantSessionManager] Error in dispatchMessage:', error);
+      console.error('[assistantSessionManager] Error stack:', error instanceof Error ? error.stack : 'N/A');
       // TODO(DispatchError): Surface failure to UI + telemetry
       return null;
     }

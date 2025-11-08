@@ -21,6 +21,15 @@ import type {
   ToolInvocationRecord
 } from '@shared/assistant/types';
 import { agentBridge, type AgentBridge } from '../preload/agentBridge';
+import type {
+  EnterpriseConfig,
+  EnterpriseRepoInfo,
+  EnterpriseRepoStatus,
+  DeriveSpecRequest,
+  DeriveSpecResult,
+  MergedConstitution,
+  PromptTemplate,
+} from '../types/enterprise';
 
 // Expose IPC API to renderer process
 contextBridge.exposeInMainWorld('api', {
@@ -260,6 +269,22 @@ contextBridge.exposeInMainWorld('api', {
     codegen: (repoPath: string, specId: string, prompt?: string, language?: string, framework?: string, styleGuide?: string) =>
       ipcRenderer.invoke('context-kit:codegen', { repoPath, specId, prompt, language, framework, styleGuide }),
   },
+  enterprise: {
+    getConfig: () => ipcRenderer.invoke('ent:getConfig'),
+    setConfig: (config: any) => ipcRenderer.invoke('ent:setConfig', config),
+    listRepos: () => ipcRenderer.invoke('ent:listRepos'),
+    getEnterpriseRepoStatus: () => ipcRenderer.invoke('ent:getEnterpriseRepoStatus'),
+    syncEnterpriseRepo: () => ipcRenderer.invoke('ent:syncEnterpriseRepo'),
+    deriveSpec: (request: any) => ipcRenderer.invoke('ent:deriveSpec', request),
+    getEffectiveConstitution: (localRepoPath: string) =>
+      ipcRenderer.invoke('ent:getEffectiveConstitution', localRepoPath),
+    mergeConstitutions: (localRepoPath: string) =>
+      ipcRenderer.invoke('ent:mergeConstitutions', localRepoPath),
+    listPrompts: () => ipcRenderer.invoke('ent:listPrompts'),
+    getPrompt: (name: string) => ipcRenderer.invoke('ent:getPrompt', name),
+    applyTemplate: (data: { name: string; variables: Record<string, string> }) =>
+      ipcRenderer.invoke('ent:applyTemplate', data),
+  },
 });
 
 // Type definitions for window.api
@@ -485,6 +510,20 @@ declare global {
         specGenerate: (repoPath: string, entityIds: string[], userPrompt: string, templateId?: string, includeRag?: boolean) => Promise<{ success: boolean; data?: any; error?: string }>;
         promptify: (repoPath: string, specId: string, specContent?: string, targetAgent?: string, includeContext?: boolean) => Promise<{ success: boolean; data?: any; error?: string }>;
         codegen: (repoPath: string, specId: string, prompt?: string, language?: string, framework?: string, styleGuide?: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+      };
+      enterprise: {
+        getConfig: () => Promise<EnterpriseConfig>;
+        setConfig: (config: Partial<EnterpriseConfig>) => Promise<{ success: boolean }>;
+        listRepos: () => Promise<EnterpriseRepoInfo[]>;
+        getEnterpriseRepoStatus: () => Promise<EnterpriseRepoStatus>;
+        syncEnterpriseRepo: () => Promise<{ success: boolean }>;
+        deriveSpec: (request: DeriveSpecRequest) => Promise<DeriveSpecResult>;
+        getEffectiveConstitution: (localRepoPath: string) => Promise<MergedConstitution>;
+        mergeConstitutions: (localRepoPath: string) => Promise<MergedConstitution>;
+        listPrompts: () => Promise<PromptTemplate[]>;
+        getPrompt: (name: string) => Promise<PromptTemplate>;
+        applyTemplate: (data: { name: string; variables: Record<string, string> }) =>
+          Promise<{ rendered: string }>;
       };
       app: {
         getDefaultRepoPath: () => Promise<{ ok: boolean; path?: string; error?: string }>;

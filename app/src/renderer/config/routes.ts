@@ -105,6 +105,52 @@ export const routes: Route[] = [
       icon: 'assistant'
     },
     beforeEnter: trackNavigation
+  },
+  {
+    id: 'agents',
+    path: '/agents',
+    meta: {
+      title: 'Agent Library',
+      icon: 'agents'
+    },
+    beforeEnter: trackNavigation
+  },
+  {
+    id: 'contextkit',
+    path: '/contextkit',
+    meta: {
+      title: 'Context Kit',
+      icon: 'contextkit',
+      requiresRepo: true
+    },
+    beforeEnter: combineGuards(trackNavigation, requiresRepo)
+  },
+  {
+    id: 'enterprise',
+    path: '/enterprise',
+    meta: {
+      title: 'Enterprise Orchestration',
+      icon: 'enterprise'
+    },
+    beforeEnter: trackNavigation
+  },
+  {
+    id: 'enterprise-settings',
+    path: '/enterprise/settings',
+    meta: {
+      title: 'Enterprise Settings',
+      icon: 'settings'
+    },
+    beforeEnter: trackNavigation
+  },
+  {
+    id: 'enterprise-constitution',
+    path: '/enterprise/constitution',
+    meta: {
+      title: 'Constitution Viewer',
+      icon: 'document'
+    },
+    beforeEnter: trackNavigation
   }
 ];
 
