@@ -229,7 +229,6 @@ test.describe('Hashtag Command Feature', () => {
     let toolExecuted = false;
     await window.route('**/assistant/tools/execute', (route) => {
       toolExecuted = true;
-      const requestBody = route.request().postDataJSON();
       
       void route.fulfill({
         status: 200,
