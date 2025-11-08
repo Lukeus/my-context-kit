@@ -155,8 +155,7 @@ function getSectionBadge(source: string) {
             <div class="flex items-start gap-3">
               <span class="text-2xl">{{ getSectionIcon(section) }}</span>
               <div>
-                <h3 class="text-lg font-semibold text-secondary-900">{{ section.heading }}</h3>
-                <p v-if="section.path" class="text-xs text-secondary-600 mt-1 font-mono">{{ section.path }}</p>
+                <h3 class="text-lg font-semibold text-secondary-900">{{ section.title }}</h3>
               </div>
             </div>
             <span class="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-m3-md"
@@ -191,7 +190,7 @@ function getSectionBadge(source: string) {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
-                <h3 class="text-lg font-semibold text-warning-900">Conflict in: {{ conflict.path }}</h3>
+                <h3 class="text-lg font-semibold text-warning-900">Conflict in: {{ conflict.section }}</h3>
                 <p class="text-sm text-warning-800 mt-1">{{ conflict.reason }}</p>
               </div>
             </div>
@@ -203,9 +202,8 @@ function getSectionBadge(source: string) {
                 <span class="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-m3-md bg-primary-100 text-primary-800">
                   🌐 Global
                 </span>
-                <h4 class="text-sm font-semibold text-secondary-900">{{ conflict.globalSection.heading }}</h4>
               </div>
-              <div class="prose prose-sm max-w-none text-secondary-800 whitespace-pre-wrap font-mono text-xs leading-relaxed bg-surface-1 rounded-m3-md px-4 py-3 border border-surface-variant">{{ conflict.globalSection.content }}</div>
+              <div class="prose prose-sm max-w-none text-secondary-800 whitespace-pre-wrap font-mono text-xs leading-relaxed bg-surface-1 rounded-m3-md px-4 py-3 border border-surface-variant">{{ conflict.globalValue }}</div>
             </div>
             <!-- Local Version -->
             <div class="bg-surface px-6 py-5">
@@ -213,9 +211,8 @@ function getSectionBadge(source: string) {
                 <span class="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-m3-md bg-secondary-100 text-secondary-800">
                   📁 Local
                 </span>
-                <h4 class="text-sm font-semibold text-secondary-900">{{ conflict.localSection.heading }}</h4>
               </div>
-              <div class="prose prose-sm max-w-none text-secondary-800 whitespace-pre-wrap font-mono text-xs leading-relaxed bg-surface-1 rounded-m3-md px-4 py-3 border border-surface-variant">{{ conflict.localSection.content }}</div>
+              <div class="prose prose-sm max-w-none text-secondary-800 whitespace-pre-wrap font-mono text-xs leading-relaxed bg-surface-1 rounded-m3-md px-4 py-3 border border-surface-variant">{{ conflict.localValue }}</div>
             </div>
           </div>
         </div>
@@ -225,12 +222,12 @@ function getSectionBadge(source: string) {
       <div v-if="!loading && constitution" class="rounded-m3-md border border-surface-variant bg-surface shadow-elevation-2 px-6 py-4">
         <dl class="grid sm:grid-cols-3 gap-4 text-sm">
           <div>
-            <dt class="font-semibold text-secondary-900">Repository Path</dt>
-            <dd class="text-secondary-600 mt-1 font-mono text-xs truncate">{{ constitution.localRepoPath }}</dd>
+            <dt class="font-semibold text-secondary-900">Local Path</dt>
+            <dd class="text-secondary-600 mt-1 font-mono text-xs truncate">{{ constitution.localPath ?? 'N/A' }}</dd>
           </div>
           <div>
             <dt class="font-semibold text-secondary-900">Merged Sections</dt>
-            <dd class="text-secondary-600 mt-1">{{ constitution.mergedSections.length }}</dd>
+            <dd class="text-secondary-600 mt-1">{{ constitution.sections.length }}</dd>
           </div>
           <div>
             <dt class="font-semibold text-secondary-900">Conflicts</dt>
