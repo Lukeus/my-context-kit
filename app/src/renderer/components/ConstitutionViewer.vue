@@ -53,7 +53,7 @@ const hasConflicts = computed(() => {
 });
 
 const mergedSections = computed(() => {
-  return constitution.value?.mergedSections ?? [];
+  return constitution.value?.sections ?? [];
 });
 
 function goBack() {
