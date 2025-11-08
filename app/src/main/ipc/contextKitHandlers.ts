@@ -186,9 +186,15 @@ export function registerContextKitHandlers(serviceClient: ContextKitServiceClien
         }),
       });
 
-      // Sanitize response to ensure it's JSON-serializable
-      const sanitized = sanitizeForIpc(response);
-      return { success: true, data: sanitized };
+      console.log('[spec-generate] Response type:', typeof response);
+      console.log('[spec-generate] Response keys:', Object.keys(response as any));
+      console.log('[spec-generate] Response preview:', JSON.stringify(response, null, 2).substring(0, 500));
+      
+      // Deep clone via JSON to ensure all data is serializable
+      const serializable = JSON.parse(JSON.stringify(response));
+      console.log('[spec-generate] Serializable data created successfully');
+      
+      return { success: true, data: serializable };
     } catch (error) {
       return {
         success: false,

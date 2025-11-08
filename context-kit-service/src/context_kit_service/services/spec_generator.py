@@ -6,11 +6,23 @@ Uses LangChain and LLMs to generate technical specifications from requirements.
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic import SecretStr
+
+try:
+    from langchain_ollama import ChatOllama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    try:
+        # Fallback to deprecated langchain_community import
+        from langchain_community.chat_models import ChatOllama  # type: ignore
+        OLLAMA_AVAILABLE = True
+    except ImportError:
+        OLLAMA_AVAILABLE = False
+        ChatOllama = None  # type: ignore
 
 
 class SpecGenerator:
@@ -19,18 +31,41 @@ class SpecGenerator:
     def __init__(self, repo_path: Path, model_config: dict[str, Any] | None = None) -> None:
         self.repo_path = repo_path
         self.model_config = model_config or {}
-        self._llm: ChatOpenAI | AzureChatOpenAI | None = None  # Lazy initialization
+        self._llm: Union[ChatOpenAI, AzureChatOpenAI, Any] | None = None  # Lazy initialization
 
     @property
-    def llm(self) -> ChatOpenAI | AzureChatOpenAI:
+    def llm(self) -> Union[ChatOpenAI, AzureChatOpenAI, Any]:
         """Lazy-initialize LLM on first use."""
         if self._llm is None:
+            # Check for Ollama configuration first
+            ollama_base_url = os.getenv("OLLAMA_BASE_URL") or os.getenv("OLLAMA_HOST")
+            ollama_model = os.getenv("OLLAMA_MODEL") or self.model_config.get("model")
+            
+            if ollama_base_url and ollama_model:
+                if not OLLAMA_AVAILABLE:
+                    raise ValueError(
+                        "Ollama is configured but langchain_community is not installed.\n"
+                        "Install with: pip install langchain-community"
+                    )
+                
+                print(f"[SpecGenerator] Using Ollama: {ollama_base_url} with model {ollama_model}")
+                self._llm = ChatOllama(
+                    base_url=ollama_base_url,
+                    model=ollama_model,
+                    temperature=self.model_config.get("temperature", 0.7),
+                )
+                return self._llm
+            
+            # Fall back to OpenAI/Azure OpenAI
             # Get API key from environment (passed from Electron app)
             api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_API_KEY")
 
             if not api_key:
                 raise ValueError(
-                    "No API key found. Please configure Azure OpenAI in the AI Settings modal.\n"
+                    "No API key found and Ollama not configured.\n"
+                    "Please either:\n"
+                    "1. Configure Ollama: Set OLLAMA_BASE_URL and OLLAMA_MODEL environment variables\n"
+                    "2. Configure Azure OpenAI in the AI Settings modal\n"
                     "The Electron app will pass credentials to the Python service automatically."
                 )
 
@@ -130,9 +165,16 @@ class SpecGenerator:
                 item if isinstance(item, str) else str(item) for item in response.content
             )
 
+        # Detect provider from LLM type
+        provider = "openai"  # default
+        if OLLAMA_AVAILABLE and isinstance(self._llm, ChatOllama):
+            provider = "ollama"
+        elif isinstance(self._llm, AzureChatOpenAI):
+            provider = "azure-openai"
+        
         metadata = {
             "model_info": {
-                "provider": "openai",
+                "provider": provider,
                 "model": self.model_config.get("model", "gpt-4"),
                 "tokens_used": response.response_metadata.get("token_usage", {}).get(
                     "total_tokens", 0

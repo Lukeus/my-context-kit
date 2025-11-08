@@ -117,8 +117,9 @@ async def inspect_context(request: InspectRequest) -> InspectResponse:
             duration_ms=duration_ms,
         )
 
-        # Convert to dict to ensure JSON serializability across IPC boundary
-        return response.model_dump()
+        # Convert to dict with mode='json' to ensure JSON serializability across IPC boundary
+        # This handles Pydantic models, dates, and other complex types that cause cloning issues
+        return response.model_dump(mode='json')
 
     except Exception as e:
         raise HTTPException(

@@ -85,8 +85,9 @@ async def promptify_spec(request: PromptifyRequest) -> PromptifyResponse:
             duration_ms=duration_ms,
         )
 
-        # Convert to dict to ensure JSON serializability across IPC boundary
-        return response.model_dump()
+        # Convert to dict with mode='json' to ensure JSON serializability across IPC boundary
+        # This handles Pydantic models, dates, and other complex types that cause cloning issues
+        return response.model_dump(mode='json')
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to promptify specification: {str(e)}")

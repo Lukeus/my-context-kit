@@ -119,18 +119,23 @@ export class ContextKitServiceClient {
       // Get endpoint from environment (user configures this in AI Settings)
       const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
       const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || process.env.MODEL_NAME;
+      
+      // Get Ollama configuration from environment
+      const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || process.env.OLLAMA_HOST;
+      const ollamaModel = process.env.OLLAMA_MODEL;
 
       // Get active context repo path to pass to Python service
       const { RepoService } = await import('./repo.service');
       const repoService = new RepoService();
       const contextRepoPath = await repoService.getDefaultRepoPath();
 
-      console.log('[ContextKitService] Credentials check:', {
-        hasApiKey: !!azureApiKey,
-        hasEndpoint: !!azureEndpoint,
-        hasDeployment: !!azureDeployment,
-        endpoint: azureEndpoint,
-        deployment: azureDeployment,
+      console.log('[ContextKitService] AI Configuration:', {
+        hasAzureApiKey: !!azureApiKey,
+        hasAzureEndpoint: !!azureEndpoint,
+        hasAzureDeployment: !!azureDeployment,
+        hasOllamaConfig: !!(ollamaBaseUrl && ollamaModel),
+        ollamaBaseUrl: ollamaBaseUrl,
+        ollamaModel: ollamaModel,
         contextRepoPath
       });
 
@@ -162,9 +167,14 @@ export class ContextKitServiceClient {
           ...process.env,
           PORT: String(this.config.port),
           HOST: this.config.host,
+          // Azure OpenAI credentials
           ...(azureApiKey && { AZURE_OPENAI_API_KEY: azureApiKey }),
           ...(azureEndpoint && { AZURE_OPENAI_ENDPOINT: azureEndpoint }),
           ...(azureDeployment && { AZURE_OPENAI_DEPLOYMENT: azureDeployment }),
+          // Ollama configuration
+          ...(ollamaBaseUrl && { OLLAMA_BASE_URL: ollamaBaseUrl }),
+          ...(ollamaModel && { OLLAMA_MODEL: ollamaModel }),
+          // Context repo path
           ...(contextRepoPath && { CONTEXT_REPO_PATH: contextRepoPath })
         },
         windowsHide: true

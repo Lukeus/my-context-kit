@@ -262,8 +262,13 @@ contextBridge.exposeInMainWorld('api', {
     stop: () => ipcRenderer.invoke('context-kit:stop'),
     inspect: (repoPath: string, includeTypes?: string[], depth?: number) =>
       ipcRenderer.invoke('context-kit:inspect', { repoPath, includeTypes, depth }),
-    specGenerate: (repoPath: string, entityIds: string[], userPrompt: string, templateId?: string, includeRag?: boolean) =>
-      ipcRenderer.invoke('context-kit:spec-generate', { repoPath, entityIds, userPrompt, templateId, includeRag }),
+    specGenerate: (repoPath: string, entityIds: string[], userPrompt: string, templateId?: string, includeRag?: boolean) => {
+      console.log('[preload:specGenerate] Called with:', { repoPath, entityIds, userPrompt, templateId, includeRag });
+      const payload = { repoPath, entityIds, userPrompt, templateId, includeRag };
+      console.log('[preload:specGenerate] Payload type:', typeof payload);
+      console.log('[preload:specGenerate] Invoking IPC...');
+      return ipcRenderer.invoke('context-kit:spec-generate', payload);
+    },
     promptify: (repoPath: string, specId: string, specContent?: string, targetAgent?: string, includeContext?: boolean) =>
       ipcRenderer.invoke('context-kit:promptify', { repoPath, specId, specContent, targetAgent, includeContext }),
     codegen: (repoPath: string, specId: string, prompt?: string, language?: string, framework?: string, styleGuide?: string) =>
