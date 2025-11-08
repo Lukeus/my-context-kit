@@ -12,12 +12,12 @@
       {{ announcements }}
     </div>
     
-    <!-- Header -->
-    <header class="flex items-center justify-between gap-4 px-4 py-2.5 border-b border-outline bg-surface">
+    <!-- Header - Copilot Style -->
+    <header class="flex items-center justify-between gap-3 px-3 py-2 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
       <!-- Left: Title and Status -->
-      <div class="flex items-center gap-3">
-        <h2 class="text-sm font-medium text-on-surface">
-          Context Assistant
+      <div class="flex items-center gap-2 min-w-0">
+        <h2 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+          Assistant
         </h2>
         <GatingStatusBadge
           v-if="hasSession"
@@ -25,43 +25,33 @@
           :is-classification-enforced="isClassificationEnforced"
           :is-limited-read-only="isLimitedReadOnlyMode"
           :is-retrieval-enabled="isRetrievalEnabled"
+          class="text-[10px]"
         />
-        <ProviderBadge v-if="hasSession" :provider="session!.provider" class="text-xs" />
+        <ProviderBadge v-if="hasSession" :provider="session!.provider" class="text-[10px]" />
       </div>
 
       <!-- Right: Actions -->
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-0.5">
         <button
           v-if="hasSession"
-          class="p-1.5 rounded-m3-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
+          class="p-1.5 rounded hover:bg-gray-100 transition-colors"
           @click="handleRefreshCapabilities"
           aria-label="Refresh capabilities"
-          title="Refresh capabilities"
+          title="Refresh"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-            <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clip-rule="evenodd" />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5 text-gray-600">
+            <path fill-rule="evenodd" d="M13.836 2.477a.75.75 0 01.002 1.06A6.25 6.25 0 102.518 8a.75.75 0 011.5-.013 4.75 4.75 0 109.303-2.424l-.003-.002a.75.75 0 011.518-.084z" clip-rule="evenodd" />
           </svg>
         </button>
         <button
-          class="p-1.5 rounded-m3-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
+          class="p-1.5 rounded hover:bg-gray-100 transition-colors"
           :aria-pressed="showSettings"
           @click="showSettings = !showSettings"
           aria-label="Settings"
           title="Settings"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-            <path fill-rule="evenodd" d="M7.84 1.804A1 1 0 018.82 1h2.36a1 1 0 01.98.804l.331 1.652a6.993 6.993 0 011.929 1.115l1.598-.54a1 1 0 011.186.447l1.18 2.044a1 1 0 01-.205 1.251l-1.267 1.113a7.047 7.047 0 010 2.228l1.267 1.113a1 1 0 01.206 1.25l-1.18 2.045a1 1 0 01-1.187.447l-1.598-.54a6.993 6.993 0 01-1.929 1.115l-.33 1.652a1 1 0 01-.98.804H8.82a1 1 0 01-.98-.804l-.331-1.652a6.993 6.993 0 01-1.929-1.115l-1.598.54a1 1 0 01-1.186-.447l-1.18-2.044a1 1 0 01.205-1.251l1.267-1.114a7.05 7.05 0 010-2.227L1.821 7.773a1 1 0 01-.206-1.25l1.18-2.045a1 1 0 011.187-.447l1.598.54A6.993 6.993 0 017.51 3.456l.33-1.652zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
-          </svg>
-        </button>
-        <button
-          class="p-1.5 rounded-m3-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
-          data-assistant-focus="close-button"
-          aria-label="Close"
-          title="Close assistant"
-          @click="handleClose"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-            <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5 text-gray-600">
+            <path d="M6.955 1.45A.5.5 0 017.452 1h1.096a.5.5 0 01.497.45l.17 1.699a4.97 4.97 0 01.984.506l1.577-.67a.5.5 0 01.598.181l.548.95a.5.5 0 01-.122.58l-1.308 1.143a5.003 5.003 0 010 1.065l1.308 1.143a.5.5 0 01.122.58l-.548.95a.5.5 0 01-.598.181l-1.577-.67a4.97 4.97 0 01-.984.506l-.17 1.699a.5.5 0 01-.497.45H7.452a.5.5 0 01-.497-.45l-.17-1.699a4.973 4.973 0 01-.984-.506l-1.577.67a.5.5 0 01-.598-.181l-.548-.95a.5.5 0 01.122-.58l1.308-1.143a5.003 5.003 0 010-1.065L2.2 4.89a.5.5 0 01-.122-.58l.548-.95a.5.5 0 01.598-.181l1.577.67a4.97 4.97 0 01.984-.506l.17-1.699zM8 10a2 2 0 100-4 2 2 0 000 4z" />
           </svg>
         </button>
       </div>
@@ -78,29 +68,29 @@
       @close="showFallbackBanner = false"
     />
 
-    <!-- Tab Navigation -->
-    <div class="flex items-center border-b border-outline bg-surface" v-if="hasSession">
+    <!-- Tab Navigation - Copilot Style -->
+    <div class="flex items-center border-b border-gray-200 bg-white" v-if="hasSession">
       <button
         v-for="tab in panelOptions"
         :key="tab.id"
-        class="relative px-6 py-3 text-sm font-medium transition-colors"
-        :class="activePanel === tab.id ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'"
+        class="relative px-4 py-2 text-xs font-medium transition-colors"
+        :class="activePanel === tab.id ? 'text-gray-900 bg-gray-50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'"
         @click="setActivePanel(tab.id)"
       >
         {{ tab.label }}
         <div
           v-if="activePanel === tab.id"
-          class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+          class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
         />
       </button>
     </div>
 
     <!-- Main Content Area - Single Pane -->
     <div class="flex-1 overflow-hidden">
-      <!-- Chat View -->
-      <div v-if="activePanel === 'chat'" class="flex flex-col h-full">
+      <!-- Chat View - Copilot Style -->
+      <div v-if="activePanel === 'chat'" class="flex flex-col h-full bg-white">
         <!-- Transcript -->
-        <div class="flex-1 overflow-auto px-4 py-4">
+        <div class="flex-1 overflow-auto px-3 py-3">
           <TranscriptView
             :transcript="conversation"
             :tasks="tasks"
@@ -111,7 +101,7 @@
         </div>
 
         <!-- Message Composer -->
-        <div class="border-t border-outline px-4 py-3 bg-surface">
+        <div class="border-t border-gray-200 px-3 py-2 bg-gray-50/50">
           <MessageComposer
             :disabled="!hasSession || isBusy"
             :streaming-enabled="streamingEnabled"
@@ -122,14 +112,8 @@
       </div>
 
       <!-- Tools View -->
-      <div v-else-if="activePanel === 'tools'" class="h-full overflow-auto">
-        <ToolPalette
-          :session-id="session?.id"
-          :active-tools="activeTools"
-          :capabilities="capabilities"
-          @invoke-tool="handleInvokeTool"
-          data-assistant-focus="tool-palette"
-        />
+      <div v-else-if="activePanel === 'tools'" class="h-full overflow-auto p-3">
+        <ToolPanel />
       </div>
 
       <!-- Queue View -->
@@ -210,9 +194,10 @@ import { createFocusManager } from './a11y-map';
 import { exportAndDownload } from '@/services/assistant/exporter';
 import { getToolSafety, validateInvocation } from '@/services/assistant/toolClassification';
 import { sanitizePrompt } from '@/services/assistant/promptSanitizer';
+import { parseHashtagCommands } from '@/services/assistant/hashtagCommands';
 import TranscriptView from './TranscriptView.vue';
 import MessageComposer from './MessageComposer.vue';
-import ToolPalette from './ToolPalette.vue';
+import ToolPanel from './ToolPanel.vue';
 import TelemetryPanel from './TelemetryPanel.vue';
 import ApprovalDialog from './ApprovalDialog.vue';
 import ProviderBadge from './ProviderBadge.vue';
@@ -390,6 +375,23 @@ function finalizeStreamingMessage(taskId: string): { content: string; metadata?:
 }
 
 async function handleSendMessage(content: string) {
+  // Parse hashtag commands first
+  const parsed = parseHashtagCommands(content);
+
+  // Execute any hashtag commands found
+  if (parsed.hasCommands) {
+    for (const cmd of parsed.commands) {
+      await handleInvokeTool(cmd.tool, cmd.parameters);
+    }
+  }
+
+  // If there's remaining text after command extraction, send it as a message
+  const messageToSend = parsed.cleanedMessage;
+  if (!messageToSend || messageToSend.trim().length === 0) {
+    // Only commands were sent, no need to send a chat message
+    return;
+  }
+
   if (!hasSession.value || !session.value) {
     await assistantStore.createSession({
       provider: 'azure-openai',
