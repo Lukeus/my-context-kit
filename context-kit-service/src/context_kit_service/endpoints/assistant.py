@@ -33,10 +33,10 @@ router = APIRouter(prefix="/assistant", tags=["assistant"])
 
 
 @router.get("/health")
-async def get_health() -> HealthResponse:
+async def get_health():
     """Get service health status."""
     # TODO: Add actual health checks (DB, LangChain, etc.)
-    return HealthResponse(
+    response = HealthResponse(
         status=HealthStatus.HEALTHY,
         message="Assistant service operational",
         components={
@@ -45,23 +45,27 @@ async def get_health() -> HealthResponse:
             "storage": "available",
         },
     )
+    return response.model_dump(mode='json')
 
 
 @router.get("/capabilities")
-async def get_capabilities() -> CapabilityProfile:
+async def get_capabilities():
     """Get capability manifest."""
-    return await get_capability_profile()
+    profile = await get_capability_profile()
+    return profile.model_dump(mode='json')
 
 
 @router.post("/sessions")
-async def create_session(request: CreateSessionRequest) -> CreateSessionResponse:
+async def create_session(request: CreateSessionRequest):
     """Create new assistant session."""
     manager = get_session_manager()
-    return await manager.create_session(request)
+    response = await manager.create_session(request)
+    # Convert to dict with mode='json' to ensure JSON serializability across IPC boundary
+    return response.model_dump(mode='json')
 
 
 @router.post("/sessions/{session_id}/messages")
-async def send_message(session_id: str, request: SendMessageRequest) -> SendMessageResponse:
+async def send_message(session_id: str, request: SendMessageRequest):
     """Send message to assistant."""
     print(f"[Endpoint] Received message for session {session_id}: {request.content[:50]}...")
     manager = get_session_manager()
@@ -69,7 +73,8 @@ async def send_message(session_id: str, request: SendMessageRequest) -> SendMess
     try:
         task = await manager.send_message(session_id, request)
         print(f"[Endpoint] Message sent successfully, task: {task.taskId}")
-        return SendMessageResponse(task=task)
+        response = SendMessageResponse(task=task)
+        return response.model_dump(mode='json')
     except ValueError as e:
         print(f"[Endpoint] ValueError caught: {e}")
         raise HTTPException(status_code=404, detail=str(e))
@@ -102,7 +107,7 @@ async def stream_messages(session_id: str, content: str, mode: str = "general"):
 
 
 @router.post("/sessions/{session_id}/tools/execute")
-async def execute_tool(session_id: str, request: ExecuteToolRequest) -> ExecuteToolResponse:
+async def execute_tool(session_id: str, request: ExecuteToolRequest):
     """Execute a tool."""
     manager = get_session_manager()
     session = manager.get_session(session_id)
@@ -143,7 +148,7 @@ async def execute_tool(session_id: str, request: ExecuteToolRequest) -> ExecuteT
                 }
             )
 
-            return ExecuteToolResponse(
+            response = ExecuteToolResponse(
                 task=task,
                 result={
                     "success": result.success,
@@ -153,6 +158,7 @@ async def execute_tool(session_id: str, request: ExecuteToolRequest) -> ExecuteT
                 },
                 error=result.error,
             )
+            return response.model_dump(mode='json')
 
         elif request.toolId == "context.read":
             # Context file reading
@@ -171,27 +177,30 @@ async def execute_tool(session_id: str, request: ExecuteToolRequest) -> ExecuteT
             task.timestamps.completed = datetime.utcnow()
             task.outputs.append({"type": "file_content", **file_data})
 
-            return ExecuteToolResponse(task=task, result=file_data)
+            response = ExecuteToolResponse(task=task, result=file_data)
+            return response.model_dump(mode='json')
 
         else:
             # Unknown tool
             task.status = TaskStatus.FAILED
             task.timestamps.completed = datetime.utcnow()
 
-            return ExecuteToolResponse(
+            response = ExecuteToolResponse(
                 task=task, error=f"Unknown tool: {request.toolId}"
             )
+            return response.model_dump(mode='json')
 
     except Exception as e:
         task.status = TaskStatus.FAILED
         task.timestamps.completed = datetime.utcnow()
-        return ExecuteToolResponse(task=task, error=str(e))
+        response = ExecuteToolResponse(task=task, error=str(e))
+        return response.model_dump(mode='json')
 
 
 @router.post("/sessions/{session_id}/pipelines/run")
 async def run_pipeline(
     session_id: str, repo_path: str, request: RunPipelineRequest
-) -> RunPipelineResponse:
+):
     """Run a context repository pipeline."""
     manager = get_session_manager()
     session = manager.get_session(session_id)
@@ -202,4 +211,5 @@ async def run_pipeline(
     executor = get_pipeline_executor()
     result = await executor.run_pipeline(repo_path, request)
 
-    return result
+    # Convert to dict with mode='json' to ensure JSON serializability
+    return result.model_dump(mode='json') if hasattr(result, 'model_dump') else result

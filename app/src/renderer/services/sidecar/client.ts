@@ -134,51 +134,46 @@ export class SidecarClient {
   // Capability manifest ------------------------------------------------------
   fetchCapabilityManifest(): Promise<SidecarEnvelope<CapabilityManifest>> {
     return this.invoke('capability.manifest', async () => {
-      // Reuse executeTool when direct capability endpoint not yet available.
-      // Fallback to assistantStore capabilityProfile retrieval pattern via listTelemetry hack if necessary.
-      const sessionId = '';
-      // Attempt tool execution (will likely fail until tool registered)
+      // Use the proper IPC handler for fetching capability manifest
       try {
-        const toolRes = await window.api.assistant.executeTool(sessionId, {
-          toolId: 'capability.profile',
-          repoPath: '',
-          parameters: {}
-        });
-        if (!toolRes.error && toolRes.result) {
-          const rawProfile = toolRes.result as Record<string, unknown>;
-          if (typeof rawProfile !== 'object' || !rawProfile) throw new Error('Invalid capability profile payload');
-          const profile: CapabilityProfile = {
-            profileId: String(rawProfile['profileId'] ?? 'unknown'),
-            lastUpdated: String(rawProfile['lastUpdated'] ?? new Date().toISOString()),
-            capabilities: typeof rawProfile['capabilities'] === 'object' && rawProfile['capabilities'] !== null
-              ? (rawProfile['capabilities'] as Record<string, any>) // eslint-disable-line @typescript-eslint/no-explicit-any
-              : {}
-          };
-          return {
-            manifestId: profile.profileId,
-            generatedAt: profile.lastUpdated,
-            version: '1.0.0',
-            capabilities: Object.entries(profile.capabilities).map(([id, entry]) => ({
-              id,
-              title: id,
-              description: 'Capability',
-              phase: 'ga',
-              tags: [],
-              status: entry.status,
-              since: profile.lastUpdated
-            })),
-            source: 'sidecar'
-          };
-        }
-      } catch {/* ignore */}
-      // Fallback empty manifest
-      return {
-        manifestId: 'unavailable',
-        generatedAt: new Date().toISOString(),
-        version: '1.0.0',
-        capabilities: [],
-        source: 'cached'
-      };
+        const profile = await window.api.assistant.fetchCapabilityManifest();
+        if (typeof profile !== 'object' || !profile) throw new Error('Invalid capability profile payload');
+        
+        const rawProfile = profile as Record<string, unknown>;
+        const capabilityProfile: CapabilityProfile = {
+          profileId: String(rawProfile['profileId'] ?? 'unknown'),
+          lastUpdated: String(rawProfile['lastUpdated'] ?? new Date().toISOString()),
+          capabilities: typeof rawProfile['capabilities'] === 'object' && rawProfile['capabilities'] !== null
+            ? (rawProfile['capabilities'] as Record<string, any>) // eslint-disable-line @typescript-eslint/no-explicit-any
+            : {}
+        };
+        
+        return {
+          manifestId: capabilityProfile.profileId,
+          generatedAt: capabilityProfile.lastUpdated,
+          version: '1.0.0',
+          capabilities: Object.entries(capabilityProfile.capabilities).map(([id, entry]) => ({
+            id,
+            title: id,
+            description: 'Capability',
+            phase: 'ga',
+            tags: [],
+            status: entry.status,
+            since: capabilityProfile.lastUpdated
+          })),
+          source: 'sidecar'
+        };
+      } catch (err) {
+        console.warn('[SidecarClient] Failed to fetch capability manifest:', err);
+        // Fallback empty manifest
+        return {
+          manifestId: 'unavailable',
+          generatedAt: new Date().toISOString(),
+          version: '1.0.0',
+          capabilities: [],
+          source: 'fallback'
+        };
+      }
     }, {});
   }
 
