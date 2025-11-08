@@ -66,6 +66,11 @@ function getSectionIcon(section: ConstitutionSection) {
   return '🔀';
 }
 
+function getSectionPath(section: ConstitutionSection) {
+  // Generate a path-like identifier from the title
+  return section.title.toLowerCase().replace(/\s+/g, '-');
+}
+
 function getSectionBadge(source: string) {
   if (source === 'global') {
     return { label: 'Global', classes: 'bg-primary-100 text-primary-800' };
@@ -155,8 +160,8 @@ function getSectionBadge(source: string) {
             <div class="flex items-start gap-3">
               <span class="text-2xl">{{ getSectionIcon(section) }}</span>
               <div>
-                <h3 class="text-lg font-semibold text-secondary-900">{{ section.heading }}</h3>
-                <p v-if="section.path" class="text-xs text-secondary-600 mt-1 font-mono">{{ section.path }}</p>
+                <h3 class="text-lg font-semibold text-secondary-900">{{ section.title }}</h3>
+                <p class="text-xs text-secondary-600 mt-1 font-mono">{{ getSectionPath(section) }}</p>
               </div>
             </div>
             <span class="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-m3-md"
@@ -203,7 +208,7 @@ function getSectionBadge(source: string) {
                 <span class="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-m3-md bg-primary-100 text-primary-800">
                   🌐 Global
                 </span>
-                <h4 class="text-sm font-semibold text-secondary-900">{{ conflict.globalSection.heading }}</h4>
+                <h4 class="text-sm font-semibold text-secondary-900">{{ conflict.globalSection.title }}</h4>
               </div>
               <div class="prose prose-sm max-w-none text-secondary-800 whitespace-pre-wrap font-mono text-xs leading-relaxed bg-surface-1 rounded-m3-md px-4 py-3 border border-surface-variant">{{ conflict.globalSection.content }}</div>
             </div>
@@ -213,7 +218,7 @@ function getSectionBadge(source: string) {
                 <span class="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-m3-md bg-secondary-100 text-secondary-800">
                   📁 Local
                 </span>
-                <h4 class="text-sm font-semibold text-secondary-900">{{ conflict.localSection.heading }}</h4>
+                <h4 class="text-sm font-semibold text-secondary-900">{{ conflict.localSection.title }}</h4>
               </div>
               <div class="prose prose-sm max-w-none text-secondary-800 whitespace-pre-wrap font-mono text-xs leading-relaxed bg-surface-1 rounded-m3-md px-4 py-3 border border-surface-variant">{{ conflict.localSection.content }}</div>
             </div>
@@ -226,11 +231,11 @@ function getSectionBadge(source: string) {
         <dl class="grid sm:grid-cols-3 gap-4 text-sm">
           <div>
             <dt class="font-semibold text-secondary-900">Repository Path</dt>
-            <dd class="text-secondary-600 mt-1 font-mono text-xs truncate">{{ constitution.localRepoPath }}</dd>
+            <dd class="text-secondary-600 mt-1 font-mono text-xs truncate">{{ constitution.localPath || 'N/A' }}</dd>
           </div>
           <div>
             <dt class="font-semibold text-secondary-900">Merged Sections</dt>
-            <dd class="text-secondary-600 mt-1">{{ constitution.mergedSections.length }}</dd>
+            <dd class="text-secondary-600 mt-1">{{ constitution.sections.length }}</dd>
           </div>
           <div>
             <dt class="font-semibold text-secondary-900">Conflicts</dt>

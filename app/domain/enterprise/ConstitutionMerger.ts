@@ -165,9 +165,12 @@ export class ConstitutionMerger {
         if (contradiction) {
           conflicts.push({
             section: localSection.title,
+            path: title,
             reason: contradiction,
             globalValue: this.summarizeContent(globalSection.content),
             localValue: this.summarizeContent(localSection.content),
+            globalSection: globalSection,
+            localSection: localSection,
             resolution: 'manual_review',
           });
         }

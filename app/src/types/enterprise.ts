@@ -59,9 +59,12 @@ export interface MergedConstitution {
 
 export interface ConstitutionConflict {
   section: string;
+  path: string;
   reason: string;
   globalValue: string;
   localValue: string;
+  globalSection: ConstitutionSection;
+  localSection: ConstitutionSection;
   resolution: 'use_local' | 'use_global' | 'manual_review';
 }
 
