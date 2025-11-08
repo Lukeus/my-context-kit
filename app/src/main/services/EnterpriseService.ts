@@ -306,6 +306,7 @@ export class EnterpriseService {
     const merged = this.constitutionMerger.merge(globalSections, localSections);
     merged.globalPath = globalPath;
     merged.localPath = localContent ? localPath : undefined;
+    merged.localRepoPath = localRepoPath;
 
     return merged;
   }

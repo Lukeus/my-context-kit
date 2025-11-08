@@ -46,6 +46,7 @@ export interface ConstitutionSection {
   title: string;
   content: string;
   source: 'global' | 'local' | 'merged';
+  path?: string;
   lineNumber?: number;
 }
 
@@ -53,15 +54,19 @@ export interface MergedConstitution {
   sections: ConstitutionSection[];
   globalPath: string;
   localPath?: string;
+  localRepoPath?: string;
   mergedAt: string;
   conflicts: ConstitutionConflict[];
 }
 
 export interface ConstitutionConflict {
   section: string;
+  path: string;
   reason: string;
   globalValue: string;
   localValue: string;
+  globalSection: ConstitutionSection;
+  localSection: ConstitutionSection;
   resolution: 'use_local' | 'use_global' | 'manual_review';
 }
 
