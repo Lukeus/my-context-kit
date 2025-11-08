@@ -133,68 +133,87 @@ function renderMarkdown(content: string): string {
 </script>
 
 <template>
-  <section class="space-y-3">
-    <header class="flex items-center justify-between">
-      <div>
-        <h4 class="text-xs font-semibold text-secondary-700 uppercase">Transcript</h4>
-        <p class="text-[11px] text-secondary-500">Chronological log of operator requests and assistant responses.</p>
-      </div>
-      <span v-if="isBusy" class="text-[11px] text-secondary-600">Updating…</span>
-    </header>
-
-    <div v-if="entries.length === 0" class="border border-dashed border-surface-variant rounded-m3-md px-3 py-4 text-xs text-secondary-500">
-      {{ emptyMessage || 'No transcript available yet.' }}
+  <section class="space-y-4">
+    <div v-if="entries.length === 0" class="flex items-center justify-center py-12">
+      <p class="text-body-sm text-secondary-500">{{ emptyMessage || 'No transcript available yet.' }}</p>
     </div>
 
-    <ol v-else class="space-y-3">
+    <ol v-else class="space-y-4">
       <li
         v-for="(entry, index) in entries"
         :key="`${entry.timestamp}-${index}`"
-        class="border border-surface-variant rounded-m3-md bg-white shadow-elevation-1 divide-y divide-surface-variant"
+        class="group relative"
       >
-        <div class="px-4 py-2 flex items-center justify-between bg-surface-2">
-          <div class="flex items-center gap-2">
-            <span class="text-[11px] font-semibold text-secondary-700">{{ roleLabel(entry.role) }}</span>
-            <span
-              v-if="isQueued(entry)"
-              class="text-[10px] px-1.5 py-0.5 rounded-full bg-warning-container text-on-warning-container font-medium"
-              title="Queued due to service health degradation; will resend automatically when healthy."
-            >Queued</span>
-          </div>
-          <span class="text-[10px] text-secondary-500">{{ formatTimestamp(entryTimestamp(entry)) }}</span>
-        </div>
-        <div class="px-4 py-3 space-y-2">
-          <div 
-            class="text-sm text-secondary-900 prose prose-sm max-w-none
-                   prose-headings:text-secondary-900 prose-headings:font-semibold
-                   prose-p:my-2 prose-p:leading-relaxed
-                   prose-a:text-primary-600 prose-a:no-underline hover:prose-a:underline
-                   prose-code:bg-surface-2 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-secondary-800
-                   prose-pre:bg-surface-2 prose-pre:border prose-pre:border-surface-variant prose-pre:rounded-lg prose-pre:p-3 prose-pre:overflow-x-auto
-                   prose-pre:my-3
-                   prose-ul:my-2 prose-ol:my-2 prose-li:my-1
-                   prose-blockquote:border-l-4 prose-blockquote:border-primary-300 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-secondary-700
-                   prose-strong:text-secondary-900 prose-strong:font-semibold
-                   prose-table:border-collapse prose-table:border prose-table:border-surface-variant
-                   prose-th:bg-surface-2 prose-th:border prose-th:border-surface-variant prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:font-semibold
-                   prose-td:border prose-td:border-surface-variant prose-td:px-3 prose-td:py-2"
-            v-html="renderMarkdown(entry.content)"
-          />
-          <p v-if="taskBadge(taskForEntry(entry))" class="text-[10px] text-secondary-500">Task: {{ taskBadge(taskForEntry(entry)) }}</p>
-          <div v-if="referenceList(entry.metadata).length" class="space-y-1">
-            <p class="text-[11px] font-semibold text-secondary-700">References</p>
-            <ul class="space-y-1">
-              <li
-                v-for="reference in referenceList(entry.metadata)"
-                :key="reference.path"
-                class="text-[11px] text-secondary-600 flex items-center gap-2"
+        <!-- Role Indicator Bar -->
+        <div
+          class="absolute left-0 top-0 bottom-0 w-1 rounded-l"
+          :class="entry.role === 'user' ? 'bg-primary-500' : 'bg-secondary-300'"
+        />
+        
+        <div class="pl-4 space-y-2">
+          <!-- Header -->
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span
+                class="text-label-sm font-medium"
+                :class="entry.role === 'user' ? 'text-secondary-900' : 'text-secondary-700'"
               >
-                <span class="font-mono text-secondary-800">{{ reference.path }}</span>
-                <span v-if="reference.title" class="text-secondary-500">· {{ reference.title }}</span>
-              </li>
-            </ul>
+                {{ roleLabel(entry.role) }}
+              </span>
+              <span
+                v-if="isQueued(entry)"
+                class="text-label-sm px-1.5 py-0.5 rounded bg-warning-100 text-warning-800"
+                title="Queued due to service health degradation; will resend automatically when healthy."
+              >
+                Queued
+              </span>
+            </div>
+            <span class="text-label-sm text-secondary-500 opacity-0 group-hover:opacity-100 transition-opacity">
+              {{ formatTimestamp(entryTimestamp(entry)) }}
+            </span>
           </div>
-          <p v-if="usageSummary(entry.metadata)" class="text-[11px] text-secondary-500">Usage: {{ usageSummary(entry.metadata) }}</p>
+
+          <!-- Content -->
+          <div class="space-y-2">
+            <div 
+              class="text-body-md text-secondary-900 prose prose-sm max-w-none
+                     prose-headings:text-secondary-900 prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-2
+                     prose-p:my-1 prose-p:leading-relaxed prose-p:text-body-md
+                     prose-a:text-primary-600 prose-a:no-underline hover:prose-a:underline
+                     prose-code:bg-surface-2 prose-code:px-1 prose-code:py-0.5 prose-code:rounded-m3-xs prose-code:text-label-md prose-code:font-mono prose-code:text-secondary-800
+                     prose-pre:bg-surface-2 prose-pre:border prose-pre:border-outline prose-pre:rounded-m3-sm prose-pre:p-2 prose-pre:overflow-x-auto prose-pre:my-2
+                     prose-ul:my-1 prose-ul:pl-4 prose-ol:my-1 prose-ol:pl-4 prose-li:my-0.5
+                     prose-blockquote:border-l-2 prose-blockquote:border-primary-400 prose-blockquote:pl-3 prose-blockquote:italic prose-blockquote:text-secondary-700 prose-blockquote:my-2
+                     prose-strong:text-secondary-900 prose-strong:font-semibold
+                     prose-table:border-collapse prose-table:border prose-table:border-outline prose-table:my-2
+                     prose-th:bg-surface-2 prose-th:border prose-th:border-outline prose-th:px-2 prose-th:py-1 prose-th:text-left prose-th:font-semibold prose-th:text-label-md
+                     prose-td:border prose-td:border-outline prose-td:px-2 prose-td:py-1 prose-td:text-body-sm"
+              v-html="renderMarkdown(entry.content)"
+            />
+
+            <!-- Metadata (hidden by default, shown on hover) -->
+            <div class="opacity-0 group-hover:opacity-100 transition-opacity space-y-1 mt-2">
+              <p v-if="taskBadge(taskForEntry(entry))" class="text-label-sm text-secondary-500">
+                Task: {{ taskBadge(taskForEntry(entry)) }}
+              </p>
+              <div v-if="referenceList(entry.metadata).length" class="space-y-0.5">
+                <p class="text-label-sm font-medium text-secondary-700">References</p>
+                <ul class="space-y-0.5">
+                  <li
+                    v-for="reference in referenceList(entry.metadata)"
+                    :key="reference.path"
+                    class="text-label-sm text-secondary-600 flex items-center gap-2"
+                  >
+                    <span class="font-mono text-secondary-800">{{ reference.path }}</span>
+                    <span v-if="reference.title" class="text-secondary-500">· {{ reference.title }}</span>
+                  </li>
+                </ul>
+              </div>
+              <p v-if="usageSummary(entry.metadata)" class="text-label-sm text-secondary-500">
+                Usage: {{ usageSummary(entry.metadata) }}
+              </p>
+            </div>
+          </div>
         </div>
       </li>
     </ol>
