@@ -484,7 +484,7 @@ async function handleSendMessage(content: string) {
   if (parsed.hasCommands) {
     for (const cmd of parsed.commands) {
       // Check if tool is available in current session
-      const toolAvailable = session.value?.activeTools.some(t => t.id === cmd.tool || t === cmd.tool);
+      const toolAvailable = session.value?.activeTools.includes(cmd.tool);
       if (!toolAvailable) {
         console.warn(`[UnifiedAssistant] Skipping hashtag command ${cmd.tool} - not available in session`);
         continue;
