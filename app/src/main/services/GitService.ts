@@ -23,6 +23,14 @@ export interface BranchInfo {
   branches: string[];
 }
 
+export interface CommitInfo {
+  hash: string;
+  message: string;
+  author: string;
+  email: string;
+  date: string;
+}
+
 /**
  * Service for managing Git operations
  */
@@ -381,6 +389,99 @@ export class GitService {
       throw new GitError(
         error instanceof Error ? error.message : 'Failed to initialize git repository',
         'init'
+      );
+    }
+  }
+
+  /**
+   * Get remote URL for a remote name
+   */
+  async getRemoteUrl(remote = 'origin'): Promise<string | null> {
+    try {
+      const remotes = await this.git.getRemotes(true);
+      const targetRemote = remotes.find(r => r.name === remote);
+      return targetRemote?.refs.fetch || null;
+    } catch (error: unknown) {
+      throw new GitError(
+        error instanceof Error ? error.message : 'Failed to get remote URL',
+        'get-remote',
+        { remote }
+      );
+    }
+  }
+
+  /**
+   * Get last commit information
+   */
+  async getLastCommit(): Promise<CommitInfo> {
+    try {
+      const log = await this.git.log({ maxCount: 1 });
+      const latest = log.latest;
+      
+      if (!latest) {
+        throw new Error('No commits found');
+      }
+
+      return {
+        hash: latest.hash,
+        message: latest.message,
+        author: latest.author_name,
+        email: latest.author_email,
+        date: latest.date,
+      };
+    } catch (error: unknown) {
+      throw new GitError(
+        error instanceof Error ? error.message : 'Failed to get last commit',
+        'get-commit'
+      );
+    }
+  }
+
+  // ============================================================================
+  // Static Methods (operations that don't require a specific repo instance)
+  // ============================================================================
+
+  /**
+   * Clone a repository to a target path
+   */
+  static async clone(url: string, targetPath: string): Promise<void> {
+    try {
+      const git = simpleGit();
+      await git.clone(url, targetPath);
+    } catch (error: unknown) {
+      throw new GitError(
+        error instanceof Error ? error.message : 'Failed to clone repository',
+        'clone',
+        { url, targetPath }
+      );
+    }
+  }
+
+  /**
+   * Check if a path is a git repository
+   */
+  static async isGitRepo(repoPath: string): Promise<boolean> {
+    try {
+      const git = simpleGit(repoPath);
+      await git.status();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Initialize a new git repository at the given path
+   */
+  static async initRepo(repoPath: string): Promise<void> {
+    try {
+      const git = simpleGit(repoPath);
+      await git.init();
+    } catch (error: unknown) {
+      throw new GitError(
+        error instanceof Error ? error.message : 'Failed to initialize git repository',
+        'init',
+        { repoPath }
       );
     }
   }

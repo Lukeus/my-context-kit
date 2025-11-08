@@ -3,6 +3,12 @@
 ## Project Overview
 My Context Kit is a desktop application built with Electron, Vue 3, and Tailwind CSS that manages context repositories for spec-driven software development. It provides AI-powered assistance for validating, navigating, and maintaining structured context graphs.
 
+**IMPORTANT**: The application is undergoing a clean architecture refactoring. Follow the guidelines in `app/constitution.md` for the target architecture. Key changes:
+- Service layer in `src/main/services/` for all business logic
+- Domain logic in `domain/` folder (framework-agnostic)
+- IPC handlers are thin and delegate to services
+- Enterprise features for organization-wide spec management
+
 **Note**: Also see `AGENTS.md` in the root for comprehensive architectural guidance.
 
 ## Key Guidelines
@@ -12,12 +18,17 @@ My Context Kit is a desktop application built with Electron, Vue 3, and Tailwind
 - Use LTS versions of all dependencies
 
 ### Architecture
-- Follow the repository's existing architecture - do not change it
+- Follow the **clean layered architecture** defined in `app/constitution.md`
+- **Service Layer**: All business logic in `src/main/services/` (GitService, GitHubService, AIService, EnterpriseService)
+- **Domain Layer**: Framework-agnostic logic in `domain/` (prompts, enterprise, specs)
+- **IPC Handlers**: Thin handlers that only validate and delegate to services
+- **Renderer Services**: Vue components call `services/ipcClient.ts`, never `window.electronAPI` directly
 - Maintain separation between Electron main process, preload, and renderer
 - All context-repo operations execute through IPC to pipeline scripts
 - C4 diagrams are treated as first-class entities in the Context Tree
 - Single left panel architecture - avoid duplicate navigation panels
-- **AI Assistant Unification**: Two separate AI implementations exist (`aiStore` + `assistantStore`). When working on AI features, prioritize using `assistantStore` (session-based) and plan migration from legacy `aiStore`
+- **IPC Namespaces**: Use `ctx:*`, `git:*`, `fs:*`, `ent:*`, `ai:*`, `rag:*`, `settings:*` prefixes
+- **AI Assistant**: Use `assistantStore` (session-based) for all AI features
 
 ### Code Quality
 - Never take shortcuts for speed - prioritize quality and correctness
@@ -37,9 +48,11 @@ My Context Kit is a desktop application built with Electron, Vue 3, and Tailwind
 - Leverage Pinia for state management
 
 ### Styling
-- Use Tailwind utility classes with Material 3 design tokens (e.g., `bg-surface`, `text-secondary-900`, `rounded-m3-lg`)
+- **Tailwind v4 with Material 3**: All UI follows Material 3 design patterns using Tailwind v4 utilities
+- Use Material 3 design tokens (e.g., `bg-surface`, `text-secondary-900`, `rounded-m3-lg`)
 - Follow mobile-first responsive design
 - Extract common patterns to reusable components
+- Ensure visual consistency across all views (existing + enterprise features)
 
 ### Workflow
 - Always run linting/formatting after building
@@ -63,26 +76,52 @@ My Context Kit is a desktop application built with Electron, Vue 3, and Tailwind
 ## File Organization
 ```
 app/
+  domain/                    # Framework-agnostic business logic (NEW)
+    prompts/                 # Prompt registry and management
+    enterprise/              # Constitution merging, spec derivation
+    specs/                   # Spec generation logic
   src/
-    main/           # Electron main process + IPC handlers
-      ipc/handlers/ # IPC handlers for renderer<->main
-      services/     # Business logic (assistantSessionManager, etc.)
-    preload/        # Context isolation bridges
-    renderer/       # Vue 3 application
-      components/   # Vue components
-        assistant/  # Safe tooling assistant UI components
-      stores/       # Pinia stores (aiStore, assistantStore, contextStore)
-      styles/       # Tailwind CSS
-    shared/         # Shared types between main/renderer (assistant/types.ts)
+    main/                    # Electron main process
+      index.ts               # App bootstrap
+      ipc/
+        register.ts          # Central IPC registration
+        handlers/            # Domain-specific IPC handlers
+          enterprise.handlers.ts  # NEW: Enterprise features
+      services/              # Business logic services
+        GitService.ts        # Git operations
+        GitHubService.ts     # GitHub API operations (NEW)
+        AIService.ts         # Unified AI interface (NEW)
+        EnterpriseService.ts # Enterprise orchestration (NEW)
+        ContextBuilderService.ts
+      config/                # App configuration
+    preload/                 # Context isolation bridges
+    renderer/                # Vue 3 application
+      views/                 # Route-level components
+      components/            # Reusable UI components
+        assistant/           # Safe tooling assistant UI
+        enterprise/          # Enterprise dashboard, settings (NEW)
+      stores/                # Pinia stores
+        enterpriseStore.ts   # NEW: Enterprise state
+      services/              # IPC client wrappers
+        ipcClient.ts         # Typed IPC methods (NEW)
+      styles/                # Tailwind CSS
+    shared/                  # Shared types between main/renderer
+    types/                   # Type definitions
+      enterprise.ts          # NEW: Enterprise types
+  enterprise/                # Enterprise prompt templates (NEW)
+    prompts/
+  constitution.md            # Architectural principles (NEW)
+  copilot-instructions.md    # This file
+  warp.md                    # Warp AI instructions
 
 context-repo/
   .context/
-    schemas/        # JSON Schemas
-    pipelines/      # Node.js validation/generation scripts
-    templates/      # Handlebars templates
-  contexts/         # YAML entity storage
-  generated/        # Auto-generated artifacts
-  c4/               # C4 architecture diagrams (Mermaid)
+    schemas/                 # JSON Schemas
+    pipelines/               # Node.js validation/generation scripts
+    templates/               # Handlebars templates
+  contexts/                  # YAML entity storage
+  generated/                 # Auto-generated artifacts
+  c4/                        # C4 architecture diagrams (Mermaid)
 ```
 
 ## Commands
@@ -113,25 +152,33 @@ pnpm release:prepare # Run all pre-release checks
 - Maintain context isolation in Electron (no nodeIntegration)
 - Use CSP headers for security
 - All secrets must be environment variables - never plain text
-- Git operations use simple-git or isomorphic-git libraries
+- Git operations use simple-git library via GitService
 - **AI Features**: Use session-based approach from `assistantStore`, guard risky operations with approvals, log telemetry for all tool invocations
-- Support both Azure OpenAI and Ollama providers
+- Support both Azure OpenAI and Ollama providers via unified AIService
+- **No hardcoded prompts**: All AI prompts must be in markdown files in `enterprise/prompts/`
+- **Service layer**: Never put business logic in IPC handlers or Vue components
+- **Type safety**: Use Zod for runtime validation, strict TypeScript everywhere
 
 ## AI Assistant Architecture (Critical)
 
-### Current State
-The app has **TWO separate AI assistant implementations** that need unification:
-
-1. **Legacy**: `aiStore.ts` + `AIAssistantModal.vue` (direct API calls, streaming, edit suggestions)
-2. **New**: `assistantStore.ts` + `components/assistant/` (session-based, tools, approvals, telemetry)
+### Current Implementation
+- **Primary**: `assistantStore.ts` + `components/assistant/` (session-based, tools, approvals, telemetry)
+- **Service Layer**: All AI operations go through `AIService` in main process
+- **Unified Interface**: Single service supports Azure OpenAI and Ollama
+- **Sidecar Integration**: LangChain/FastAPI sidecar for complex AI operations
 
 ### When Working on AI Features
-- Prefer `assistantStore` for new features (better architecture)
-- Plan migration path from `aiStore` to unified implementation
-- See `AGENTS.md` for detailed unification strategy
+- Use `assistantStore` for all AI features
+- Call `AIService` methods via IPC (`ai:*` channels)
+- Never call AI providers directly from renderer
 - Always add telemetry logging for tool invocations
 - Use approval workflows for risky operations
 - Support streaming and non-streaming modes
- - Route tooling and pipeline execution through the LangChain/FastAPI sidecar (no direct model calls from renderer)
- - Use capability manifest + health polling helpers for conditional execution (see `services/langchain/` and planned `services/sidecar/`)
- - Avoid adding new logic to `aiStore`; add a migration checkpoint instead.
+- Route tooling through LangChain/FastAPI sidecar
+- Use capability manifest + health polling for conditional execution
+
+### Enterprise AI Features
+- **Spec Derivation**: Analyze code and generate specs using AI (`ent:deriveSpec`)
+- **Constitution Merging**: Combine global and local constitutions
+- **Prompt Templates**: Load prompts from markdown files in `enterprise/prompts/`
+- **Provider Configuration**: Store Azure/Ollama endpoints in enterprise settings
