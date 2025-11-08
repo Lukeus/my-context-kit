@@ -155,10 +155,17 @@ export class AIService {
   }
 
   /**
-   * Update configuration
+   * Update configuration dynamically
    */
-  setConfig(config: Partial<AIServiceConfig>): void {
+  updateConfig(config: Partial<AIServiceConfig>): void {
     this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * Get current configuration
+   */
+  getConfig(): AIServiceConfig {
+    return { ...this.config };
   }
 
   /**

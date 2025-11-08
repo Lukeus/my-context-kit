@@ -75,6 +75,22 @@ export class EnterpriseService {
     }
 
     await writeFile(this.configPath, JSON.stringify(updated, null, 2), 'utf-8');
+    
+    // Update AI service configuration when enterprise config changes
+    this.syncAIServiceConfig(updated);
+  }
+
+  /**
+   * Sync AIService configuration from EnterpriseConfig
+   */
+  private syncAIServiceConfig(config: EnterpriseConfig): void {
+    this.aiService.updateConfig({
+      azureEndpoint: config.azureOpenAIEndpoint,
+      azureKey: config.azureOpenAIKey,
+      azureDeployment: config.azureOpenAIDeployment,
+      ollamaEndpoint: config.ollamaEndpoint,
+      // Keep existing defaultProvider and promptsPath
+    });
   }
 
   // ============================================================================
