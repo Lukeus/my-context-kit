@@ -226,9 +226,8 @@ test.describe('Hashtag Command Feature', () => {
     const sendButton = window.locator('[data-assistant-focus="send-button"]');
 
     // Mock tool execution endpoint
-    let toolExecuted = false;
     await window.route('**/assistant/tools/execute', (route) => {
-      toolExecuted = true;
+      // toolExecuted flag would be used here in real implementation
       
       void route.fulfill({
         status: 200,

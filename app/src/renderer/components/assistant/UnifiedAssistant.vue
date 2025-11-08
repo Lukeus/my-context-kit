@@ -35,6 +35,17 @@
         <button
           v-if="hasSession"
           class="p-1.5 rounded hover:bg-gray-100 transition-colors"
+          @click="handleNewSession"
+          aria-label="New session"
+          title="Start new conversation"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5 text-gray-600">
+            <path d="M8.75 3.75a.75.75 0 00-1.5 0v3.5h-3.5a.75.75 0 000 1.5h3.5v3.5a.75.75 0 001.5 0v-3.5h3.5a.75.75 0 000-1.5h-3.5v-3.5z" />
+          </svg>
+        </button>
+        <button
+          v-if="hasSession"
+          class="p-1.5 rounded hover:bg-gray-100 transition-colors"
           @click="handleRefreshCapabilities"
           aria-label="Refresh capabilities"
           title="Refresh"
@@ -158,16 +169,19 @@
             </button>
           </div>
           <div class="p-4 space-y-4">
-            <label class="flex items-center justify-between">
-              <span class="text-sm text-on-surface">Streaming responses</span>
-              <input 
-                v-model="streamingEnabled" 
-                type="checkbox" 
-                class="w-4 h-4 text-primary rounded border-outline focus:ring-2 focus:ring-primary/50"
-              />
-            </label>
             <div>
-              <label class="block text-sm text-on-surface mb-2">Concurrency limit</label>
+              <label class="flex items-center justify-between">
+                <span class="text-sm text-on-surface font-medium">Streaming responses</span>
+                <input 
+                  v-model="streamingEnabled" 
+                  type="checkbox" 
+                  class="w-4 h-4 text-primary rounded border-outline focus:ring-2 focus:ring-primary/50"
+                />
+              </label>
+              <p class="mt-1 text-xs text-on-surface-variant">Show AI responses as they're being generated in real-time (instead of waiting for the complete response)</p>
+            </div>
+            <div>
+              <label class="block text-sm text-on-surface font-medium mb-2">Concurrency limit</label>
               <input
                 v-model.number="concurrencyLimit"
                 type="number"
@@ -176,7 +190,7 @@
                 class="w-full px-3 py-2 text-sm bg-surface border border-outline rounded-m3-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                 @change="handleSetConcurrency"
               />
-              <p class="mt-1 text-xs text-on-surface-variant">Maximum parallel tool executions</p>
+              <p class="mt-1 text-xs text-on-surface-variant">How many tools the AI can run simultaneously (e.g., reading multiple files at once). Higher = faster but more resource usage</p>
             </div>
           </div>
         </div>
@@ -355,6 +369,94 @@ function checkHealthStatus() {
   }
 }
 
+async function handleNewSession() {
+  // Clear current session and create a new one with the improved system prompt
+  streamingBuffer.value.clear();
+  await assistantStore.createSession({
+    provider: 'azure-openai',
+    systemPrompt: `You are an AI assistant specialized in managing and analyzing Context Repositories for software development projects.
+
+## Core Behavior
+**BE SMART**: When a file isn't found, AUTOMATICALLY search for similar files. Don't just say "file not found" - be proactive!
+
+## Your Purpose
+Help users understand, navigate, and maintain their context repository - a structured collection of YAML entities that define features, tasks, user stories, specs, services, and their relationships.
+
+## Context Repository Structure
+The repository contains YAML entities in the \`contexts/\` directory:
+- **Features**: High-level capabilities (contexts/features/*.yaml)
+- **Tasks**: Implementation work items (contexts/tasks/*.yaml)
+- **Userstories**: User-facing requirements (contexts/userstories/*.yaml)
+- **Specs**: Technical specifications (contexts/specs/*.yaml)
+- **Services**: System components (contexts/services/*.yaml)
+- **Governance**: Policies and constraints (contexts/governance/*.yaml)
+
+Each entity has:
+- Unique ID, title, description
+- Status (proposed, in-progress, done, blocked)
+- Dependencies on other entities
+- Tags for categorization
+
+## Available Tools
+Use these tools to help users:
+
+1. **context.read** - Read specific entities by path or ID
+   - Use this when you know the exact path
+   - If file not found, immediately use context.search to find similar files
+
+2. **context.search** - Search for entities by keyword, tag, or type
+   - Use this to discover entities matching criteria
+   - **ALWAYS USE THIS FIRST** when user mentions an entity ID or name you're not sure about
+
+3. **pipeline.validate** - Validate all YAML entities against schemas
+4. **pipeline.build-graph** - Build the complete dependency graph
+5. **pipeline.impact** - Analyze impact of changes to entities
+6. **pipeline.generate** - Generate documentation or artifacts
+
+## IMPORTANT: Smart Search Strategy
+
+When a user asks about "US-001", "FEAT-001", or any entity:
+
+1. **FIRST**: Use context.search to find files containing that ID
+   - Search for the ID pattern (e.g., "US-001")
+   - Look in the appropriate directory (userstories, features, etc.)
+
+2. **THEN**: Use context.read with the actual file path you found
+
+3. **NEVER**: Just say "file not found" without searching first
+
+## Example Smart Workflow
+
+User: "Analyze US-001"
+
+You should:
+1. Use context.search with query "US-001" to find matching files
+2. Find the actual file (e.g., "contexts/userstories/US-001-user-login.yaml")
+3. Use context.read with that path
+4. Analyze and respond with the information
+
+**Be proactive. Be intelligent. Always search before giving up.**`,
+    activeTools: ['context.read', 'context.search', 'pipeline.validate', 'pipeline.build-graph', 'pipeline.build-embeddings', 'pipeline.impact', 'pipeline.generate']
+  });
+  announceToScreenReader('New conversation started');
+}
+
+async function handleRefreshCapabilities() {
+  await assistantStore.loadCapabilities();
+  announceToScreenReader('Capabilities refreshed');
+}
+
+async function handleRetryConnection() {
+  checkHealthStatus();
+  announceToScreenReader('Retrying connection');
+}
+
+function handleSetConcurrency() {
+  // Update concurrency limit in queue manager
+  // This would require exposing a method in the assistant store
+  console.log('Concurrency limit updated to:', concurrencyLimit.value);
+}
+
 // Streaming accumulator (T041)
 const streamingBuffer = ref<Map<string, { tokens: string[]; metadata?: Record<string, unknown> }>>(new Map());
 function accumulateStreamingToken(taskId: string, token: string, metadata?: Record<string, unknown>) {
@@ -381,6 +483,12 @@ async function handleSendMessage(content: string) {
   // Execute any hashtag commands found
   if (parsed.hasCommands) {
     for (const cmd of parsed.commands) {
+      // Check if tool is available in current session
+      const toolAvailable = session.value?.activeTools.some(t => t.id === cmd.tool || t === cmd.tool);
+      if (!toolAvailable) {
+        console.warn(`[UnifiedAssistant] Skipping hashtag command ${cmd.tool} - not available in session`);
+        continue;
+      }
       await handleInvokeTool(cmd.tool, cmd.parameters);
     }
   }
@@ -396,6 +504,9 @@ async function handleSendMessage(content: string) {
     await assistantStore.createSession({
       provider: 'azure-openai',
       systemPrompt: `You are an AI assistant specialized in managing and analyzing Context Repositories for software development projects.
+
+## Core Behavior
+**BE SMART**: When a file isn't found, AUTOMATICALLY search for similar files. Don't just say "file not found" - be proactive!
 
 ## Your Purpose
 Help users understand, navigate, and maintain their context repository - a structured collection of YAML entities that define features, tasks, user stories, specs, services, and their relationships.
@@ -419,39 +530,41 @@ Each entity has:
 Use these tools to help users:
 
 1. **context.read** - Read specific entities by path or ID
-   - Example: "Read the user story at contexts/userstories/login.yaml"
-   - Use this to get detailed content of specific entities
+   - Use this when you know the exact path
+   - If file not found, immediately use context.search to find similar files
 
 2. **context.search** - Search for entities by keyword, tag, or type
-   - Example: "Search for all user stories with tag 'authentication'"
    - Use this to discover entities matching criteria
+   - **ALWAYS USE THIS FIRST** when user mentions an entity ID or name you're not sure about
 
 3. **pipeline.validate** - Validate all YAML entities against schemas
-   - Checks for schema compliance, broken dependencies
-   - Run this when users want to ensure repository health
-
 4. **pipeline.build-graph** - Build the complete dependency graph
-   - Shows relationships between all entities
-   - Useful for understanding system architecture
-
 5. **pipeline.impact** - Analyze impact of changes to entities
-   - Shows what would be affected by modifying an entity
-   - Use before making changes
+6. **pipeline.generate** - Generate documentation or artifacts
 
-6. **pipeline.generate** - Generate documentation or artifacts from templates
-   - Creates output files based on entity data
-   - Useful for reports, documentation
+## IMPORTANT: Smart Search Strategy
 
-## How to Help Users
+When a user asks about "US-001", "FEAT-001", or any entity:
 
-When users ask questions like:
-- "Summarize all user stories" → Use context.search to find all userstories, then read and summarize them
-- "What features are blocked?" → Search for features with status='blocked'
-- "Show dependencies for X" → Use context.read to get entity X, analyze its dependencies
-- "What breaks if I change Y?" → Use pipeline.impact on entity Y
-- "List all authentication tasks" → Search for tasks with tag='authentication'
+1. **FIRST**: Use context.search to find files containing that ID
+   - Search for the ID pattern (e.g., "US-001")
+   - Look in the appropriate directory (userstories, features, etc.)
 
-**Always use tools to access actual data. Don't make assumptions about what entities exist.**`,
+2. **THEN**: Use context.read with the actual file path you found
+
+3. **NEVER**: Just say "file not found" without searching first
+
+## Example Smart Workflow
+
+User: "Analyze US-001"
+
+You should:
+1. Use context.search with query "US-001" to find matching files
+2. Find the actual file (e.g., "contexts/userstories/US-001-user-login.yaml")
+3. Use context.read with that path
+4. Analyze and respond with the information
+
+**Be proactive. Be intelligent. Always search before giving up.**`,
       activeTools: ['context.read', 'context.search', 'pipeline.validate', 'pipeline.build-graph', 'pipeline.build-embeddings', 'pipeline.impact', 'pipeline.generate']
     });
   }

@@ -17,9 +17,17 @@ import { registerPathResolutionHandlers } from './handlers/path-resolution.handl
 import { ContextKitServiceClient } from '../services/ContextKitServiceClient';
 import { registerContextKitHandlers } from './contextKitHandlers';
 import { initializeSidecarHandlers } from './handlers/sidecar.handlers';
+import { registerEnterpriseHandlers } from './handlers/enterprise.handlers';
+import { GitHubService } from '../services/GitHubService';
+import { AIService } from '../services/AIService';
+import { EnterpriseService } from '../services/EnterpriseService';
+import path from 'node:path';
 
 // Global Context Kit service client instance
 let contextKitServiceClient: ContextKitServiceClient | null = null;
+
+// Global Enterprise Service instance
+let enterpriseService: EnterpriseService | null = null;
 
 /**
  * Initialize Context Kit Service
@@ -123,4 +131,32 @@ export async function registerAllHandlers(): Promise<void> {
   
   // Sidecar handlers (Phase 4 - Python AI service)
   initializeSidecarHandlers();
+  
+  // Enterprise handlers (Clean Architecture - Phase 2)
+  // Initialize services and register handlers
+  if (!enterpriseService) {
+    // Get enterprise prompts path
+    const { app } = await import('electron');
+    const userDataPath = app.getPath('userData');
+    const enterprisePromptsPath = path.join(userDataPath, 'enterprise-specs', 'prompts');
+    
+    // Create service instances
+    const githubService = new GitHubService({
+      baseUrl: 'https://api.github.com',
+      userAgent: 'Context-Sync-App',
+    });
+    
+    const aiService = new AIService({
+      azureEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
+      azureKey: process.env.AZURE_OPENAI_KEY,
+      azureDeployment: process.env.AZURE_OPENAI_DEPLOYMENT,
+      ollamaEndpoint: process.env.OLLAMA_ENDPOINT || 'http://localhost:11434',
+      defaultProvider: 'azure',
+      promptsPath: enterprisePromptsPath,
+    });
+    
+    enterpriseService = new EnterpriseService(githubService, aiService);
+  }
+  
+  registerEnterpriseHandlers(enterpriseService);
 }

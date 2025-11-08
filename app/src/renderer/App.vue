@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, defineAsyncComponent } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, defineAsyncComponent, provide } from 'vue';
+import { useRouter as useVueRouter, useRoute } from 'vue-router';
 // Core components (always needed)
 import LeftPanelContainer from './components/LeftPanelContainer.vue';
 import DeveloperHub from './components/DeveloperHub.vue';
@@ -13,7 +14,6 @@ import { useAgentStore } from './stores/agentStore';
 import { useLangChainStore } from './stores/langchainStore';
 import { useContextKitStore } from './stores/contextKitStore';
 import { useSnackbar } from './composables/useSnackbar';
-import { useRouting } from './composables/useRouting';
 
 // Lazy-loaded modals (Phase 1.1 - only loaded when opened)
 const GraphView = defineAsyncComponent(() => import('./components/GraphView.vue'));
@@ -48,6 +48,11 @@ const RepositoryInspector = defineAsyncComponent(() => import('./components/Cont
 const PromptBuilder = defineAsyncComponent(() => import('./components/ContextKit/PromptBuilder.vue'));
 const CodeGenerator = defineAsyncComponent(() => import('./components/ContextKit/CodeGenerator.vue'));
 
+// Lazy-loaded Enterprise components
+const EnterpriseDashboard = defineAsyncComponent(() => import('./components/EnterpriseDashboard.vue'));
+const EnterpriseSettings = defineAsyncComponent(() => import('./components/EnterpriseSettings.vue'));
+const ConstitutionViewer = defineAsyncComponent(() => import('./components/ConstitutionViewer.vue'));
+
 // AI Assistant - keep eager loaded as it's frequently used
 import UnifiedAssistant from './components/assistant/UnifiedAssistant.vue';
 
@@ -67,14 +72,11 @@ const {
   showSnackbar: triggerSnackbar
 } = useSnackbar();
 
-// Router integration (enterprise routing)
-const { 
-  navigateTo: routerNavigateTo, 
-  currentRouteName, 
-  currentParams,
-  isRouteActive,
-  breadcrumbs: routerBreadcrumbs 
-} = useRouting();
+// Vue Router integration
+const vueRouter = useVueRouter();
+const route = useRoute();
+const currentRouteName = computed(() => route.name as string | undefined);
+const currentParams = computed(() => route.params);
 
 const showAISettings = ref(false);
 const showRepoManager = ref(false);
@@ -103,7 +105,7 @@ const lastValidationAt = ref<string | null>(null);
 const lastValidationStatus = ref<'success' | 'error' | null>(null);
 const lastGraphRefresh = ref<string | null>(null);
 
-type NavId = 'hub' | 'entities' | 'graph' | 'git' | 'validate' | 'docs' | 'ai' | 'c4' | 'entity' | 'agents' | 'contextkit';
+type NavId = 'hub' | 'entities' | 'graph' | 'git' | 'validate' | 'docs' | 'ai' | 'c4' | 'entity' | 'agents' | 'contextkit' | 'enterprise';
 type NavRailId = Exclude<NavId, 'entity'>;
 
 const activeNavId = ref<NavId>('hub');
@@ -113,6 +115,7 @@ const navRailItems: Array<{ id: NavRailId; label: string; requiresRepo?: boolean
   { id: 'entities', label: 'Tree', shortcut: 'Toggle' },
   { id: 'agents', label: 'Agents', shortcut: 'Manage' },
   { id: 'contextkit', label: 'Context Kit', requiresRepo: true, shortcut: 'CK' },
+  { id: 'enterprise', label: 'Enterprise', shortcut: 'Specs' },
   { id: 'c4', label: 'C4', shortcut: 'Architecture' },
   { id: 'graph', label: 'Graph', requiresRepo: true, shortcut: 'View' },
   { id: 'git', label: 'Git', requiresRepo: true, shortcut: 'Status' },
@@ -213,7 +216,30 @@ watch(currentParams, (params) => {
 // Sync active entity with route
 watch(() => activeEntity.value, (entity) => {
   if (entity && currentRouteName.value !== 'entity') {
-    routerNavigateTo('entity', { id: entity.id });
+    vueRouter.push({ name: 'entity', params: { id: entity.id } });
+  }
+});
+
+// Watch route changes to sync activeNavId for all routes
+watch(currentRouteName, (routeName) => {
+  // Map route names to nav IDs
+  const routeToNavMap: Record<string, NavId> = {
+    'hub': 'hub',
+    'entities': 'entities',
+    'agents': 'agents',
+    'contextkit': 'contextkit',
+    'enterprise': 'enterprise',
+    'enterprise-settings': 'enterprise',
+    'enterprise-constitution': 'enterprise',
+    'c4': 'c4',
+    'c4-diagram': 'c4',
+    'graph': 'graph',
+    'git': 'git',
+    'docs': 'docs'
+  };
+  
+  if (routeName && routeToNavMap[routeName as string]) {
+    activeNavId.value = routeToNavMap[routeName as string];
   }
 });
 
@@ -231,17 +257,21 @@ function startResizeRight() {
 }
 
 async function handleNavClick(id: NavRailId) {
-  // Sync with Vue Router for enterprise routing
+  // Navigate using Vue Router for all routes
   const routeMap: Record<string, string> = {
     'hub': 'hub',
     'c4': 'c4',
     'docs': 'docs',
     'entities': 'entities',
-    'agents': 'agents'
+    'agents': 'agents',
+    'contextkit': 'contextkit',
+    'enterprise': 'enterprise',
+    'graph': 'graph',
+    'git': 'git'
   };
   
   if (routeMap[id]) {
-    await routerNavigateTo(routeMap[id]);
+    await vueRouter.push({ name: routeMap[id] });
   }
   
   switch (id) {
@@ -266,6 +296,10 @@ async function handleNavClick(id: NavRailId) {
       break;
     case 'contextkit':
       openContextKit();
+      break;
+    case 'enterprise':
+      activeNavId.value = 'enterprise';
+      leftPanelOpen.value = false; // Hide left panel for enterprise
       break;
     case 'c4':
       openC4Builder();
@@ -303,6 +337,8 @@ function isNavActive(id: NavRailId) {
       return activeNavId.value === 'agents';
     case 'contextkit':
       return activeNavId.value === 'contextkit';
+    case 'enterprise':
+      return activeNavId.value === 'enterprise';
     case 'c4':
       return activeNavId.value === 'c4';
     case 'graph':
@@ -602,8 +638,21 @@ async function handleSendPromptToAssistant(prompt: string) {
     await assistantStore.createSession({
       userId: 'local-user',
       provider: 'azure-openai',
-      systemPrompt: 'You are an intelligent assistant for a context repository.',
-      activeTools: []
+      systemPrompt: `You are an intelligent assistant for a context repository.
+
+## Core Behavior
+**BE SMART**: When a file isn't found, AUTOMATICALLY search for similar files. Don't just say "file not found" - be proactive!
+
+Use the available tools to access actual repository data:
+- **context.search** - Find entities by keyword, tag, or type (use this FIRST when unsure)
+- **context.read** - Read specific entities by path
+- **pipeline.validate** - Validate YAML schemas
+- **pipeline.build-graph** - Build dependency graph
+- **pipeline.impact** - Analyze impact of changes
+- **pipeline.generate** - Generate documentation
+
+**Always search before giving up on finding files.**`,
+      activeTools: ['context.read', 'context.search', 'pipeline.validate', 'pipeline.build-graph', 'pipeline.build-embeddings', 'pipeline.impact', 'pipeline.generate']
     });
   }
   // Send the message
@@ -651,7 +700,18 @@ async function handleAskAboutEntity(entityId: string) {
     await assistantStore.createSession({
       userId: 'local-user',
       provider: 'azure-openai',
-      systemPrompt: 'You are an intelligent assistant for a context repository. Help users understand entities, their relationships, and impact. Focus on clarity and actionable insights.',
+      systemPrompt: `You are an intelligent assistant for a context repository. Help users understand entities, their relationships, and impact.
+
+## Core Behavior
+**BE SMART**: When a file isn't found, AUTOMATICALLY search for similar files using context.search.
+
+## Smart Search Strategy
+When analyzing an entity:
+1. **FIRST**: Use context.search to find files containing that ID
+2. **THEN**: Use context.read with the actual file path
+3. **NEVER**: Just say "file not found" without searching first
+
+Focus on clarity and actionable insights.`,
       activeTools: ['context.read', 'context.search', 'pipeline.validate', 'pipeline.build-graph', 'pipeline.build-embeddings', 'pipeline.impact', 'pipeline.generate']
     });
   }
@@ -709,11 +769,11 @@ async function handleCommandExecute(commandId: string) {
 
 // Handle route-based navigation from commands or nav rail
 async function handleRouteNavigation(routeId: string) {
-  const result = await routerNavigateTo(routeId as any);
-  
-  if (!result.success) {
+  try {
+    await vueRouter.push({ name: routeId });
+  } catch (error) {
     triggerSnackbar({ 
-      message: result.error || `Cannot navigate to ${routeId}`, 
+      message: `Cannot navigate to ${routeId}`, 
       type: 'warning' 
     });
     return;
@@ -727,6 +787,10 @@ async function handleRouteNavigation(routeId: string) {
     case 'entities':
       leftPanelOpen.value = true;
       activeNavId.value = 'entities';
+      break;
+    case 'enterprise':
+      activeNavId.value = 'enterprise';
+      leftPanelOpen.value = false;
       break;
     case 'c4':
       openC4Builder();
@@ -862,6 +926,30 @@ async function handleRemoveRepo(id: string) {
     removingRepoId.value = null;
   }
 }
+
+// Provide hub state and actions for child components (must be after functions are defined)
+provide('hubState', {
+  lastValidationAt,
+  lastValidationStatus,
+  lastGraphRefresh
+});
+
+provide('hubActions', {
+  runValidation,
+  reloadGraph,
+  openImpactView,
+  openGitPanel,
+  openAssistantPanel,
+  handleOpenDiff,
+  handleOpenPrompts,
+  openNewRepoModal,
+  openContextKit,
+  openRepoInspector,
+  openPromptBuilder,
+  openCodeGenerator,
+  openSpecWizard: () => { showSpecWizard.value = true; },
+  handleAskAboutEntity
+});
 </script>
 
 <template>
@@ -1162,160 +1250,13 @@ async function handleRemoveRepo(id: string) {
           </div>
         </div>
 
-        <!-- C4 Architecture Builder View -->
-        <Suspense v-else-if="activeNavId === 'c4'">
-          <template #default>
-            <C4DiagramBuilder />
-          </template>
-          <template #fallback>
-            <div class="flex items-center justify-center h-full">
-              <div class="text-center">
-                <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="text-sm text-secondary-600">Loading C4 builder...</p>
-              </div>
-            </div>
-          </template>
-        </Suspense>
-        <!-- Graph View -->
-        <div v-else-if="activeNavId === 'graph'" class="flex flex-col h-full bg-surface">
-          <Suspense>
-            <template #default>
-              <GraphView @ask-about-entity="handleAskAboutEntity" />
-            </template>
-            <template #fallback>
-              <div class="flex items-center justify-center h-full">
-                <div class="text-center">
-                  <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <p class="text-sm text-secondary-600">Loading dependency graph...</p>
-                </div>
-              </div>
-            </template>
-          </Suspense>
-        </div>
-        <!-- Git Workflow View -->
-        <div v-else-if="activeNavId === 'git'" class="flex flex-col h-full bg-surface">
-          <!-- Git Page Header -->
-          <div class="flex items-center justify-between px-6 py-4 bg-surface-1 border-b border-surface-variant shadow-elevation-1">
-            <div class="flex items-center gap-3">
-              <div class="p-2 rounded-m3-full bg-primary-50">
-                <svg class="w-6 h-6 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                </svg>
-              </div>
-              <div>
-                <h2 class="text-2xl font-semibold text-primary-900">Git Workflow</h2>
-                <p class="text-sm text-secondary-600">Manage changes, stage, commit, and sync</p>
-              </div>
-            </div>
-            <button
-              @click="activeNavId = 'hub'"
-              class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-secondary-700 hover:text-primary-700 hover:bg-surface-2 rounded-m3-lg transition-all"
-              title="Back to Hub"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back
-            </button>
-          </div>
-          <!-- Git Content -->
-          <div class="flex-1 overflow-hidden">
-            <Suspense>
-              <template #default>
-                <GitPanel />
-              </template>
-              <template #fallback>
-                <div class="flex items-center justify-center h-full">
-                  <div class="text-center">
-                    <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <p class="text-sm text-secondary-600">Loading Git workflow...</p>
-                  </div>
-                </div>
-              </template>
-            </Suspense>
-          </div>
-        </div>
-
-        <!-- Context Kit Hub View -->
-        <Suspense v-else-if="activeNavId === 'contextkit'">
-          <template #default>
-            <ContextKitHub 
-              @open-inspector="openRepoInspector"
-              @open-spec-wizard="showSpecWizard = true"
-              @open-spec-log="showSpecLog = true"
-            />
-          </template>
-          <template #fallback>
-            <div class="flex items-center justify-center h-full">
-              <div class="text-center">
-                <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="text-sm text-secondary-600">Loading Context Kit...</p>
-              </div>
-            </div>
-          </template>
-        </Suspense>
-
-        <!-- Agent Library View -->
-        <Suspense v-else-if="activeNavId === 'agents'">
-          <template #default>
-            <AgentLibrary />
-          </template>
-          <template #fallback>
-            <div class="flex items-center justify-center h-full">
-              <div class="text-center">
-                <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="text-sm text-secondary-600">Loading agent library...</p>
-              </div>
-            </div>
-          </template>
-        </Suspense>
-        <!-- Documentation View -->
-        <Suspense v-else-if="activeNavId === 'docs'">
-          <template #default>
-            <WelcomeDocumentation />
-          </template>
-          <template #fallback>
-            <div class="flex items-center justify-center h-full">
-              <div class="text-center">
-                <svg class="animate-spin h-8 w-8 text-primary-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="text-sm text-secondary-600">Loading documentation...</p>
-              </div>
-            </div>
-          </template>
-        </Suspense>
-        <!-- Developer Hub View (default) -->
-        <DeveloperHub
-          v-else-if="activeNavId === 'hub'"
-          :last-validation-status="lastValidationStatus"
-          :last-validation-at="lastValidationAt"
-          :last-graph-refresh="lastGraphRefresh"
-          @run-validation="runValidation"
-          @refresh-graph="reloadGraph"
-          @open-impact="openImpactView"
-          @open-git="openGitPanel"
-          @open-assistant="openAssistantPanel"
-          @open-diff="handleOpenDiff"
-          @open-prompts="handleOpenPrompts"
-          @create-repo="openNewRepoModal"
-          @open-context-kit="openContextKit"
+        <!-- All other views rendered by Vue Router -->
+        <router-view 
+          v-else 
+          @ask-about-entity="handleAskAboutEntity"
+          @open-inspector="openRepoInspector"
+          @open-spec-wizard="showSpecWizard = true"
+          @open-spec-log="showSpecLog = true"
         />
       </section>
 
