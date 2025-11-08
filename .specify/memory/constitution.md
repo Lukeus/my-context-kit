@@ -1,13 +1,14 @@
 <!--
 Sync Impact Report
-Version change: 1.1.0 → 1.2.0
+Version change: 1.2.0 → 1.3.0
 Modified principles: none
 Added sections:
-- AI Orchestration & Assistant Architecture (MINOR: redefines canonical stack around Python LangChain sidecar)
+- Clean Architecture Layering (MINOR: formalizes enforced layering & dependency direction)
 Removed sections: none
-Rationale: The JavaScript LangChain layer is being decommissioned in favor of the Python FastAPI sidecar. The constitution now requires all AI orchestration to route through the Python service so duplicate stacks cannot regress into production.
+Rationale: Codifies the clean architecture refactor now underway to prevent business logic or integration code from leaking into IPC handlers, preload, or renderer layers. Establishes immutable dependency rules and testing guidance.
 Templates: no changes required
-Follow-up TODOs: none
+Follow-up TODOs:
+- TODO(clean-arch-enforcement): Add PR checklist items verifying layer boundaries.
 -->
 
 # Context-Sync Constitution
@@ -46,6 +47,64 @@ releases remain auditable, and security reviews MUST cover any new integrations 
 - Pipelines execute with `node <repo>/.context/pipelines/*.mjs`; use deterministic configuration and document required env vars.
 - Tailwind CSS, Material 3 design patterns, Vue 3 Composition API, and Pinia are mandatory in the renderer; deviations require constitutional amendments.
 - C4 diagrams under `context-repo/c4/` MUST be updated in lock-step with architecture-affecting changes and reviewed in PRs.
+
+## Clean Architecture Layering
+
+The application MUST adhere to a strict inward dependency flow. Outer layers may depend on inner layers; inner layers MUST remain unaware of outer layers. Violations MUST block merge until corrected.
+
+### Layer Definitions (Outer → Inner)
+
+1. Renderer (Vue 3 + Tailwind + Pinia): Pure UI, state management, presentation, user interaction. NO business logic, NO direct filesystem, git, or AI provider calls.
+2. Preload Bridges: Typed, minimal exposure of IPC client surface; NO branching business logic, NO persistence, NO side effects beyond invoking IPC. Context isolation MUST remain enabled.
+3. IPC Handlers (Main `src/main/ipc/handlers`): Validation + delegation only. They perform Zod-based input validation, trace logging, and forward calls to Services. They MUST remain stateless.
+4. Services (Main `src/main/services`): Orchestration & business logic boundary for platform concerns (Git operations, AI orchestration, enterprise workflows, context building). They MAY call Domain logic, system libraries, and sidecar HTTP APIs. Services MUST NOT import renderer code or preload code.
+5. Domain (`app/domain/*`): Pure, framework-agnostic logic (spec derivation, prompt assembly, constitution merging, graph transforms). NO Electron, NO fs/network side effects (except through injectable abstractions passed from Services).
+
+### Dependency Rules
+
+- Renderer → Preload → IPC → Services → Domain is the ONLY allowed direction.
+- Domain MUST NOT import from Services or any Electron-specific modules.
+- Services MUST NOT import from Renderer, Preload, or Components.
+- IPC Handlers MUST NOT implement business logic beyond trivial mapping.
+- Shared types live in `app/src/shared` or `app/types` and MAY be imported by any layer.
+
+### Cross-Cutting Concerns
+
+- Validation: Zod schemas reside beside IPC handlers or shared types. Domain functions assume validated inputs.
+- Logging & Telemetry: Implemented at Service boundary; renderer receives structured events only.
+- Error Handling: Services normalize errors to typed results; renderer shows user-friendly messages.
+- Configuration: Centralized under `app/src/main/config`; Domain receives primitive values, never reads env vars directly.
+
+### Testing Guidance
+
+- Domain: Pure unit tests (no mocks of Electron). Deterministic & fast.
+- Services: Integration-style tests with mocked sidecar / git / fs abstractions.
+- IPC: Contract tests verifying validation + delegation only.
+- Renderer: Component + store tests (no deep Service logic testing).
+
+### Enforcement & Migration
+
+- Any existing business logic found in renderer, preload, or IPC MUST be migrated to Services/Domain and annotated with `// TODO(clean-arch-migration):` until complete.
+- New features MUST list affected layers in their `plan.md` and state compliance with these rules.
+- CI SHOULD include static analysis (future enhancement) to detect forbidden imports.
+
+### AI Integration Alignment
+
+- AI operations follow same flow: Renderer (assistantStore) → Preload → `ai:*` IPC → `AIService` → Python sidecar → Domain utilities (for prompt assembly). No layer may bypass `AIService`.
+
+### Prohibited Patterns
+
+- Direct use of `window.electronAPI` inside components (must use `ipcClient.ts`).
+- Embedding prompts directly in code (must reside in `enterprise/prompts/`).
+- Service logic in Pinia stores.
+- Unvalidated IPC parameters reaching Services.
+
+### Allowed Exceptions (Must be Documented)
+
+- Temporary feature flags around deprecated modules (e.g., `// TODO(langchain-js-removal):`) pending deletion.
+- Minimal glue code inside IPC handlers needed for streaming events (must remain logic-free).
+
+Failure to comply MUST trigger a constitutional amendment discussion if an exception is required.
 
 ## AI Orchestration & Assistant Architecture
 
@@ -88,3 +147,4 @@ The UI follows Material 3 design patterns with an **Intel-inspired color palette
 - Compliance checks belong in PR templates and planning artifacts; reviewers MUST verify gates before approving.
 
 **Version**: 1.2.0 | **Ratified**: 2025-10-28 | **Last Amended**: 2025-11-01
+**Pending Version (Post-Update)**: 1.3.0 (awaiting ratification date on merge)
