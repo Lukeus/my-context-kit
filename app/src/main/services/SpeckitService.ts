@@ -16,7 +16,6 @@ import type {
 import { logger } from '../utils/logger';
 import { ContextService } from './ContextService';
 import type { ValidationResult, ImpactResult, GenerateResult } from './ContextService';
-import { AIService } from './AIService';
 
 export interface SpecifyOptions {
   repoPath: string;
@@ -90,7 +89,6 @@ export class SpeckitService {
     'governance',
     'template',
   ];
-  private readonly aiService = new AIService();
 
   /**
    * Check if a pipeline exists in the repository
@@ -522,100 +520,19 @@ export class SpeckitService {
   }
 
   /**
-   * Generate a specification using AI
-   * Uses AI to create a comprehensive specification from a description
+   * DEPRECATED: aiGenerateSpec has been removed.
+   * TODO: Migrate to Python sidecar for AI spec generation.
    */
-  async aiGenerateSpec(options: AIGenerateSpecOptions): Promise<any> {
-    const { repoPath, description } = options;
-    this.checkPipelineExists(repoPath, 'ai-spec-generator.mjs');
-    
-    // Get AI config to retrieve provider and API key
-    const config = await this.aiService.getConfig(repoPath);
-    if (!config.enabled) {
-      throw new Error('AI assistance is disabled. Please enable AI in settings.');
-    }
-
-    // Get API key for providers that require it
-    let apiKey = '';
-    if (config.provider === 'azure-openai') {
-      const hasKey = await this.aiService.hasCredentials(config.provider);
-      if (!hasKey) {
-        throw new Error('API key not configured. Please set your API key in AI settings.');
-      }
-      // Get the decrypted API key (internal method)
-      apiKey = await (this.aiService as any).getCredentials(config.provider);
-    }
-
-    // Pass config and API key to the pipeline
-    const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'ai-spec-generator.mjs');
-    const result = await execa('node', [
-      pipelinePath,
-      'generate',
-      description,
-      config.provider,
-      config.endpoint,
-      config.model,
-      apiKey
-    ], {
-      cwd: repoPath,
-      env: {
-        ...process.env,
-        HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || '',
-        HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || '',
-        NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || ''
-      }
-    });
-    
-    return JSON.parse(result.stdout);
+  async aiGenerateSpec(_options: AIGenerateSpecOptions): Promise<any> {
+    throw new Error('AI spec generation has been migrated to Python sidecar. Use the sidecar service instead.');
   }
 
   /**
-   * Refine an existing specification using AI feedback
-   * Uses AI to improve or modify an existing specification based on feedback
+   * DEPRECATED: aiRefineSpec has been removed.
+   * TODO: Migrate to Python sidecar for AI spec refinement.
    */
-  async aiRefineSpec(options: AIRefineSpecOptions): Promise<any> {
-    const { repoPath, specPath, feedback } = options;
-    this.checkPipelineExists(repoPath, 'ai-spec-generator.mjs');
-    
-    // Get AI config to retrieve provider and API key
-    const config = await this.aiService.getConfig(repoPath);
-    if (!config.enabled) {
-      throw new Error('AI assistance is disabled. Please enable AI in settings.');
-    }
-
-    // Get API key for providers that require it
-    let apiKey = '';
-    if (config.provider === 'azure-openai') {
-      const hasKey = await this.aiService.hasCredentials(config.provider);
-      if (!hasKey) {
-        throw new Error('API key not configured. Please set your API key in AI settings.');
-      }
-      // Get the decrypted API key (internal method)
-      apiKey = await (this.aiService as any).getCredentials(config.provider);
-    }
-
-    const fullSpecPath = path.join(repoPath, specPath);
-    const pipelinePath = path.join(repoPath, '.context', 'pipelines', 'ai-spec-generator.mjs');
-    const result = await execa('node', [
-      pipelinePath,
-      'refine',
-      fullSpecPath,
-      feedback,
-      config.provider,
-      config.endpoint,
-      config.model,
-      apiKey
-    ], {
-      cwd: repoPath,
-      env: {
-        ...process.env,
-        HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || '',
-        HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || '',
-        NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || ''
-      }
-    });
-    
-    return JSON.parse(result.stdout);
+  async aiRefineSpec(_options: AIRefineSpecOptions): Promise<any> {
+    throw new Error('AI spec refinement has been migrated to Python sidecar. Use the sidecar service instead.');
   }
 
   private preparePipelineEntities(

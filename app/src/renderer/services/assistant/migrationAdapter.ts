@@ -1,21 +1,15 @@
-// Migration Adapter (T018)
+// Migration Adapter (T018) - DEPRECATED
 // -----------------------------------------------------------------------------
-// Provides utilities for migrating legacy aiStore sessions to unified assistantStore.
-// Tracks migration checkpoints and preserves conversation history, telemetry, and settings.
-// TODO(T018-Persistence): Implement checkpoint persistence to localStorage/IndexedDB.
-// TODO(T018-Rollback): Add rollback capability for failed migrations.
-// TODO(US3): Wire migration UI components and progress indicators.
+// DEPRECATION NOTICE: aiStore has been removed as part of the Python sidecar migration.
+// This migration adapter is no longer needed since there is no legacy aiStore to migrate from.
+// This file is kept as a stub to prevent build errors in dependent code.
+// TODO(Cleanup): Remove this file once all references are removed from the codebase.
+// -----------------------------------------------------------------------------
 
 import type { MigrationRecord } from '@shared/assistant/migration';
 import type { AssistantSessionExtended, ConversationTurn, AssistantProvider } from '@shared/assistant/types';
 import { addCheckpoint, createInitialMigrationRecord } from '@shared/assistant/migration';
 import { useAssistantStore } from '@/stores/assistantStore';
-// NOTE(T068): Initial migration scan + auto trigger utilities.
-// These helpers intentionally avoid side effects beyond in-memory state for first pass.
-// Persistence, telemetry emission, and rollback will be added in subsequent tasks (T073, T074).
-
-// Lazy import to avoid circular dep at module init time; only needed when scanning.
-import type { useAIStore } from '@/stores/aiStore';
 
 // T073/T082: Telemetry emission helper refactored to leverage assistantStore telemetry sink.
 // Falls back to console logging if store or emitter unavailable.
@@ -81,7 +75,7 @@ const DEFAULT_MIGRATION_OPTIONS: MigrationOptions = {
 };
 
 // Internal module flags
-let SCAN_COMPLETED = false; // Prevent duplicate scans in a single renderer lifecycle (T069)
+let _SCAN_COMPLETED = false; // Prevent duplicate scans in a single renderer lifecycle (T069)
 let AUTO_MIGRATION_PERFORMED = false; // Guard ensureLegacyMigration (T069)
 
 /**
@@ -98,97 +92,20 @@ function hashContent(input: string): string {
 }
 
 /**
- * Attempt to derive provider from legacy store capabilities/config (best-effort).
- * Falls back to 'azure-openai'. TODO(T071-Provider): Enhance provider inference.
+ * DEPRECATED: aiStore has been removed.
+ * Falls back to 'azure-openai'.
  */
-function inferProvider(legacyStore: ReturnType<typeof useAIStore> | undefined): AssistantProvider {
-  try {
-    const caps = (legacyStore as unknown as { capabilities?: { provider?: AssistantProvider } })?.capabilities;
-    if (caps && typeof caps === 'object' && 'provider' in caps && caps.provider) {
-      return caps.provider as AssistantProvider;
-    }
-  } catch {
-    // ignore
-  }
+function _inferProvider(_legacyStore: unknown): AssistantProvider {
   return 'azure-openai';
 }
 
 /**
- * Scan for legacy aiStore session data and return synthesized LegacyAIStoreSession objects.
- * NOTE: The legacy implementation currently supports a single in-memory conversation; we wrap it as one session.
- * Returns empty array if no legacy store or no messages. (T068)
+ * DEPRECATED: aiStore has been removed. This function now returns empty array.
+ * Returns empty array since there is no legacy store to migrate from.
  */
-export async function scanLegacySessions(legacyStore?: ReturnType<typeof useAIStore>): Promise<LegacyAIStoreSession[]> {
-  if (SCAN_COMPLETED) {
-    return [];
-  }
-
-  try {
-    // Dynamically obtain store if not supplied
-    // Import inline to avoid circular dependency at module load.
-    if (!legacyStore) {
-      const mod = await import('@/stores/aiStore');
-      if (mod?.useAIStore) {
-        legacyStore = mod.useAIStore();
-      }
-    }
-  } catch (err) {
-    console.debug('[Migration] Legacy store unavailable:', err);
-    SCAN_COMPLETED = true;
-    return [];
-  }
-
-  // If still undefined, abort
-  if (!legacyStore) {
-    SCAN_COMPLETED = true;
-    return [];
-  }
-
-  // @ts-expect-error accessing internal ref values from legacy store (read-only usage)
-  const conversation: unknown[] = Array.isArray(legacyStore.conversation?.value) ? legacyStore.conversation.value : [];
-
-  if (!conversation.length) {
-    SCAN_COMPLETED = true;
-    return [];
-  }
-
-  // Build messages list
-  const messages = conversation.map((m: any) => ({
-    id: String(m.id || m.createdAt || Date.now()),
-    role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
-    content: typeof m.content === 'string' ? m.content : '',
-    mode: typeof m.mode === 'string' && ['general', 'improvement', 'clarification'].includes(m.mode)
-      ? (m.mode as 'general' | 'improvement' | 'clarification')
-      : undefined,
-    timestamp: typeof m.createdAt === 'string' ? m.createdAt : new Date().toISOString()
-  })).filter((msg: { content: string }) => msg.content.trim().length > 0);
-
-  if (!messages.length) {
-    SCAN_COMPLETED = true;
-    return [];
-  }
-
-  // Derive a stable legacy session id from first + last message hashes for reproducibility
-  const firstHash = hashContent(messages[0].content);
-  const lastHash = hashContent(messages[messages.length - 1].content);
-  const sessionId = `legacy-${firstHash.slice(0,6)}-${lastHash.slice(0,6)}`;
-
-  const session: LegacyAIStoreSession = {
-    id: sessionId,
-    provider: inferProvider(legacyStore),
-    messages,
-    settings: {
-      // @ts-expect-error legacy prompts ref shape
-      customPrompt: legacyStore.prompts?.value?.generalPrompt || undefined
-    },
-    metadata: {
-      source: 'aiStore',
-      originalCount: conversation.length
-    }
-  };
-
-  SCAN_COMPLETED = true;
-  return [session];
+export async function scanLegacySessions(_legacyStore?: unknown): Promise<LegacyAIStoreSession[]> {
+  _SCAN_COMPLETED = true;
+  return [];
 }
 
 /**

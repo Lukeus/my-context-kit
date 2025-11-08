@@ -7,7 +7,6 @@ import Snackbar from './components/Snackbar.vue';
 // Stores and composables
 import { useContextStore } from './stores/contextStore';
 import { useBuilderStore } from './stores/builderStore';
-import { useAIStore } from './stores/aiStore';
 import { useAssistantStore } from './stores/assistantStore';
 import { useGitStore } from './stores/gitStore';
 import { useAgentStore } from './stores/agentStore';
@@ -596,11 +595,25 @@ function openCodeGenerator() {
   showCodeGenerator.value = true;
 }
 
-function handleSendPromptToAssistant(prompt: string) {
+async function handleSendPromptToAssistant(prompt: string) {
   openAssistantPanel();
-  void aiStore.initialize().then(() => {
-    void aiStore.ask(prompt, { mode: 'general' });
-  });
+  // Create session if needed
+  if (!assistantStore.session) {
+    await assistantStore.createSession({
+      userId: 'local-user',
+      provider: 'azure-openai',
+      systemPrompt: 'You are an intelligent assistant for a context repository.',
+      activeTools: []
+    });
+  }
+  // Send the message
+  if (assistantStore.session) {
+    await assistantStore.sendMessage(assistantStore.session.id, {
+      role: 'user',
+      content: prompt,
+      mode: 'general'
+    });
+  }
 }
 
 function openNewRepoModal() {
@@ -617,12 +630,10 @@ function openAssistantPanel() {
   // Don't change activeNavId - preserve current view/panel state
 }
 
-const aiStore = useAIStore();
 const assistantStore = useAssistantStore();
 
 async function handleAskAboutEntity(entityId: string) {
-  // Switch to AI assistant panel
-  activeNavId.value = 'ai';
+  // Open AI assistant panel without changing activeNavId to preserve left panel state
   rightPanelOpen.value = true;
   
   // Get entity details
@@ -668,6 +679,9 @@ async function handleCommandExecute(commandId: string) {
   switch (commandId) {
     case 'speckit:workflow':
       showSpeckitWizard.value = true;
+      break;
+    case 'settings:ai':
+      showAISettings.value = true;
       break;
     case 'assistant:open':
       openAssistantPanel();

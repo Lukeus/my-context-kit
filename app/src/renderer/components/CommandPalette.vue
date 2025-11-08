@@ -32,6 +32,7 @@ function buildNavigationCommands(): CommandItem[] {
 // Action commands for workflows and creation
 const actionCommands: CommandItem[] = [
   { id: 'speckit:workflow', title: 'Speckit Workflow', subtitle: 'Start SDD specification-to-tasks workflow', keywords: ['speckit','sdd','spec','workflow','specify','plan','tasks'], category: 'action' },
+  { id: 'settings:ai', title: 'AI Settings', subtitle: 'Configure AI providers and sidecar', keywords: ['ai','settings','configure','ollama','azure','openai','sidecar','langchain'], category: 'action' },
   { id: 'assistant:open', title: 'Open AI Assistant', subtitle: 'Toggle the right assistant panel', keywords: ['ai','assistant','chat'], category: 'action' },
   { id: 'impact:analyze', title: 'Open Impact Analysis', subtitle: 'Analyze impact for active entity', keywords: ['impact','analysis'], category: 'action' },
   { id: 'create:feature', title: 'Create Feature', subtitle: 'Start feature wizard', keywords: ['new','feature','create'], category: 'action' },

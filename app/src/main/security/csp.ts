@@ -41,11 +41,13 @@ export function buildCspFromEnv(): string {
   const dev = process.env.NODE_ENV === 'development' || !!process.env.MAIN_WINDOW_VITE_DEV_SERVER_URL;
   const primaryPort = safePort(process.env.CONTEXT_KIT_SIDECAR_PORT) ?? 8000;
   const legacyPort = safePort(process.env.CONTEXT_KIT_LEGACY_PORT) ?? 5055;
+  const ollamaPort = safePort(process.env.OLLAMA_PORT) ?? 11434; // Ollama default port
+  console.log('[CSP] Ports:', { primaryPort, legacyPort, ollamaPort });
   const extra = (process.env.CONTEXT_KIT_EXTRA_CONNECT || '')
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);
-  return buildCsp({ dev, sidecarPorts: [primaryPort], legacyPorts: [legacyPort], extraConnectOrigins: extra });
+  return buildCsp({ dev, sidecarPorts: [primaryPort, ollamaPort], legacyPorts: [legacyPort], extraConnectOrigins: extra });
 }
 
 function safePort(value: string | undefined): number | undefined {
