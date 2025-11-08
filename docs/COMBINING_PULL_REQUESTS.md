@@ -2,6 +2,19 @@
 
 This guide explains how to combine multiple pull requests (PRs) into a single PR for cleaner merge history and easier review.
 
+## Quick Reference
+
+Choose your method based on your needs:
+
+| I want to... | Use Method | Jump to |
+|-------------|-----------|---------|
+| Select specific commits from multiple PRs | **Cherry-Pick** ⭐ | [Method 1](#method-1-cherry-pick-recommended) |
+| Merge all changes from multiple branches | **Merge Branches** | [Method 2](#method-2-merge-multiple-branches) |
+| Create a single clean commit | **Rebase & Squash** | [Method 3](#method-3-rebase-and-squash) |
+| Have complete manual control | **Manual Merge** | [Method 4](#method-4-manual-merge) |
+
+**Most common:** Start with [Method 1 (Cherry-Pick)](#method-1-cherry-pick-recommended) for best results.
+
 ## Table of Contents
 
 - [When to Combine PRs](#when-to-combine-prs)
