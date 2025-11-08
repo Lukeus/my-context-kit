@@ -1,5 +1,4 @@
 name: Context Repository Validation
-
 on:
   pull_request:
     branches:
@@ -16,11 +15,9 @@ on:
       - 'context-repo/.context/**'
       - 'context-repo/contexts/**'
       - 'context-repo/c4/**'
-
 permissions:
   contents: read
   pull-requests: write
-
 jobs:
   c4:
     name: Validate C4 Diagrams
@@ -32,19 +29,15 @@ jobs:
       
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
-        with:
-          version: 10.19.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v6
-        with:
           node-version: '22'
           cache: 'pnpm'
           cache-dependency-path: context-repo/package.json
       
       - name: Cache dependencies
         uses: actions/cache@v4
-        with:
           path: |
             ~/.pnpm-store
             context-repo/node_modules
@@ -87,13 +80,11 @@ jobs:
       - name: Upload C4 artifacts
         if: always()
         uses: actions/upload-artifact@v5
-        with:
           name: c4-diagrams
           path: |
             context-repo/c4/out/**/*.json
             context-repo/c4-result.json
           retention-days: 30
-
   validate:
     name: Validate YAML Schemas
     runs-on: ubuntu-latest
@@ -102,17 +93,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
           fetch-depth: 0  # Fetch all history for impact analysis
       
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
-        with:
-          version: 10.19.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v6
-        with:
           node-version: '22'
           cache: 'pnpm'
           cache-dependency-path: context-repo/package.json
@@ -151,11 +138,9 @@ jobs:
       - name: Upload validation report
         if: always()
         uses: actions/upload-artifact@v5
-        with:
           name: validation-report
           path: context-repo/validation-result.json
           retention-days: 30
-
   build-graph:
     name: Build Dependency Graph
     runs-on: ubuntu-latest
@@ -167,12 +152,9 @@ jobs:
       
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
-        with:
-          version: 10.19.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v6
-        with:
           node-version: '22'
           cache: 'pnpm'
           cache-dependency-path: context-repo/package.json
@@ -208,11 +190,9 @@ jobs:
       
       - name: Upload graph artifact
         uses: actions/upload-artifact@v5
-        with:
           name: dependency-graph
           path: context-repo/graph.json
           retention-days: 30
-
   check-references:
     name: Check Dangling References
     runs-on: ubuntu-latest
@@ -224,12 +204,9 @@ jobs:
       
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
-        with:
-          version: 10.19.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v6
-        with:
           node-version: '22'
           cache: 'pnpm'
           cache-dependency-path: context-repo/package.json
@@ -241,7 +218,6 @@ jobs:
       
       - name: Download graph artifact
         uses: actions/download-artifact@v6
-        with:
           name: dependency-graph
           path: context-repo
       

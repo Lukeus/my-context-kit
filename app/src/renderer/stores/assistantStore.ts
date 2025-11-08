@@ -353,13 +353,13 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       const normalized = errorNormalizationAdapter(err);
       error.value = normalized.userMessage;
       // Emit telemetry with errorCode
+      // TODO(T054): Add errorCode support to emitToolLifecycle type definition
       if (session.value?.id) {
         emitToolLifecycle({
           sessionId: session.value.id,
           toolId: 'session.create',
           phase: 'failed',
-          errorCode: normalized.code,
-          errorMessage: normalized.message
+          errorMessage: `[${normalized.code}] ${normalized.message}`
         });
       }
       throw err;
@@ -514,13 +514,13 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       const normalized = errorNormalizationAdapter(err);
       error.value = normalized.userMessage;
       // Emit telemetry with errorCode
+      // TODO(T054): Add errorCode support to emitToolLifecycle type definition
       if (session.value?.id) {
         emitToolLifecycle({
           sessionId: session.value.id,
           toolId: 'message.send',
           phase: 'failed',
-          errorCode: normalized.code,
-          errorMessage: normalized.message
+          errorMessage: `[${normalized.code}] ${normalized.message}`
         });
       }
       throw err;
@@ -615,12 +615,12 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
         const normalized = errorNormalizationAdapter(err);
         error.value = normalized.userMessage;
         // Emit tool.failed telemetry with errorCode
+        // TODO(T054): Add errorCode support to emitToolLifecycle type definition
         emitToolLifecycle({
           sessionId,
           toolId: payload.toolId,
           phase: 'failed',
-          errorCode: normalized.code,
-          errorMessage: normalized.message,
+          errorMessage: `[${normalized.code}] ${normalized.message}`,
           durationMs: Date.now() - startTime
         });
         throw err;
@@ -689,13 +689,13 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
         const normalized = errorNormalizationAdapter(err);
         error.value = normalized.userMessage;
         // Emit telemetry with errorCode
+        // TODO(T054): Add errorCode support to emitToolLifecycle type definition
         if (session.value?.id) {
           emitToolLifecycle({
             sessionId: session.value.id,
             toolId: PIPELINE_TOOL_ID,
             phase: 'failed',
-            errorCode: normalized.code,
-            errorMessage: normalized.message
+            errorMessage: `[${normalized.code}] ${normalized.message}`
           });
         }
         throw err;
