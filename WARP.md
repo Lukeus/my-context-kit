@@ -1,8 +1,10 @@
 # WARP.MD — Build the **Context‑Sync** Electron+Vue App
 
-A fast, copy‑pasteable guide (optimized for Warp) to scaffold an Electron Forge + Vue 3 + Tailwind desktop app that manages a **GitHub context repo** for spec‑driven development. Includes a consistency engine, prompt generation, and CI.
+A fast, copy‑pasteable guide (optimized for Warp) to scaffold an Electron Forge + Vue 3 + Tailwind desktop app that manages a **GitHub context repo** for spec‑driven development. Includes a consistency engine, prompt generation, CI, and enterprise spec orchestration.
 
-> **Goal**: MVP app that keeps features ⇄ stories ⇄ specs ⇄ tasks ⇄ services ⇄ packages **in sync** and generates agent‑ready prompt contexts.
+> **Goal**: MVP app that keeps features ⇄ stories ⇄ specs ⇄ tasks ⇄ services ⇄ packages **in sync** and generates agent‑ready prompt contexts. Supports enterprise-wide spec management with constitution hierarchy and automated derivation.
+
+**IMPORTANT**: This document is being updated to reflect the clean architecture refactoring. See `app/constitution.md` for the definitive architectural guidelines.
 
 ---
 
@@ -63,28 +65,41 @@ pnpm start
 
 ## Architecture & Best Practices
 
+**CRITICAL**: Follow the clean layered architecture defined in `app/constitution.md`
+
 ### Core Technologies
 - **Desktop Framework**: Electron Forge with TypeScript
 - **Package Manager**: pnpm (exclusive - DO NOT use npm or yarn)
 - **Frontend**: Vue 3 (Composition API) + Pinia for state management
-- **Styling**: Tailwind CSS with PostCSS
+- **Styling**: Tailwind CSS v4 with Material 3 design patterns
 - **Build Tool**: Vite with @vitejs/plugin-vue
-- **Version Control Integration**: simple-git
-- **Data Validation**: AJV (JSON Schema validator)
+- **Version Control Integration**: simple-git (via GitService)
+- **Data Validation**: Zod (primary), AJV (JSON Schema)
 - **Template Engine**: Handlebars
 - **File Watching**: chokidar
 - **Graph Visualization**: Cytoscape
+- **AI Integration**: Azure OpenAI + Ollama (via AIService)
 
 ### Development Philosophy
+* **Clean Architecture**: Service layer isolates business logic; domain layer is framework-agnostic
 * **Source of truth = GitHub context repo**: YAML + JSON Schema; PRs + CI validation block drift
 * **Deterministic generation** first, **AI second**: pipelines (validate/graph/impact/generate) are repeatable and diffable
 * **Strict ESM everywhere**: Electron main, renderer, and pipelines use ESM to avoid dual‑module headaches
-* **Clear boundaries**: UI (Electron/Vue) only orchestrates; all graph/consistency logic lives in repo pipelines
+* **Clear boundaries**: 
+  - Domain logic in `domain/` (no framework dependencies)
+  - Business logic in `src/main/services/` (testable, reusable)
+  - IPC handlers are thin validators that delegate to services
+  - Vue components call `services/ipcClient.ts`, never `window.electronAPI` directly
+* **Enterprise Spec-Driven Development**:
+  - Global constitution from `enterprise-specs` repo defines standards
+  - Local constitutions can only tighten rules, not loosen
+  - Automated spec derivation from existing code using AI
+  - Prompt templates as markdown files, never hardcoded
 * **Single package manager**: pnpm + lockfile committed; versions pinned via `overrides`
 * **Schema‑first contracts**: changes to stories/specs/services trigger impact analysis before merge
 * **Branch‑per‑change + PR template**: auto‑generated impact report in PR body
 * **Graph visibility**: Cytoscape graph in app; stale items highlighted
-* **Tests where it matters**: unit tests for pipelines; snapshot tests for prompt output if needed
+* **Tests where it matters**: unit tests for services and domain logic; E2E for critical flows
 
 ### Context Kit Planning References
 - [Context Kit System Implementation Plan](docs/context-kit-system-implementation-plan.md)
@@ -211,16 +226,57 @@ const __dirname = path.dirname(__filename);
 ```
 my-context-kit/
 ├─ app/                          # Electron Forge + Vue + Tailwind desktop app
+│  ├─ domain/                    # Framework-agnostic business logic
+│  │  ├─ prompts/
+│  │  │  └─ PromptRegistry.ts    # Load and manage prompt templates
+│  │  ├─ enterprise/
+│  │  │  └─ ConstitutionMerger.ts # Merge global/local constitutions
+│  │  └─ specs/
+│  │     └─ SpecDeriver.ts       # Generate specs from code
 │  ├─ src/
 │  │  ├─ main/                   # Electron main process
-│  │  │  ├─ index.ts             # Main entry, BrowserWindow, IPC handlers
-│  │  │  ├─ preload.ts           # Context bridge for renderer IPC
-│  │  │  └─ pipelines.ts         # Bridge to context-repo scripts
-│  │  └─ renderer/               # Vue frontend
-│  │     ├─ main.ts              # Vue app initialization
-│  │     ├─ App.vue              # Root component
-│  │     └─ styles/
-│  │        └─ tailwind.css
+│  │  │  ├─ index.ts             # App bootstrap
+│  │  │  ├─ ipc/
+│  │  │  │  ├─ register.ts       # Central IPC registration
+│  │  │  │  └─ handlers/         # IPC handler modules (thin)
+│  │  │  │     ├─ enterprise.handlers.ts  # Enterprise features
+│  │  │  │     ├─ git.handlers.ts
+│  │  │  │     ├─ ai.handlers.ts
+│  │  │  │     └─ ... (existing handlers)
+│  │  │  ├─ services/            # Business logic services
+│  │  │  │  ├─ GitService.ts     # Git operations
+│  │  │  │  ├─ GitHubService.ts  # GitHub API
+│  │  │  │  ├─ AIService.ts      # Unified AI interface
+│  │  │  │  ├─ EnterpriseService.ts # Enterprise orchestration
+│  │  │  │  └─ ... (existing services)
+│  │  │  └─ config/              # App configuration
+│  │  ├─ preload/                # Preload scripts
+│  │  │  └─ index.ts             # Context bridge
+│  │  ├─ renderer/               # Vue 3 frontend
+│  │  │  ├─ views/               # Route-level components
+│  │  │  │  ├─ EnterpriseDashboard.vue
+│  │  │  │  └─ ... (existing views)
+│  │  │  ├─ components/          # Reusable components
+│  │  │  │  ├─ enterprise/       # Enterprise UI components
+│  │  │  │  │  ├─ EnterpriseSettings.vue
+│  │  │  │  │  └─ ConstitutionViewer.vue
+│  │  │  │  └─ ... (existing components)
+│  │  │  ├─ stores/              # Pinia stores
+│  │  │  │  ├─ enterpriseStore.ts
+│  │  │  │  └─ ... (existing stores)
+│  │  │  ├─ services/            # IPC client wrappers
+│  │  │  │  └─ ipcClient.ts      # Typed IPC methods
+│  │  │  └─ styles/
+│  │  │     └─ tailwind.css
+│  │  ├─ shared/                 # Shared code
+│  │  └─ types/                  # Type definitions
+│  │     └─ enterprise.ts        # Enterprise types
+│  ├─ enterprise/                # Enterprise prompt templates
+│  │  └─ prompts/
+│  │     └─ derive-spec.md       # Spec derivation prompt
+│  ├─ constitution.md            # Architectural principles
+│  ├─ copilot-instructions.md    # GitHub Copilot instructions
+│  ├─ warp.md                    # This file
 │  ├─ forge.config.ts            # Electron Forge configuration
 │  ├─ vite.main.config.ts        # Vite config for main process
 │  ├─ vite.preload.config.ts     # Vite config for preload
@@ -291,8 +347,14 @@ my-context-kit/
 - Never take shortcuts for speed; prioritize quality and correctness
 - Break large tasks into smaller, manageable subtasks
 - Write clear, self-documenting code with appropriate comments for complex logic
-- Follow the repository's existing architecture—do not change it without discussion
+- **Follow clean architecture** defined in `app/constitution.md`:
+  - Business logic in services, not IPC handlers or Vue components
+  - Domain logic framework-agnostic
+  - IPC handlers thin and testable
+  - No hardcoded prompts (use markdown files)
 - **Always prefer LTS versions** of dependencies and packages when installing or updating
+- Run lint and typecheck before committing
+- Never deploy without explicit confirmation
 
 ---
 
