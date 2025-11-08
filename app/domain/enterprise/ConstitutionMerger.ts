@@ -42,10 +42,10 @@ export class ConstitutionMerger {
 
         // Start new section
         // const level = headingMatch[1].length; // unused for now
-        const title = headingMatch[2].trim();
+        const heading = headingMatch[2].trim();
         
         currentSection = {
-          title,
+          heading,
           content: '',
           source,
           lineNumber,
@@ -76,22 +76,22 @@ export class ConstitutionMerger {
     const conflicts = this.detectConflicts(globalConstitution, localConstitution);
     const mergedSections: ConstitutionSection[] = [];
 
-    // Create a map of local sections by title for easy lookup
+    // Create a map of local sections by heading for easy lookup
     const localSectionMap = new Map<string, ConstitutionSection>();
     for (const section of localConstitution) {
-      localSectionMap.set(this.normalizeTitle(section.title), section);
+      localSectionMap.set(this.normalizeHeading(section.heading), section);
     }
 
     // Process global sections
     for (const globalSection of globalConstitution) {
-      const normalizedTitle = this.normalizeTitle(globalSection.title);
-      const localSection = localSectionMap.get(normalizedTitle);
+      const normalizedHeading = this.normalizeHeading(globalSection.heading);
+      const localSection = localSectionMap.get(normalizedHeading);
 
       if (localSection) {
         // Section exists in both - merge content
         const merged = this.mergeSectionContent(globalSection, localSection);
         mergedSections.push(merged);
-        localSectionMap.delete(normalizedTitle); // Mark as processed
+        localSectionMap.delete(normalizedHeading); // Mark as processed
       } else {
         // Global section only
         mergedSections.push({ ...globalSection, source: 'global' });
@@ -104,8 +104,9 @@ export class ConstitutionMerger {
     }
 
     return {
-      sections: mergedSections,
+      mergedSections,
       globalPath: '', // Will be set by caller
+      localRepoPath: '', // Will be set by caller
       mergedAt: new Date().toISOString(),
       conflicts,
     };
@@ -123,7 +124,7 @@ export class ConstitutionMerger {
     const mergedContent = `${globalSection.content}\n\n---\n\n**Local Additions:**\n\n${localSection.content}`;
 
     return {
-      title: globalSection.title,
+      heading: globalSection.heading,
       content: mergedContent,
       source: 'merged',
       lineNumber: globalSection.lineNumber,
@@ -144,16 +145,16 @@ export class ConstitutionMerger {
     const localMap = new Map<string, ConstitutionSection>();
 
     for (const section of globalSections) {
-      globalMap.set(this.normalizeTitle(section.title), section);
+      globalMap.set(this.normalizeHeading(section.heading), section);
     }
 
     for (const section of localSections) {
-      localMap.set(this.normalizeTitle(section.title), section);
+      localMap.set(this.normalizeHeading(section.heading), section);
     }
 
     // Check for contradictions
-    for (const [title, localSection] of localMap) {
-      const globalSection = globalMap.get(title);
+    for (const [heading, localSection] of localMap) {
+      const globalSection = globalMap.get(heading);
       
       if (globalSection) {
         // Check if local appears to contradict global
@@ -164,10 +165,10 @@ export class ConstitutionMerger {
 
         if (contradiction) {
           conflicts.push({
-            section: localSection.title,
+            path: heading,
             reason: contradiction,
-            globalValue: this.summarizeContent(globalSection.content),
-            localValue: this.summarizeContent(localSection.content),
+            globalSection,
+            localSection,
             resolution: 'manual_review',
           });
         }
@@ -281,10 +282,10 @@ export class ConstitutionMerger {
   }
 
   /**
-   * Normalize section title for comparison (lowercase, remove special chars)
+   * Normalize section heading for comparison (lowercase, remove special chars)
    */
-  private normalizeTitle(title: string): string {
-    return title
+  private normalizeHeading(heading: string): string {
+    return heading
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, '')
       .replace(/\s+/g, ' ')
@@ -312,26 +313,28 @@ export class ConstitutionMerger {
       lines.push('## ⚠️ Conflicts Detected');
       lines.push('');
       for (const conflict of merged.conflicts) {
-        lines.push(`### ${conflict.section}`);
+        lines.push(`### ${conflict.path}`);
         lines.push(`**Reason**: ${conflict.reason}`);
         lines.push('');
         lines.push('**Global**:');
-        lines.push(`> ${conflict.globalValue}`);
+        lines.push(`> ${this.summarizeContent(conflict.globalSection.content)}`);
         lines.push('');
         lines.push('**Local**:');
-        lines.push(`> ${conflict.localValue}`);
+        lines.push(`> ${this.summarizeContent(conflict.localSection.content)}`);
         lines.push('');
-        lines.push(`**Resolution**: ${conflict.resolution}`);
-        lines.push('');
+        if (conflict.resolution) {
+          lines.push(`**Resolution**: ${conflict.resolution}`);
+          lines.push('');
+        }
       }
       lines.push('---');
       lines.push('');
     }
 
     // Sections
-    for (const section of merged.sections) {
+    for (const section of merged.mergedSections) {
       // Add section heading
-      lines.push(`## ${section.title}`);
+      lines.push(`## ${section.heading}`);
       
       // Add source badge
       const sourceBadge = this.getSourceBadge(section.source);

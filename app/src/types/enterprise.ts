@@ -43,26 +43,28 @@ export type EnterpriseRepoInfo = z.infer<typeof EnterpriseRepoInfoSchema>;
 // ============================================================================
 
 export interface ConstitutionSection {
-  title: string;
+  heading: string;
+  path?: string;
   content: string;
   source: 'global' | 'local' | 'merged';
   lineNumber?: number;
 }
 
 export interface MergedConstitution {
-  sections: ConstitutionSection[];
+  mergedSections: ConstitutionSection[];
   globalPath: string;
   localPath?: string;
+  localRepoPath: string;
   mergedAt: string;
   conflicts: ConstitutionConflict[];
 }
 
 export interface ConstitutionConflict {
-  section: string;
+  path: string;
   reason: string;
-  globalValue: string;
-  localValue: string;
-  resolution: 'use_local' | 'use_global' | 'manual_review';
+  globalSection: ConstitutionSection;
+  localSection: ConstitutionSection;
+  resolution?: 'use_local' | 'use_global' | 'manual_review';
 }
 
 // ============================================================================
