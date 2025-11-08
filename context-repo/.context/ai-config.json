@@ -1,7 +1,7 @@
 {
-  "provider": "azure-openai",
-  "endpoint": "https://fceai.azure-api.net",
-  "model": "gpt-5-mini",
+  "provider": "ollama",
+  "endpoint": "http://localhost:1134",
+  "model": "gemma3:27b",
   "embeddingModel": "text-embedding-3-small",
   "enabled": true
 }

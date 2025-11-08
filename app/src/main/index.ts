@@ -50,6 +50,7 @@ const createWindow = (): void => {
   // Production: Strict CSP without 'unsafe-eval' for security
   // const isDevelopment = process.env.NODE_ENV === 'development' || MAIN_WINDOW_VITE_DEV_SERVER_URL;
   const csp = buildCspFromEnv();
+  console.log('[Main] Generated CSP:', csp);
 
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({

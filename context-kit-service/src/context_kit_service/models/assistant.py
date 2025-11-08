@@ -85,6 +85,18 @@ class CapabilityProfile(BaseModel):
 # ============================================================================
 
 
+class ProviderConfig(BaseModel):
+    """Provider configuration."""
+
+    provider: AssistantProvider
+    endpoint: str
+    model: str
+    apiKey: str | None = None
+    apiVersion: str | None = "2024-02-15-preview"
+    temperature: float = 0.7
+    maxTokens: int | None = None
+
+
 class CreateSessionRequest(BaseModel):
     """Create assistant session request."""
 
@@ -93,6 +105,7 @@ class CreateSessionRequest(BaseModel):
     provider: AssistantProvider | None = AssistantProvider.AZURE_OPENAI
     systemPrompt: str | None = None
     activeTools: list[str] | None = None
+    config: ProviderConfig | None = None
 
 
 class CreateSessionResponse(BaseModel):

@@ -131,6 +131,11 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const gatingStatus = ref<GatingStatus | null>(null);
   const gatingLoading = ref(false);
 
+  // Sidecar state (Phase 4)
+  const sidecarStatus = ref<'stopped' | 'starting' | 'running' | 'error' | 'stopping'>('stopped');
+  const sidecarBaseUrl = ref<string | null>(null);
+  const sidecarHealthy = ref(false);
+
   // Queue manager (T012)
   const queueManager: QueueManager = createQueueManager({ concurrency: CONCURRENCY_LIMIT });
   const _queueUnsubscribe = queueManager.on((event: QueueEvent) => {
@@ -185,6 +190,10 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const checksumMatch = computed(() => Boolean(gatingStatus.value?.checksumMatch));
   const isRetrievalEnabled = computed(() => Boolean(gatingStatus.value?.retrievalEnabled && checksumMatch.value));
   const isLimitedReadOnlyMode = computed(() => !isClassificationEnforced.value && isSidecarOnly.value); // FR-011 banner condition
+
+  // Sidecar computed flags (Phase 4)
+  const isSidecarRunning = computed(() => sidecarStatus.value === 'running');
+  const canUseSidecar = computed(() => isSidecarRunning.value && sidecarHealthy.value);
 
   // T048: Atomic transaction wrapper for multi-step state mutations (FR-031)
   let transactionDepth = 0;
@@ -1004,6 +1013,224 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     return editSuggestions.value.filter(e => e.status === 'pending');
   }
 
+  // Sidecar management (Phase 4)
+  
+  /**
+   * Get sidecar configuration from dedicated sidecar config file.
+   * Falls back to legacy AI settings if sidecar config doesn't exist.
+   */
+  async function getSidecarConfig(repoPath?: string) {
+    try {
+      const path = repoPath || (typeof window !== 'undefined' && window.api ? 
+        await window.api.app.getDefaultRepoPath().then(r => r.path) : undefined);
+      
+      if (!path) {
+        // Fallback to default Ollama config
+        return {
+          provider: 'ollama' as const,
+          endpoint: 'http://localhost:11434',
+          model: 'llama2',
+          temperature: 0.7,
+        };
+      }
+      
+      // Try to load sidecar-specific config first
+      try {
+        const sidecarConfigResult = await window.api.fs.readFile(`${path}/.context-kit/sidecar-config.json`);
+        if (sidecarConfigResult.ok && sidecarConfigResult.content) {
+          const config = JSON.parse(sidecarConfigResult.content);
+          const provider = config.provider || 'ollama';
+          
+          // Fetch API key if using Azure OpenAI
+          let apiKey: string | undefined;
+          if (provider === 'azure-openai') {
+            try {
+              const credResult = await window.api.ai.getCredentials('sidecar-' + provider);
+              apiKey = credResult.hasCredentials ? 'STORED' : undefined;
+            } catch (err) {
+              console.warn('Failed to check sidecar API key:', err);
+            }
+          }
+          
+          return {
+            provider: provider,
+            endpoint: config.endpoint || 'http://localhost:11434',
+            model: config.model || 'llama2',
+            apiKey: apiKey,
+            apiVersion: config.apiVersion || '2024-02-15-preview',
+            temperature: config.temperature || 0.7,
+            maxTokens: config.maxTokens,
+          };
+        }
+      } catch (_err) {
+        console.log('No sidecar config found, falling back to legacy AI settings');
+      }
+      
+      // Fallback to legacy AI config
+      const result = await window.api.ai.getConfig(path);
+      
+      if (result.ok && result.config) {
+        const provider = result.config.provider || 'ollama';
+        
+        // Fetch API key if using Azure OpenAI
+        let apiKey: string | undefined;
+        if (provider === 'azure-openai') {
+          try {
+            const credResult = await window.api.ai.getCredentials(provider);
+            apiKey = credResult.hasCredentials ? 'STORED' : undefined;
+          } catch (err) {
+            console.warn('Failed to check API key:', err);
+          }
+        }
+        
+        return {
+          provider: provider,
+          endpoint: result.config.endpoint || 'http://localhost:11434',
+          model: result.config.model || 'llama2',
+          apiKey: apiKey,
+          apiVersion: result.config.apiVersion || '2024-02-15-preview',
+          temperature: result.config.temperature || 0.7,
+          maxTokens: result.config.maxTokens,
+        };
+      }
+      
+      // Final fallback to defaults
+      return {
+        provider: 'ollama' as const,
+        endpoint: 'http://localhost:11434',
+        model: 'llama2',
+        temperature: 0.7,
+      };
+    } catch (err) {
+      console.warn('Failed to load sidecar config, using defaults:', err);
+      return {
+        provider: 'ollama' as const,
+        endpoint: 'http://localhost:11434',
+        model: 'llama2',
+        temperature: 0.7,
+      };
+    }
+  }
+  
+  /**
+   * Validate sidecar configuration before starting.
+   * Checks endpoint reachability, API key presence, etc.
+   */
+  async function validateSidecarConfig() {
+    try {
+      const config = await getSidecarConfig();
+      const errors: string[] = [];
+      
+      // Validate endpoint URL format
+      try {
+        new URL(config.endpoint);
+      } catch {
+        errors.push('Invalid endpoint URL format');
+        return { valid: false, errors, config };
+      }
+      
+      // Check if model is specified
+      if (!config.model || config.model.trim() === '') {
+        errors.push('Model name is required');
+      }
+      
+      // For Azure OpenAI, check API key
+      if (config.provider === 'azure-openai') {
+        if (!config.apiKey) {
+          errors.push('API key is required for Azure OpenAI. Please configure it in AI Settings.');
+        }
+      }
+      
+      // For Ollama, try to verify endpoint is reachable
+      if (config.provider === 'ollama') {
+        try {
+          // Simple health check - try to fetch the endpoint
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          
+          const response = await fetch(config.endpoint, {
+            method: 'GET',
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          
+          if (!response.ok && response.status !== 404) {
+            // 404 is acceptable - it means server is running but endpoint doesn't exist
+            errors.push(`Ollama endpoint returned status ${response.status}`);
+          }
+        } catch (err) {
+          if (err instanceof Error && err.name === 'AbortError') {
+            errors.push('Ollama endpoint timeout. Make sure Ollama is running.');
+          } else {
+            errors.push('Failed to reach Ollama endpoint. Make sure Ollama is running.');
+          }
+        }
+      }
+      
+      return {
+        valid: errors.length === 0,
+        errors,
+        config
+      };
+    } catch (err) {
+      return {
+        valid: false,
+        errors: ['Failed to load configuration: ' + (err instanceof Error ? err.message : 'Unknown error')],
+        config: null
+      };
+    }
+  }
+  
+  async function startSidecar() {
+    try {
+      sidecarStatus.value = 'starting';
+      
+      // Validate config before starting
+      const validation = await validateSidecarConfig();
+      if (!validation.valid) {
+        sidecarStatus.value = 'error';
+        error.value = 'Configuration validation failed:\n' + validation.errors.join('\n');
+        return;
+      }
+      
+      const result = await window.api.sidecar.start();
+      if (result.success) {
+        sidecarStatus.value = 'running';
+        sidecarBaseUrl.value = result.baseUrl || null;
+        await checkSidecarHealth();
+      } else {
+        sidecarStatus.value = 'error';
+        error.value = result.error || 'Failed to start sidecar';
+      }
+    } catch (err) {
+      console.error('Failed to start sidecar:', err);
+      sidecarStatus.value = 'error';
+      error.value = err instanceof Error ? err.message : 'Failed to start sidecar';
+    }
+  }
+
+  async function stopSidecar() {
+    try {
+      sidecarStatus.value = 'stopping';
+      await window.api.sidecar.stop();
+      sidecarStatus.value = 'stopped';
+      sidecarBaseUrl.value = null;
+      sidecarHealthy.value = false;
+    } catch (err) {
+      console.error('Failed to stop sidecar:', err);
+      error.value = err instanceof Error ? err.message : 'Failed to stop sidecar';
+    }
+  }
+
+  async function checkSidecarHealth() {
+    try {
+      const result = await window.api.sidecar.health();
+      sidecarHealthy.value = result.healthy;
+    } catch {
+      sidecarHealthy.value = false;
+    }
+  }
+
   return {
     session,
     conversation,
@@ -1059,6 +1286,17 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
     checksumMatch,
     isRetrievalEnabled,
     isLimitedReadOnlyMode,
+    // Sidecar exports (Phase 4)
+    sidecarStatus,
+    sidecarBaseUrl,
+    sidecarHealthy,
+    isSidecarRunning,
+    canUseSidecar,
+    getSidecarConfig,
+    validateSidecarConfig,
+    startSidecar,
+    stopSidecar,
+    checkSidecarHealth,
     // Actions
     createSession,
     sendMessage,

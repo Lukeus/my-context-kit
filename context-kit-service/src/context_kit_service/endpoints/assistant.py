@@ -74,7 +74,9 @@ async def send_message(session_id: str, request: SendMessageRequest) -> SendMess
         print(f"[Endpoint] ValueError caught: {e}")
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
+        import traceback
         print(f"[Endpoint] Unexpected error: {type(e).__name__}: {e}")
+        print(f"[Endpoint] Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
