@@ -56,7 +56,7 @@ export class LangChainClient {
   constructor(opts: LangChainClientOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/$/, '');
     this.headers = { 'Content-Type': 'application/json', ...(opts.defaultHeaders || {}) };
-    this.timeoutMs = opts.timeoutMs ?? 15000; // default 15s
+    this.timeoutMs = opts.timeoutMs ?? 60000; // default 60s (AI reasoning can take time)
   }
 
   // Low-level fetch with timeout

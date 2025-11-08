@@ -1,28 +1,29 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, inject } from 'vue';
 import { useContextStore } from '../stores/contextStore';
 import { useImpactStore } from '../stores/impactStore';
 import { useGitStore } from '../stores/gitStore';
 import { useContextKitStore } from '../stores/contextKitStore';
 import KanbanBoard from './KanbanBoard.vue';
 
-const props = defineProps<{
-  lastValidationStatus: 'success' | 'error' | null;
-  lastValidationAt: string | null;
-  lastGraphRefresh: string | null;
-}>();
+// Inject state and actions from App.vue
+const hubState = inject('hubState', {
+  lastValidationStatus: ref<'success' | 'error' | null>(null),
+  lastValidationAt: ref<string | null>(null),
+  lastGraphRefresh: ref<string | null>(null)
+});
 
-const emit = defineEmits<{
-  'run-validation': [];
-  'refresh-graph': [];
-  'open-impact': [];
-  'open-git': [];
-  'open-assistant': [];
-  'open-diff': [];
-  'open-prompts': [];
-  'create-repo': [];
-  'open-context-kit': [];
-}>();
+const hubActions = inject('hubActions', {
+  runValidation: () => {},
+  reloadGraph: () => {},
+  openImpactView: () => {},
+  openGitPanel: () => {},
+  openAssistantPanel: () => {},
+  handleOpenDiff: () => {},
+  handleOpenPrompts: () => {},
+  openNewRepoModal: () => {},
+  openContextKit: () => {}
+});
 
 const contextStore = useContextStore();
 const impactStore = useImpactStore();
@@ -45,10 +46,10 @@ const activeRepoLabel = computed(() => contextStore.getActiveRepoMeta()?.label |
 const activeRepoPath = computed(() => contextStore.repoPath || 'No repository selected');
 
 const validationBadge = computed(() => {
-  if (props.lastValidationStatus === 'success') {
+  if (hubState.lastValidationStatus.value === 'success') {
     return { label: 'Healthy', tone: 'bg-primary-100 text-primary-800' };
   }
-  if (props.lastValidationStatus === 'error') {
+  if (hubState.lastValidationStatus.value === 'error') {
     return { label: 'Attention', tone: 'bg-error-100 text-error-700' };
   }
   return { label: 'Pending', tone: 'bg-secondary-100 text-secondary-700' };
@@ -118,7 +119,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
         </div>
         <button type="button"
           class="px-4 py-2 rounded-m3-md bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white text-sm font-semibold shadow-elevation-2 hover:shadow-elevation-3 transition-all flex items-center justify-center gap-2"
-          @click="emit('create-repo')">
+          @click="hubActions.openNewRepoModal()">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -137,12 +138,12 @@ function setActiveTab(tab: 'overview' | 'kanban') {
           <div class="flex items-center gap-3">
             <button
               class="px-4 py-2 rounded-m3-md bg-white text-primary-700 text-sm font-semibold shadow-elevation-2 hover:shadow-elevation-3 transition-all"
-              @click="emit('run-validation')">
+              @click="hubActions.runValidation()">
               Run Validation
             </button>
             <button
               class="px-4 py-2 rounded-m3-md bg-white/10 text-white text-sm font-semibold border border-white/30 hover:bg-white/20 transition-colors"
-              @click="emit('open-git')">
+              @click="hubActions.openGitPanel()">
               Open Git
             </button>
 
@@ -151,7 +152,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-6 py-5 backdrop-blur">
           <div class="rounded-m3-md bg-surface-2 border border-surface-variant px-4 py-3">
             <p class="text-xs text-secondary-600">Validation cadence</p>
-            <p class="text-lg font-semibold text-secondary-900 mt-1">{{ formatTimestamp(lastValidationAt) }}</p>
+            <p class="text-lg font-semibold text-secondary-900 mt-1">{{ formatTimestamp(hubState.lastValidationAt.value) }}</p>
             <span class="inline-flex items-center gap-2 text-[11px] font-semibold px-2.5 py-1 rounded-m3-md mt-3"
               :class="validationBadge.tone">
               <span class="inline-flex h-2 w-2 rounded-m3-md-full bg-current"></span>
@@ -160,9 +161,9 @@ function setActiveTab(tab: 'overview' | 'kanban') {
           </div>
           <div class="rounded-m3-md bg-surface-2 border border-surface-variant px-4 py-3">
             <p class="text-xs text-secondary-600">Graph freshness</p>
-            <p class="text-lg font-semibold text-secondary-900 mt-1">{{ formatTimestamp(lastGraphRefresh) }}</p>
+            <p class="text-lg font-semibold text-secondary-900 mt-1">{{ formatTimestamp(hubState.lastGraphRefresh.value) }}</p>
             <button class="mt-3 text-xs font-semibold text-primary-700 hover:text-primary-900"
-              @click="emit('refresh-graph')">
+              @click="hubActions.reloadGraph()">
               Refresh graph
             </button>
           </div>
@@ -170,7 +171,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
             <p class="text-xs text-secondary-600">Changed entities</p>
             <p class="text-lg font-semibold text-secondary-900 mt-1">{{ impactSummary.totalChanged }}</p>
             <button class="mt-3 text-xs font-semibold text-primary-700 hover:text-primary-900"
-              @click="emit('open-impact')">
+              @click="hubActions.openImpactView()">
               Review impact
             </button>
           </div>
@@ -200,7 +201,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
               </div>
               <button
                 class="px-3 py-1.5 rounded-m3-md text-xs font-semibold border border-primary-200 text-primary-700 hover:bg-primary-50"
-                @click="emit('open-prompts')">
+                @click="hubActions.handleOpenPrompts()">
                 Generate prompts
               </button>
             </div>
@@ -263,7 +264,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                 </div>
                 <button
                   class="mt-4 w-full rounded-m3-md bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 text-sm font-semibold transition-colors shadow-elevation-1 hover:shadow-elevation-2"
-                  @click="emit('open-context-kit')">
+                  @click="hubActions.openContextKit()">
                   Open Context Kit
                 </button>
               </div>
@@ -273,17 +274,17 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                 <div class="mt-3 grid gap-3 md:grid-cols-3">
                   <button
                     class="rounded-m3-md border border-primary-200 bg-primary-50 text-primary-800 px-3 py-3 text-sm font-semibold hover:bg-primary-100 transition-colors"
-                    @click="emit('run-validation')">
+                    @click="hubActions.runValidation()">
                     Validate schema
                   </button>
                   <button
                     class="rounded-m3-md border border-secondary-200 bg-secondary-50 text-secondary-800 px-3 py-3 text-sm font-semibold hover:bg-secondary-100 transition-colors"
-                    @click="emit('open-impact')">
+                    @click="hubActions.openImpactView()">
                     Review impact
                   </button>
                   <button
                     class="rounded-m3-md border border-surface-variant bg-surface px-3 py-3 text-sm font-semibold text-secondary-800 hover:bg-surface-2 transition-colors"
-                    @click="emit('open-git')">
+                    @click="hubActions.openGitPanel()">
                     Open git panel
                   </button>
                 </div>
@@ -310,7 +311,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                   <button
                     data-testid="assistant-nav"
                     class="px-3 py-1.5 rounded-m3-md text-xs font-semibold border border-primary-200 text-primary-700 hover:bg-primary-50"
-                    @click="emit('open-assistant')">
+                    @click="hubActions.openAssistantPanel()">
                     Summon AI
                   </button>
                 </div>
@@ -331,7 +332,7 @@ function setActiveTab(tab: 'overview' | 'kanban') {
                 <p class="text-sm text-secondary-600">Inspect the latest changes before committing.</p>
                 <button
                   class="mt-3 px-3 py-1.5 rounded-m3-md text-xs font-semibold border border-secondary-200 text-secondary-700 hover:bg-secondary-50"
-                  @click="emit('open-diff')">
+                  @click="hubActions.handleOpenDiff()">
                   Open diff viewer
                 </button>
               </div>
@@ -346,3 +347,4 @@ function setActiveTab(tab: 'overview' | 'kanban') {
     </div>
   </div>
 </template>
+

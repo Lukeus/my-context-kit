@@ -189,7 +189,11 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   const isSidecarOnly = computed(() => gatingStatus.value?.sidecarOnly !== false); // default true until legacy removed
   const checksumMatch = computed(() => Boolean(gatingStatus.value?.checksumMatch));
   const isRetrievalEnabled = computed(() => Boolean(gatingStatus.value?.retrievalEnabled && checksumMatch.value));
-  const isLimitedReadOnlyMode = computed(() => !isClassificationEnforced.value && isSidecarOnly.value); // FR-011 banner condition
+  // Only show read-only mode if we have gating status AND the conditions are met
+  const isLimitedReadOnlyMode = computed(() => {
+    if (!gatingStatus.value) return false; // Don't show badge if no gating status loaded
+    return !isClassificationEnforced.value && isSidecarOnly.value;
+  });
 
   // Sidecar computed flags (Phase 4)
   const isSidecarRunning = computed(() => sidecarStatus.value === 'running');
@@ -235,13 +239,19 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
   }
 
   function appendMessage(turn: ConversationTurn) {
+    console.log('[Assistant] appendMessage called with:', turn);
+    console.log('[Assistant] conversation before:', conversation.value.length);
     conversation.value = [...conversation.value, turn];
+    console.log('[Assistant] conversation after:', conversation.value.length);
     if (session.value) {
       session.value = {
         ...session.value,
         messages: conversation.value,
         updatedAt: turn.timestamp
       };
+      console.log('[Assistant] session.messages updated:', session.value.messages.length);
+    } else {
+      console.warn('[Assistant] No session.value when appending message');
     }
   }
 
@@ -419,12 +429,21 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
         return null as any as TaskEnvelope; // placeholder; UI can display queued status.
       }
       const envelope = await bridge.sendMessage(session.value.id, payload);
+      console.log('[Assistant] sendMessage response:', envelope);
+      
       if (envelope) {
         // T048: Use atomic transaction for multi-step state update (task + message append)
         runAtomic(() => {
           // TODO(T012): MessageResponse may not have TaskEnvelope structure yet.
           // Cast to TaskEnvelope only if the response structure matches.
           const taskEnvelope = envelope as unknown as TaskEnvelope;
+          
+          console.log('[Assistant] TaskEnvelope:', {
+            hasTaskId: !!taskEnvelope.taskId,
+            hasOutputs: !!taskEnvelope.outputs,
+            outputsLength: Array.isArray(taskEnvelope.outputs) ? taskEnvelope.outputs.length : 0,
+            firstOutput: Array.isArray(taskEnvelope.outputs) && taskEnvelope.outputs.length > 0 ? taskEnvelope.outputs[0] : null
+          });
           
           // Only add to tasks if it has the expected TaskEnvelope structure
           if (taskEnvelope.taskId) {
@@ -435,15 +454,40 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
           // TODO(T012): Align MessageResponse type definition with actual response structure
           const outputs = (taskEnvelope as any)?.outputs;
           if (outputs && Array.isArray(outputs) && outputs.length > 0) {
+            console.log('[Assistant] Processing outputs:', outputs);
             const output = outputs[0];
+            // Check multiple possible formats
             if (output.type === 'text' && typeof output.content === 'string') {
+              console.log('[Assistant] Adding text message from output.content:', output.content);
               appendMessage({
                 role: 'assistant',
                 content: output.content,
                 timestamp: output.timestamp || nowIso(),
                 metadata: { taskId: taskEnvelope.taskId }
               });
+            } else if (typeof output.text === 'string') {
+              // Alternative format: { text: string }
+              console.log('[Assistant] Adding text message from output.text:', output.text);
+              appendMessage({
+                role: 'assistant',
+                content: output.text,
+                timestamp: output.timestamp || nowIso(),
+                metadata: { taskId: taskEnvelope.taskId }
+              });
+            } else if (typeof output === 'string') {
+              // Direct string format
+              console.log('[Assistant] Adding text message from direct string:', output);
+              appendMessage({
+                role: 'assistant',
+                content: output,
+                timestamp: nowIso(),
+                metadata: { taskId: taskEnvelope.taskId }
+              });
+            } else {
+              console.warn('[Assistant] Unknown output format:', output);
             }
+          } else {
+            console.warn('[Assistant] No outputs or invalid outputs array in response');
           }
           // TODO(StreamMerge T012): merge streaming updates into tasks
           
@@ -1062,7 +1106,7 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
             maxTokens: config.maxTokens,
           };
         }
-      } catch (_err) {
+      } catch {
         console.log('No sidecar config found, falling back to legacy AI settings');
       }
       
