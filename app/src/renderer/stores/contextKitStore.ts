@@ -278,17 +278,34 @@ export const useContextKitStore = defineStore('contextKit', () => {
     includeRag: boolean = true
   ): Promise<SpecGenerateResponse | null> {
     try {
+      console.log('[contextKitStore] generateSpec called');
+      console.log('[contextKitStore] repoPath:', repoPath, typeof repoPath);
+      console.log('[contextKitStore] entityIds:', entityIds, Array.isArray(entityIds), entityIds.constructor.name);
+      console.log('[contextKitStore] userPrompt:', userPrompt.substring(0, 50), typeof userPrompt);
+      console.log('[contextKitStore] templateId:', templateId);
+      console.log('[contextKitStore] includeRag:', includeRag);
+      
+      // Convert to plain values to avoid Vue Proxy issues
+      const plainEntityIds = Array.isArray(entityIds) ? [...entityIds] : [];
+      const plainRepoPath = String(repoPath);
+      const plainUserPrompt = String(userPrompt);
+      const plainIncludeRag = Boolean(includeRag);
+      
+      console.log('[contextKitStore] Converted to plain values:', { plainRepoPath, plainEntityIds, plainUserPrompt, plainIncludeRag });
+      
       setLoading('spec-generate', 'Preparing spec generation...', true);
       lastError.value = null;
       
       updateProgress(10, 'Loading context entities...');
+      console.log('[contextKitStore] About to call window.api.contextKit.specGenerate');
       const result = await window.api.contextKit.specGenerate(
-        repoPath,
-        entityIds,
-        userPrompt,
+        plainRepoPath,
+        plainEntityIds,
+        plainUserPrompt,
         templateId,
-        includeRag
+        plainIncludeRag
       );
+      console.log('[contextKitStore] Result received:', result);
       
       if ('success' in result && result.success && 'data' in result) {
         updateProgress(90, 'Finalizing specification...');
