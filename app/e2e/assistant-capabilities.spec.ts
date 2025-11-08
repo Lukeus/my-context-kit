@@ -118,8 +118,8 @@ test.describe('Assistant Capability Toggles (T022)', () => {
     // Navigate to assistant/tool panel view
     await window.click('[data-testid="assistant-nav"]');
     
-    // Switch to Tools Console tab
-    await window.click('button:has-text("Tools Console")', { timeout: 5000 });
+    // Switch to Tools tab
+    await window.click('button:has-text("Tools")', { timeout: 5000 });
 
     // Wait for the pipeline select to load (stable test id)
     await window.waitForSelector('[data-testid="pipeline-select"]', { timeout: 10000 });
@@ -149,7 +149,7 @@ test.describe('Assistant Capability Toggles (T022)', () => {
   test('should allow selecting validate pipeline', async () => {
     // Navigate to assistant panel
     await window.click('[data-testid="assistant-nav"]');
-    await window.click('button:has-text("Tools Console")', { timeout: 5000 });
+    await window.click('button:has-text("Tools")', { timeout: 5000 });
 
     await window.waitForSelector('[data-testid="pipeline-select"]', { timeout: 10000 });
 
@@ -169,7 +169,7 @@ test.describe('Assistant Capability Toggles (T022)', () => {
   test('should allow selecting build-graph pipeline', async () => {
     // Navigate to assistant panel
     await window.click('[data-testid="assistant-nav"]');
-    await window.click('button:has-text("Tools Console")', { timeout: 5000 });
+    await window.click('button:has-text("Tools")', { timeout: 5000 });
 
     await window.waitForSelector('[data-testid="pipeline-select"]', { timeout: 10000 });
 
@@ -189,7 +189,7 @@ test.describe('Assistant Capability Toggles (T022)', () => {
   test('should allow selecting impact pipeline and show entity ID input', async () => {
     // Navigate to assistant panel
     await window.click('[data-testid="assistant-nav"]');
-    await window.click('button:has-text("Tools Console")', { timeout: 5000 });
+    await window.click('button:has-text("Tools")', { timeout: 5000 });
 
     await window.waitForSelector('[data-testid="pipeline-select"]', { timeout: 10000 });
 
@@ -213,7 +213,7 @@ test.describe('Assistant Capability Toggles (T022)', () => {
   test('should allow selecting generate pipeline with entity IDs', async () => {
     // Navigate to assistant panel
     await window.click('[data-testid="assistant-nav"]');
-    await window.click('button:has-text("Tools Console")', { timeout: 5000 });
+    await window.click('button:has-text("Tools")', { timeout: 5000 });
 
     await window.waitForSelector('[data-testid="pipeline-select"]', { timeout: 10000 });
 
@@ -242,18 +242,18 @@ test.describe('Assistant Capability Toggles (T022)', () => {
     // Note: We don't actually click the button to avoid backend dependencies
   });
 
-  test('should initialize Tools Console on navigation', async () => {
+  test('should initialize Tools on navigation', async () => {
     // Clear previous requests
     langchainRequests.length = 0;
 
     // Navigate to assistant panel
     await window.click('[data-testid="assistant-nav"]');
-    await window.click('button:has-text("Tools Console")', { timeout: 5000 });
+    await window.click('button:has-text("Tools")', { timeout: 5000 });
 
     // Wait for UI initialization
     await window.waitForTimeout(1000);
 
-    // Verify Tools Console UI elements are present
+    // Verify Tools UI elements are present
     const pipelineSelect = window.locator('[data-testid="pipeline-select"]');
     await expect(pipelineSelect).toBeVisible();
 
@@ -267,7 +267,7 @@ test.describe('Assistant Capability Toggles (T022)', () => {
   test('should maintain pipeline selection across navigation', async () => {
     // Navigate to assistant panel
     await window.click('[data-testid="assistant-nav"]');
-    await window.click('button:has-text("Tools Console")', { timeout: 5000 });
+    await window.click('button:has-text("Tools")', { timeout: 5000 });
 
     await window.waitForSelector('[data-testid="pipeline-select"]', { timeout: 10000 });
 

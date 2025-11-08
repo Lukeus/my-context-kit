@@ -1,6 +1,7 @@
 import { test, expect } from './helpers/electron';
 import type { Page } from '@playwright/test';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
@@ -8,6 +9,8 @@ import { existsSync } from 'node:fs';
 // TODO(e2e-refactor): move repository setup helpers to a shared module if reused.
 
 let page: Page;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const testRepoPath = path.join(__dirname, '..', '..', 'test-fixtures', 'sdd-test-repo');
 
 test.describe('SDD Workflow E2E', () => {
