@@ -54,7 +54,7 @@ export class EnterpriseService {
    */
   async getConfig(): Promise<EnterpriseConfig> {
     if (!existsSync(this.configPath)) {
-      return {}; // Empty config
+      return { defaultProvider: 'azure' }; // Empty config with default provider
     }
     
     const content = await readFile(this.configPath, 'utf-8');
