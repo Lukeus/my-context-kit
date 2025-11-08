@@ -105,7 +105,7 @@ export class ConstitutionMerger {
 
     return {
       sections: mergedSections,
-      globalPath: 'global', // Will be set by caller
+      globalPath: '', // Will be set by caller
       mergedAt: new Date().toISOString(),
       conflicts,
     };
