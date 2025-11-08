@@ -1,0 +1,54 @@
+# Node/Electron build artefacts
+node_modules/
+**/node_modules/
+dist/
+build/
+out/
+.vite/
+.webpack/
+coverage/
+playwright-report/
+reports/
+
+# Git metadata
+.git/
+.gitignore
+
+# Logs & temp
+*.log
+logs/
+*.tmp
+.tmp/
+
+# Env & credentials
+.env*
+.envrc
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Feature artefacts
+specs/001-code-cleanup/artefacts/
+
+# Python virtual environments
+.venv/
+context-kit-service/.venv/
+__pycache__/
+
+# Test results
+.nyc_output/
+coverage/
+playwright-report/
+
+# Cache
+.cache/
+.eslintcache
+
+# Electron specific
+*.asar
+*.asar.unpacked
+release/
+packages/

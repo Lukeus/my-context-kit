@@ -2,6 +2,7 @@
 // Aggregates tool execution telemetry for analytics and reporting.
 
 import type { ToolInvocationRecord } from '@shared/assistant/types';
+import { formatDuration as formatDurationHelper } from './timeHelpers';
 
 export interface ToolDurationStats {
   toolId: string;
@@ -152,11 +153,5 @@ export function exportTelemetryCSV(records: ToolInvocationRecord[]): string {
   return header + rows.join('\n');
 }
 
-/**
- * Format duration in human-readable format.
- */
-export function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${(ms / 60000).toFixed(1)}m`;
-}
+// Use canonical time helper from timeHelpers.ts
+export { formatDurationHelper as formatDuration };

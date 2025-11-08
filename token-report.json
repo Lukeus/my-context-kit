@@ -1,0 +1,2240 @@
+
+> my-context-kit@1.0.0 verify:tokens C:\Users\ladams\source\repos\my-context-kit
+> pnpm --filter context-sync exec tsx scripts/verify-design-tokens.ts
+
+{
+  "id": "dbcc77f2-c8c3-4048-9341-2124ed4288b1",
+  "generatedAt": "2025-11-08T21:04:49.970Z",
+  "violations": [
+    {
+      "filePath": "src/renderer/components/WorkspaceHub.vue",
+      "line": 265,
+      "rawClass": "bg-orange-600"
+    },
+    {
+      "filePath": "src/renderer/components/WorkspaceHub.vue",
+      "line": 283,
+      "rawClass": "text-yellow-100"
+    },
+    {
+      "filePath": "src/renderer/components/WorkspaceHub.vue",
+      "line": 298,
+      "rawClass": "bg-yellow-50",
+      "suggestedToken": "bg-warning-container"
+    },
+    {
+      "filePath": "src/renderer/components/WorkspaceHub.vue",
+      "line": 298,
+      "rawClass": "border-yellow-200"
+    },
+    {
+      "filePath": "src/renderer/components/WorkspaceHub.vue",
+      "line": 301,
+      "rawClass": "text-yellow-600"
+    },
+    {
+      "filePath": "src/renderer/components/WelcomeDocumentation.vue",
+      "line": 80,
+      "rawClass": "bg-purple-100"
+    },
+    {
+      "filePath": "src/renderer/components/WelcomeDocumentation.vue",
+      "line": 81,
+      "rawClass": "text-purple-700"
+    },
+    {
+      "filePath": "src/renderer/components/WelcomeDocumentation.vue",
+      "line": 85,
+      "rawClass": "text-purple-700"
+    },
+    {
+      "filePath": "src/renderer/components/WelcomeDocumentation.vue",
+      "line": 260,
+      "rawClass": "text-purple-700"
+    },
+    {
+      "filePath": "src/renderer/components/ProgressCompletionCard.vue",
+      "line": 61,
+      "rawClass": "bg-green-500"
+    },
+    {
+      "filePath": "src/renderer/components/ProgressCompletionCard.vue",
+      "line": 62,
+      "rawClass": "bg-blue-500"
+    },
+    {
+      "filePath": "src/renderer/components/ProgressCompletionCard.vue",
+      "line": 63,
+      "rawClass": "bg-yellow-500"
+    },
+    {
+      "filePath": "src/renderer/components/ProgressCompletionCard.vue",
+      "line": 64,
+      "rawClass": "bg-orange-500"
+    },
+    {
+      "filePath": "src/renderer/components/ProgressCompletionCard.vue",
+      "line": 84,
+      "rawClass": "text-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/ProgressCompletionCard.vue",
+      "line": 137,
+      "rawClass": "bg-green-500"
+    },
+    {
+      "filePath": "src/renderer/components/ProgressCompletionCard.vue",
+      "line": 144,
+      "rawClass": "bg-blue-500"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 148,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 148,
+      "rawClass": "border-green-200"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 150,
+      "rawClass": "text-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 154,
+      "rawClass": "text-green-900"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 155,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 156,
+      "rawClass": "text-yellow-700",
+      "suggestedToken": "text-warning"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 156,
+      "rawClass": "bg-yellow-50",
+      "suggestedToken": "bg-warning-container"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 156,
+      "rawClass": "border-yellow-200"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 277,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 277,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 279,
+      "rawClass": "text-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 282,
+      "rawClass": "text-blue-900"
+    },
+    {
+      "filePath": "src/renderer/components/NewRepoModal.vue",
+      "line": 284,
+      "rawClass": "text-blue-800"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactReportPanel.vue",
+      "line": 162,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactReportPanel.vue",
+      "line": 163,
+      "rawClass": "text-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactReportPanel.vue",
+      "line": 221,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactReportPanel.vue",
+      "line": 221,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactReportPanel.vue",
+      "line": 301,
+      "rawClass": "text-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanelImproved.vue",
+      "line": 160,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanelImproved.vue",
+      "line": 161,
+      "rawClass": "text-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 412,
+      "rawClass": "text-gray-500"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 416,
+      "rawClass": "text-gray-400"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 448,
+      "rawClass": "text-gray-500"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 455,
+      "rawClass": "bg-orange-50"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 455,
+      "rawClass": "border-orange-200"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 455,
+      "rawClass": "bg-orange-100"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 462,
+      "rawClass": "text-orange-900"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 463,
+      "rawClass": "bg-orange-200"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 463,
+      "rawClass": "text-orange-800"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 467,
+      "rawClass": "text-orange-700"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 473,
+      "rawClass": "text-gray-500"
+    },
+    {
+      "filePath": "src/renderer/components/ImpactPanel.vue",
+      "line": 474,
+      "rawClass": "text-gray-400"
+    },
+    {
+      "filePath": "src/renderer/components/GraphView.vue",
+      "line": 595,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/GraphView.vue",
+      "line": 595,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/GraphView.vue",
+      "line": 596,
+      "rawClass": "bg-yellow-100"
+    },
+    {
+      "filePath": "src/renderer/components/GraphView.vue",
+      "line": 596,
+      "rawClass": "text-yellow-800"
+    },
+    {
+      "filePath": "src/renderer/components/GraphView.vue",
+      "line": 597,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/GraphView.vue",
+      "line": 597,
+      "rawClass": "text-blue-800"
+    },
+    {
+      "filePath": "src/renderer/components/GraphView.vue",
+      "line": 598,
+      "rawClass": "bg-red-100"
+    },
+    {
+      "filePath": "src/renderer/components/GraphView.vue",
+      "line": 598,
+      "rawClass": "text-red-800"
+    },
+    {
+      "filePath": "src/renderer/components/GraphView.vue",
+      "line": 599,
+      "rawClass": "bg-orange-100"
+    },
+    {
+      "filePath": "src/renderer/components/GraphView.vue",
+      "line": 599,
+      "rawClass": "text-orange-800"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 427,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 433,
+      "rawClass": "bg-gray-50"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 434,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 434,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 436,
+      "rawClass": "text-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 439,
+      "rawClass": "text-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 449,
+      "rawClass": "text-gray-500"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 455,
+      "rawClass": "bg-yellow-50",
+      "suggestedToken": "bg-warning-container"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 455,
+      "rawClass": "border-yellow-200"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 456,
+      "rawClass": "text-yellow-800"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 463,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 468,
+      "rawClass": "border-gray-300"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 475,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 478,
+      "rawClass": "text-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 487,
+      "rawClass": "border-gray-300"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 493,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 498,
+      "rawClass": "border-gray-300"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 506,
+      "rawClass": "bg-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 506,
+      "rawClass": "bg-green-700"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 506,
+      "rawClass": "bg-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 511,
+      "rawClass": "text-gray-500"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 588,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 588,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 588,
+      "rawClass": "border-green-500"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 589,
+      "rawClass": "bg-red-50",
+      "suggestedToken": "bg-error-container"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 589,
+      "rawClass": "text-red-800"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 589,
+      "rawClass": "border-red-500"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 590,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 590,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 590,
+      "rawClass": "border-blue-400"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 591,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 591,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 591,
+      "rawClass": "border-gray-400"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 592,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 598,
+      "rawClass": "text-gray-500"
+    },
+    {
+      "filePath": "src/renderer/components/GitPanel.vue",
+      "line": 600,
+      "rawClass": "text-gray-300"
+    },
+    {
+      "filePath": "src/renderer/components/EntityDiff.vue",
+      "line": 153,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/EntityDiff.vue",
+      "line": 164,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/EntityDiff.vue",
+      "line": 203,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/EntityDiff.vue",
+      "line": 203,
+      "rawClass": "border-green-200"
+    },
+    {
+      "filePath": "src/renderer/components/EntityDiff.vue",
+      "line": 203,
+      "rawClass": "text-green-900"
+    },
+    {
+      "filePath": "src/renderer/components/EntityDiff.vue",
+      "line": 210,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/EntityDiff.vue",
+      "line": 220,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/EntityDependencyGraph.vue",
+      "line": 427,
+      "rawClass": "bg-green-500"
+    },
+    {
+      "filePath": "src/renderer/components/EntityDependencyGraph.vue",
+      "line": 431,
+      "rawClass": "bg-blue-500"
+    },
+    {
+      "filePath": "src/renderer/components/EnterpriseDashboard.vue",
+      "line": 113,
+      "rawClass": "bg-green-400"
+    },
+    {
+      "filePath": "src/renderer/components/EnterpriseDashboard.vue",
+      "line": 113,
+      "rawClass": "bg-yellow-400"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 86,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 86,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 89,
+      "rawClass": "bg-red-100"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 89,
+      "rawClass": "text-red-800"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 106,
+      "rawClass": "bg-red-50",
+      "suggestedToken": "bg-error-container"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 107,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 115,
+      "rawClass": "bg-red-100"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 126,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 137,
+      "rawClass": "text-red-700",
+      "suggestedToken": "text-error"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 137,
+      "rawClass": "bg-red-100"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 138,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 138,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 151,
+      "rawClass": "text-red-900"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 152,
+      "rawClass": "text-green-900"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 163,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/DiffViewer.vue",
+      "line": 164,
+      "rawClass": "text-red-700",
+      "suggestedToken": "text-error"
+    },
+    {
+      "filePath": "src/renderer/components/DeveloperHub.vue",
+      "line": 246,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/DeveloperHub.vue",
+      "line": 246,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/DeveloperHub.vue",
+      "line": 246,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/DeveloperHub.vue",
+      "line": 246,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextTree.vue",
+      "line": 317,
+      "rawClass": "bg-purple-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextTree.vue",
+      "line": 317,
+      "rawClass": "text-purple-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 224,
+      "rawClass": "border-purple-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 227,
+      "rawClass": "text-purple-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 233,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 233,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 241,
+      "rawClass": "border-purple-300"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 245,
+      "rawClass": "text-purple-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 256,
+      "rawClass": "bg-purple-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 256,
+      "rawClass": "bg-purple-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 256,
+      "rawClass": "bg-purple-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 544,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 544,
+      "rawClass": "border-green-300"
+    },
+    {
+      "filePath": "src/renderer/components/ContextBuilderModal.vue",
+      "line": 545,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/ConstitutionPanel.vue",
+      "line": 205,
+      "rawClass": "bg-yellow-50",
+      "suggestedToken": "bg-warning-container"
+    },
+    {
+      "filePath": "src/renderer/components/ConstitutionPanel.vue",
+      "line": 205,
+      "rawClass": "text-yellow-700",
+      "suggestedToken": "text-warning"
+    },
+    {
+      "filePath": "src/renderer/components/ConstitutionPanel.vue",
+      "line": 256,
+      "rawClass": "border-yellow-200"
+    },
+    {
+      "filePath": "src/renderer/components/ConstitutionPanel.vue",
+      "line": 260,
+      "rawClass": "bg-yellow-100"
+    },
+    {
+      "filePath": "src/renderer/components/ConstitutionPanel.vue",
+      "line": 260,
+      "rawClass": "text-yellow-700",
+      "suggestedToken": "text-warning"
+    },
+    {
+      "filePath": "src/renderer/components/AISettingsModal.vue",
+      "line": 330,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/AISettingsModal.vue",
+      "line": 330,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/AISettingsModal.vue",
+      "line": 416,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/AISettingsModal.vue",
+      "line": 489,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/AISettingsModal.vue",
+      "line": 515,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/AISettingsModal.vue",
+      "line": 515,
+      "rawClass": "border-green-200"
+    },
+    {
+      "filePath": "src/renderer/components/AISettingsModal.vue",
+      "line": 519,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/AISettingsModal.vue",
+      "line": 565,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/AISettingsModal.vue",
+      "line": 565,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/AISettingsModal.vue",
+      "line": 566,
+      "rawClass": "text-blue-800"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitPipelineStatus.vue",
+      "line": 45,
+      "rawClass": "bg-emerald-100"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitPipelineStatus.vue",
+      "line": 45,
+      "rawClass": "text-emerald-700"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitPipelineStatus.vue",
+      "line": 45,
+      "rawClass": "border-emerald-200"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitPipelineStatus.vue",
+      "line": 104,
+      "rawClass": "text-amber-600"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitPipelineStatus.vue",
+      "line": 124,
+      "rawClass": "text-emerald-600"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitFetchStatus.vue",
+      "line": 50,
+      "rawClass": "border-amber-200"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitFetchStatus.vue",
+      "line": 50,
+      "rawClass": "bg-amber-50"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitFetchStatus.vue",
+      "line": 50,
+      "rawClass": "text-amber-800"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitFetchStatus.vue",
+      "line": 57,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitFetchStatus.vue",
+      "line": 57,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitFetchStatus.vue",
+      "line": 57,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitFetchStatus.vue",
+      "line": 65,
+      "rawClass": "border-emerald-200"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitFetchStatus.vue",
+      "line": 65,
+      "rawClass": "bg-emerald-50"
+    },
+    {
+      "filePath": "src/renderer/components/speckit/SpeckitFetchStatus.vue",
+      "line": 65,
+      "rawClass": "text-emerald-700"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 40,
+      "rawClass": "border-green-300"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 40,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 41,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 41,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 43,
+      "rawClass": "border-orange-300"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 43,
+      "rawClass": "text-orange-700"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 44,
+      "rawClass": "bg-orange-100"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 44,
+      "rawClass": "text-orange-700"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 49,
+      "rawClass": "border-blue-300"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 49,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 50,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseBadge.vue",
+      "line": 50,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 45,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 46,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 47,
+      "rawClass": "text-blue-900"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 48,
+      "rawClass": "text-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 49,
+      "rawClass": "bg-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 49,
+      "rawClass": "bg-blue-700"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 54,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 55,
+      "rawClass": "border-green-200"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 56,
+      "rawClass": "text-green-900"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 57,
+      "rawClass": "text-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 58,
+      "rawClass": "bg-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 58,
+      "rawClass": "bg-green-700"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 63,
+      "rawClass": "bg-orange-50"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 64,
+      "rawClass": "border-orange-200"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 65,
+      "rawClass": "text-orange-900"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 66,
+      "rawClass": "text-orange-600"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 67,
+      "rawClass": "bg-orange-600"
+    },
+    {
+      "filePath": "src/renderer/components/shared/BaseAlert.vue",
+      "line": 67,
+      "rawClass": "bg-orange-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/TemplateLibrary.vue",
+      "line": 90,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/TemplateLibrary.vue",
+      "line": 90,
+      "rawClass": "text-blue-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/TemplateLibrary.vue",
+      "line": 91,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/TemplateLibrary.vue",
+      "line": 91,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/TemplateLibrary.vue",
+      "line": 94,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/TemplateLibrary.vue",
+      "line": 94,
+      "rawClass": "text-gray-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 115,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 115,
+      "rawClass": "text-blue-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 116,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 116,
+      "rawClass": "text-blue-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 117,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 117,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 118,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 118,
+      "rawClass": "text-gray-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 312,
+      "rawClass": "bg-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 313,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 313,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 313,
+      "rawClass": "bg-gray-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 321,
+      "rawClass": "bg-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 322,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 322,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 322,
+      "rawClass": "bg-gray-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 330,
+      "rawClass": "bg-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 331,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 331,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 331,
+      "rawClass": "bg-gray-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 339,
+      "rawClass": "bg-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 340,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 340,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 340,
+      "rawClass": "bg-gray-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 348,
+      "rawClass": "text-gray-500"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 360,
+      "rawClass": "bg-gray-50"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 371,
+      "rawClass": "text-gray-500"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 376,
+      "rawClass": "text-gray-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 377,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 383,
+      "rawClass": "text-gray-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 384,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 390,
+      "rawClass": "text-gray-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 391,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 398,
+      "rawClass": "text-gray-400"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 416,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 420,
+      "rawClass": "text-gray-400"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 420,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 432,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 437,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 438,
+      "rawClass": "bg-gray-50"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 442,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 447,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 447,
+      "rawClass": "text-blue-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 458,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 459,
+      "rawClass": "bg-gray-50"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 463,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 468,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 468,
+      "rawClass": "text-blue-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 479,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 484,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 485,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 486,
+      "rawClass": "bg-gray-50"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 494,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 494,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 494,
+      "rawClass": "bg-gray-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 500,
+      "rawClass": "bg-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecLogBrowser.vue",
+      "line": 500,
+      "rawClass": "bg-blue-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecGenerationWizard.vue",
+      "line": 310,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecGenerationWizard.vue",
+      "line": 310,
+      "rawClass": "border-green-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecGenerationWizard.vue",
+      "line": 312,
+      "rawClass": "text-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecGenerationWizard.vue",
+      "line": 315,
+      "rawClass": "text-green-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecGenerationWizard.vue",
+      "line": 319,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecGenerationWizard.vue",
+      "line": 343,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/SpecGenerationWizard.vue",
+      "line": 343,
+      "rawClass": "text-blue-800"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ServiceStatusBanner.vue",
+      "line": 8,
+      "rawClass": "bg-gray-500"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ServiceStatusBanner.vue",
+      "line": 9,
+      "rawClass": "bg-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ServiceStatusBanner.vue",
+      "line": 10,
+      "rawClass": "bg-yellow-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ServiceStatusBanner.vue",
+      "line": 11,
+      "rawClass": "bg-red-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ServiceStatusBanner.vue",
+      "line": 62,
+      "rawClass": "text-gray-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ServiceStatusBanner.vue",
+      "line": 62,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 197,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 197,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 198,
+      "rawClass": "text-blue-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 199,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 204,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 204,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 205,
+      "rawClass": "text-blue-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 206,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 211,
+      "rawClass": "bg-orange-50"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 211,
+      "rawClass": "border-orange-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 212,
+      "rawClass": "text-orange-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 213,
+      "rawClass": "text-orange-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 251,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 251,
+      "rawClass": "border-green-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 252,
+      "rawClass": "text-green-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 303,
+      "rawClass": "bg-orange-50"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 303,
+      "rawClass": "border-orange-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 305,
+      "rawClass": "text-orange-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 314,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 314,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 316,
+      "rawClass": "text-blue-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 321,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RepositoryInspector.vue",
+      "line": 322,
+      "rawClass": "text-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RagBrowser.vue",
+      "line": 16,
+      "rawClass": "text-gray-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RagBrowser.vue",
+      "line": 17,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RagBrowser.vue",
+      "line": 20,
+      "rawClass": "text-gray-500"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RagBrowser.vue",
+      "line": 22,
+      "rawClass": "text-gray-400"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/RagBrowser.vue",
+      "line": 27,
+      "rawClass": "text-gray-400"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ErrorAlert.vue",
+      "line": 86,
+      "rawClass": "bg-orange-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ErrorAlert.vue",
+      "line": 86,
+      "rawClass": "bg-orange-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ErrorAlert.vue",
+      "line": 87,
+      "rawClass": "bg-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ErrorAlert.vue",
+      "line": 87,
+      "rawClass": "bg-blue-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ErrorAlert.vue",
+      "line": 98,
+      "rawClass": "text-orange-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ErrorAlert.vue",
+      "line": 98,
+      "rawClass": "bg-orange-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ErrorAlert.vue",
+      "line": 99,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ErrorAlert.vue",
+      "line": 99,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 21,
+      "rawClass": "bg-gray-500"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 22,
+      "rawClass": "bg-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 23,
+      "rawClass": "bg-yellow-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 24,
+      "rawClass": "bg-red-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 287,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 288,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 302,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 303,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 317,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 318,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 354,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 355,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 356,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 360,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 361,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/ContextKitHub.vue",
+      "line": 362,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/CodeGenerator.vue",
+      "line": 144,
+      "rawClass": "bg-green-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/CodeGenerator.vue",
+      "line": 204,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/CodeGenerator.vue",
+      "line": 204,
+      "rawClass": "border-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/CodeGenerator.vue",
+      "line": 209,
+      "rawClass": "bg-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/CodeGenerator.vue",
+      "line": 215,
+      "rawClass": "text-green-900"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/CodeGenerator.vue",
+      "line": 250,
+      "rawClass": "bg-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/CodeGenerator.vue",
+      "line": 250,
+      "rawClass": "bg-green-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/CodeGenerator.vue",
+      "line": 292,
+      "rawClass": "bg-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/CodeGenerator.vue",
+      "line": 292,
+      "rawClass": "bg-green-700"
+    },
+    {
+      "filePath": "src/renderer/components/ContextKit/CodeGenerator.vue",
+      "line": 321,
+      "rawClass": "text-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 16,
+      "rawClass": "border-gray-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 19,
+      "rawClass": "text-gray-700"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 37,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 42,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 48,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 53,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 58,
+      "rawClass": "bg-gray-100"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 64,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 83,
+      "rawClass": "border-gray-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 88,
+      "rawClass": "text-gray-900"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 88,
+      "rawClass": "bg-gray-50"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 88,
+      "rawClass": "text-gray-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 88,
+      "rawClass": "text-gray-900"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 88,
+      "rawClass": "bg-gray-50"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 94,
+      "rawClass": "bg-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 115,
+      "rawClass": "border-gray-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/UnifiedAssistant.vue",
+      "line": 115,
+      "rawClass": "bg-gray-50"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ResponsePane.vue",
+      "line": 149,
+      "rawClass": "text-orange-700"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ResponsePane.vue",
+      "line": 149,
+      "rawClass": "bg-orange-50"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ResponsePane.vue",
+      "line": 149,
+      "rawClass": "border-orange-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationStatus.vue",
+      "line": 38,
+      "rawClass": "bg-amber-100"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationStatus.vue",
+      "line": 38,
+      "rawClass": "text-amber-700"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationStatus.vue",
+      "line": 39,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationStatus.vue",
+      "line": 39,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationControls.vue",
+      "line": 68,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationControls.vue",
+      "line": 68,
+      "rawClass": "text-green-800"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationControls.vue",
+      "line": 69,
+      "rawClass": "bg-red-100"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationControls.vue",
+      "line": 69,
+      "rawClass": "text-red-700",
+      "suggestedToken": "text-error"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationControls.vue",
+      "line": 70,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationControls.vue",
+      "line": 70,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationControls.vue",
+      "line": 71,
+      "rawClass": "bg-amber-100"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/MigrationControls.vue",
+      "line": 71,
+      "rawClass": "text-amber-700"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ContextAssistant.vue",
+      "line": 30,
+      "rawClass": "bg-orange-50"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ContextAssistant.vue",
+      "line": 30,
+      "rawClass": "border-orange-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ContextAssistant.vue",
+      "line": 30,
+      "rawClass": "text-orange-700"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ContextAssistant.vue",
+      "line": 35,
+      "rawClass": "text-orange-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ContextAssistant.vue",
+      "line": 115,
+      "rawClass": "bg-orange-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ContextAssistant.vue",
+      "line": 115,
+      "rawClass": "bg-orange-700"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ContextAssistant.vue",
+      "line": 266,
+      "rawClass": "text-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 129,
+      "rawClass": "text-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 178,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 178,
+      "rawClass": "border-blue-500"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 178,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 179,
+      "rawClass": "border-blue-300"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 187,
+      "rawClass": "bg-purple-50"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 187,
+      "rawClass": "border-purple-500"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 187,
+      "rawClass": "text-purple-700"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 188,
+      "rawClass": "border-purple-300"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 196,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 196,
+      "rawClass": "border-green-500"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 196,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 197,
+      "rawClass": "border-green-300"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 208,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 210,
+      "rawClass": "bg-blue-500"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 217,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 229,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 232,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 243,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 252,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 259,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 261,
+      "rawClass": "bg-green-500"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 268,
+      "rawClass": "border-green-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 280,
+      "rawClass": "border-green-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 283,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 294,
+      "rawClass": "border-green-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 303,
+      "rawClass": "border-green-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 316,
+      "rawClass": "text-yellow-700",
+      "suggestedToken": "text-warning"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/ConflictResolutionDialog.vue",
+      "line": 319,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncSettings.vue",
+      "line": 114,
+      "rawClass": "bg-yellow-50",
+      "suggestedToken": "bg-warning-container"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncSettings.vue",
+      "line": 114,
+      "rawClass": "border-yellow-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncSettings.vue",
+      "line": 117,
+      "rawClass": "text-yellow-700",
+      "suggestedToken": "text-warning"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncSettings.vue",
+      "line": 120,
+      "rawClass": "text-yellow-900"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncSettings.vue",
+      "line": 150,
+      "rawClass": "bg-blue-50",
+      "suggestedToken": "bg-surface-container-low"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncSettings.vue",
+      "line": 150,
+      "rawClass": "border-blue-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncSettings.vue",
+      "line": 153,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncSettings.vue",
+      "line": 156,
+      "rawClass": "text-blue-900"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 38,
+      "rawClass": "text-yellow-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 39,
+      "rawClass": "text-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 40,
+      "rawClass": "text-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 238,
+      "rawClass": "bg-green-50",
+      "suggestedToken": "bg-success-container"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 238,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 238,
+      "rawClass": "border-green-200"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 280,
+      "rawClass": "bg-blue-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 280,
+      "rawClass": "bg-blue-700"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 300,
+      "rawClass": "bg-green-600"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 300,
+      "rawClass": "bg-green-700"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 350,
+      "rawClass": "bg-blue-100",
+      "suggestedToken": "bg-surface-container"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 350,
+      "rawClass": "text-blue-700",
+      "suggestedToken": "text-primary"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 351,
+      "rawClass": "bg-green-100"
+    },
+    {
+      "filePath": "src/renderer/components/assistant/AgentSyncPanel.vue",
+      "line": 351,
+      "rawClass": "text-green-700",
+      "suggestedToken": "text-success"
+    }
+  ],
+  "total": 426,
+  "allowedExceptions": []
+}
+
+Γ£ô Verification completed in 251ms
+Found 426 violation(s)
+Allowed exceptions: 0
+undefined
+C:\Users\ladams\source\repos\my-context-kit\app:
+ΓÇëERR_PNPM_RECURSIVE_EXEC_FIRST_FAILΓÇë Command failed with exit code 1: tsx scripts/verify-design-tokens.ts
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.

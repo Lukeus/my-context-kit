@@ -32,6 +32,9 @@ import { fetchManifest as fetchCapabilityManifest } from '@/services/sidecar/man
 // T069: Auto legacy migration trigger
 import { ensureLegacyMigration } from '@/services/assistant/migrationAdapter';
 import { CONCURRENCY_LIMIT } from '@shared/assistant/constants';
+// T054: Error normalization
+import { errorNormalizationAdapter, extractErrorCode } from '@/utils/errorNormalizationAdapter';
+import type { NormalizedError } from '@shared/errorNormalization';
 
 function assertAssistantBridge(): typeof window.api.assistant {
   if (!window.api?.assistant) {
@@ -346,8 +349,19 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
         console.warn('[Migration] ensureLegacyMigration failed:', err);
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to create assistant session.';
-      error.value = message;
+      // T054: Normalize error for consistent shape and telemetry
+      const normalized = errorNormalizationAdapter(err);
+      error.value = normalized.userMessage;
+      // Emit telemetry with errorCode
+      if (session.value?.id) {
+        emitToolLifecycle({
+          sessionId: session.value.id,
+          toolId: 'session.create',
+          phase: 'failed',
+          errorCode: normalized.code,
+          errorMessage: normalized.message
+        });
+      }
       throw err;
     } finally {
       isBusy.value = false;
@@ -496,8 +510,19 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       }
       return envelope;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Assistant message failed.';
-      error.value = message;
+      // T054: Normalize error for consistent shape and telemetry
+      const normalized = errorNormalizationAdapter(err);
+      error.value = normalized.userMessage;
+      // Emit telemetry with errorCode
+      if (session.value?.id) {
+        emitToolLifecycle({
+          sessionId: session.value.id,
+          toolId: 'message.send',
+          phase: 'failed',
+          errorCode: normalized.code,
+          errorMessage: normalized.message
+        });
+      }
       throw err;
     } finally {
       isBusy.value = false;
@@ -586,14 +611,16 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
         lastUpdated.value = nowIso();
         return result;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Tool execution failed.';
-        error.value = message;
-        // Emit tool.failed telemetry
+        // T054: Normalize error for consistent shape and telemetry
+        const normalized = errorNormalizationAdapter(err);
+        error.value = normalized.userMessage;
+        // Emit tool.failed telemetry with errorCode
         emitToolLifecycle({
           sessionId,
           toolId: payload.toolId,
           phase: 'failed',
-          errorMessage: message,
+          errorCode: normalized.code,
+          errorMessage: normalized.message,
           durationMs: Date.now() - startTime
         });
         throw err;
@@ -658,8 +685,19 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
         loadGatingStatus(options.repoPath).catch(err => console.warn('Gating status refresh failed:', err));
         return response;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Pipeline execution failed.';
-        error.value = message;
+        // T054: Normalize error for consistent shape and telemetry
+        const normalized = errorNormalizationAdapter(err);
+        error.value = normalized.userMessage;
+        // Emit telemetry with errorCode
+        if (session.value?.id) {
+          emitToolLifecycle({
+            sessionId: session.value.id,
+            toolId: PIPELINE_TOOL_ID,
+            phase: 'failed',
+            errorCode: normalized.code,
+            errorMessage: normalized.message
+          });
+        }
         throw err;
       } finally {
         try {
@@ -723,10 +761,11 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       await refreshTelemetry(true);
       return contextReadResult.value;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Context read failed.';
-      error.value = message;
+      // T054: Normalize error for consistent shape and telemetry
+      const normalized = errorNormalizationAdapter(err);
+      error.value = normalized.userMessage;
       if (!contextReadError.value) {
-        contextReadError.value = message;
+        contextReadError.value = normalized.userMessage;
       }
       throw err;
     } finally {
@@ -755,8 +794,9 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       
       return action;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Approval decision failed.';
-      error.value = message;
+      // T054: Normalize error for consistent shape and telemetry
+      const normalized = errorNormalizationAdapter(err);
+      error.value = normalized.userMessage;
       throw err;
     } finally {
       isBusy.value = false;
@@ -798,9 +838,10 @@ export const useAssistantStore = defineStore('assistant-safe-tools', () => {
       telemetry.value = records;
       lastUpdated.value = nowIso();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load telemetry records.';
-      error.value = message;
-      console.warn('Telemetry refresh failed:', message);
+      // T054: Normalize error for consistent shape and telemetry
+      const normalized = errorNormalizationAdapter(err);
+      error.value = normalized.userMessage;
+      console.warn('Telemetry refresh failed:', normalized.message);
     }
   }
 

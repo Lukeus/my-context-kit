@@ -424,19 +424,19 @@ onMounted(async () => {
         </button>
 
         <div>
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">All Branches</h3>
+          <h3 class="text-sm font-semibold text-on-surface-variant mb-2">All Branches</h3>
           <div class="space-y-1">
             <button
               v-for="branch in gitStore.allBranches"
               :key="branch"
               @click="handleCheckout(branch)"
-              class="w-full flex items-center gap-2 p-2 hover:bg-gray-50 rounded-m3-md text-sm text-left"
-              :class="{ 'bg-blue-50 border border-blue-200': branch === gitStore.currentBranch }"
+              class="w-full flex items-center gap-2 p-2 hover:bg-surface-variant rounded-m3-md text-sm text-left"
+              :class="{ 'bg-primary-container border border-outline': branch === gitStore.currentBranch }"
             >
-              <svg v-if="branch === gitStore.currentBranch" class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <svg v-if="branch === gitStore.currentBranch" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
               </svg>
-              <span class="font-mono" :class="{ 'font-semibold text-blue-600': branch === gitStore.currentBranch }">
+              <span class="font-mono" :class="{ 'font-semibold text-primary': branch === gitStore.currentBranch }">
                 {{ branch }}
               </span>
             </button>
@@ -446,36 +446,36 @@ onMounted(async () => {
 
       <!-- PR Tab -->
       <div v-if="activeTab === 'pr'" class="space-y-4">
-        <div v-if="!gitStore.hasUncommittedChanges" class="text-center py-8 text-gray-500">
+        <div v-if="!gitStore.hasUncommittedChanges" class="text-center py-8 text-on-surface-variant">
           <p>No changes available for PR creation</p>
           <p class="text-sm mt-1">Commit your changes first</p>
         </div>
 
         <div v-else>
-          <div class="bg-yellow-50 border border-yellow-200 rounded-m3-md p-3 mb-4">
-            <p class="text-sm text-yellow-800">
+          <div class="bg-warning-container border border-outline rounded-m3-md p-3 mb-4">
+            <p class="text-sm text-on-warning-container">
               <strong>Note:</strong> Make sure to commit and push your changes before creating a PR.
             </p>
           </div>
 
           <!-- PR Title -->
           <div class="mb-4">
-            <label class="text-sm font-semibold text-gray-700 block mb-2">PR Title</label>
+            <label class="text-sm font-semibold text-on-surface-variant block mb-2">PR Title</label>
             <input
               v-model="prTitle"
               type="text"
               placeholder="feat: Add new feature..."
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-m3-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full px-3 py-2 text-sm border border-outline rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
           <!-- PR Body -->
           <div class="mb-4">
             <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-semibold text-gray-700">PR Description</label>
+              <label class="text-sm font-semibold text-on-surface-variant">PR Description</label>
               <button
                 @click="usePRTemplate"
-                class="text-xs text-blue-600 hover:underline"
+                class="text-xs text-primary hover:underline"
               >
                 Use Template
               </button>
@@ -484,18 +484,18 @@ onMounted(async () => {
               v-model="prBody"
               rows="10"
               placeholder="Describe the changes..."
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-m3-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              class="w-full px-3 py-2 text-sm border border-outline rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary font-mono"
             ></textarea>
           </div>
 
           <!-- Base Branch -->
           <div class="mb-4">
-            <label class="text-sm font-semibold text-gray-700 block mb-2">Base Branch</label>
+            <label class="text-sm font-semibold text-on-surface-variant block mb-2">Base Branch</label>
             <input
               v-model="prBase"
               type="text"
               placeholder="main"
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-m3-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full px-3 py-2 text-sm border border-outline rounded-m3-md focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -503,12 +503,12 @@ onMounted(async () => {
           <button
             @click="handleCreatePR"
             :disabled="!prTitle.trim() || gitStore.isLoading"
-            class="w-full px-4 py-2.5 bg-green-600 text-white rounded-m3-md hover:bg-green-700 active:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2 font-medium"
+            class="w-full px-4 py-2.5 bg-success text-on-success rounded-m3-md hover:bg-success-hover active:bg-success-pressed disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-elevation-1 hover:shadow-elevation-2 font-medium"
           >
             {{ gitStore.isLoading ? 'Creating PR...' : 'Create Pull Request' }}
           </button>
 
-          <p class="text-xs text-gray-500 mt-2">
+          <p class="text-xs text-on-surface-variant mt-2">
             This will use GitHub CLI (gh) to create the PR
           </p>
         </div>
@@ -585,19 +585,19 @@ onMounted(async () => {
                 :key="index"
                 :class="[
                   'px-6 py-1 leading-relaxed',
-                  line.type === 'add' && 'bg-green-50 text-green-800 border-l-4 border-green-500',
-                  line.type === 'remove' && 'bg-red-50 text-red-800 border-l-4 border-red-500',
-                  line.type === 'header' && 'bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-400',
-                  line.type === 'info' && 'bg-gray-100 text-gray-600 border-l-4 border-gray-400',
-                  line.type === 'normal' && 'bg-white text-gray-700'
+                  line.type === 'add' && 'bg-success-container text-on-success-container border-l-4 border-success',
+                  line.type === 'remove' && 'bg-error-container text-on-error-container border-l-4 border-error',
+                  line.type === 'header' && 'bg-primary-container text-on-primary-container font-semibold border-l-4 border-primary',
+                  line.type === 'info' && 'bg-surface-variant text-on-surface-variant border-l-4 border-outline',
+                  line.type === 'normal' && 'bg-surface text-on-surface'
                 ]"
               >
                 <span class="select-text whitespace-pre-wrap break-all">{{ line.content }}</span>
               </div>
             </div>
-            <div v-else class="flex items-center justify-center h-full text-gray-500">
+            <div v-else class="flex items-center justify-center h-full text-on-surface-variant">
               <div class="text-center">
-                <svg class="w-16 h-16 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-16 h-16 mx-auto mb-3 text-outline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <p class="font-medium">No changes to display</p>

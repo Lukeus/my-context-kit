@@ -45,5 +45,5 @@ Provide an interactive builder UI to help authors create and assemble feature de
 
 ---
 
-**Generated**: 2025-10-29T14:13:56.712Z  
+**Generated**: 2025-11-08T22:31:23.785Z  
 **Context Source**: C:\Users\ladams\source\repos\my-context-kit\context-repo\contexts\features\FEAT-002-feature-builder.yaml

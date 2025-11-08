@@ -1,0 +1,378 @@
+{
+  "archivedCount": 74,
+  "changelogEntryAdded": true,
+  "archivedAt": "2025-11-08T14:31:15.3054901-08:00",
+  "archivedFiles": [
+    {
+      "size": 3195,
+      "name": "AGENT_INTEGRATION_COMPLETE.md",
+      "lastModified": "2025-10-29T14:23:33.2526920-07:00"
+    },
+    {
+      "size": 18870,
+      "name": "agent-integration-plan.md",
+      "lastModified": "2025-11-02T07:59:16.8083974-08:00"
+    },
+    {
+      "size": 6372,
+      "name": "ai-enhancements-completed.md",
+      "lastModified": "2025-10-26T16:45:53.7161482-07:00"
+    },
+    {
+      "size": 10802,
+      "name": "ai-enhancements-implementation-plan.md",
+      "lastModified": "2025-10-26T16:45:53.7181480-07:00"
+    },
+    {
+      "size": 3413,
+      "name": "c4-option-a-complete.md",
+      "lastModified": "2025-10-27T16:34:07.7895223-07:00"
+    },
+    {
+      "size": 10487,
+      "name": "CICD-SUMMARY.md",
+      "lastModified": "2025-10-30T13:19:01.1943695-07:00"
+    },
+    {
+      "size": 10206,
+      "name": "CODE_REVIEW_ACTION_PLAN.md",
+      "lastModified": "2025-10-29T12:35:33.0362500-07:00"
+    },
+    {
+      "size": 26419,
+      "name": "CODE_REVIEW_COMPONENT_REUSABILITY.md",
+      "lastModified": "2025-11-08T10:31:18.7894344-08:00"
+    },
+    {
+      "size": 8696,
+      "name": "CODE_REVIEW_SUMMARY.md",
+      "lastModified": "2025-10-30T13:19:01.1963709-07:00"
+    },
+    {
+      "size": 7761,
+      "name": "CODE_SPLITTING_IMPLEMENTATION.md",
+      "lastModified": "2025-10-27T18:37:25.4896805-07:00"
+    },
+    {
+      "size": 12395,
+      "name": "CODE_SPLITTING_PLAN.md",
+      "lastModified": "2025-10-27T18:37:25.4962073-07:00"
+    },
+    {
+      "size": 13235,
+      "name": "COMPONENT_MIGRATION_GUIDE.md",
+      "lastModified": "2025-11-08T10:31:18.7944340-08:00"
+    },
+    {
+      "size": 11021,
+      "name": "COMPONENT_REFACTORING_CHECKLIST.md",
+      "lastModified": "2025-11-08T10:31:18.7974411-08:00"
+    },
+    {
+      "size": 9866,
+      "name": "COMPONENT_REVIEW_SUMMARY.md",
+      "lastModified": "2025-11-08T10:31:18.8004449-08:00"
+    },
+    {
+      "size": 11277,
+      "name": "CONSOLIDATION_COMPLETE.md",
+      "lastModified": "2025-11-08T10:31:18.8034420-08:00"
+    },
+    {
+      "size": 9269,
+      "name": "context-kit-system-implementation-plan.md",
+      "lastModified": "2025-10-31T15:53:05.7243587-07:00"
+    },
+    {
+      "size": 12644,
+      "name": "context-kit-ui-integration-plan.md",
+      "lastModified": "2025-10-31T15:53:05.7263633-07:00"
+    },
+    {
+      "size": 8529,
+      "name": "ENTERPRISE-PHASE1-COMPLETE.md",
+      "lastModified": "2025-10-28T09:12:47.9278641-07:00"
+    },
+    {
+      "size": 10776,
+      "name": "ENTERPRISE-PHASE2-COMPLETE.md",
+      "lastModified": "2025-10-28T09:12:47.9298623-07:00"
+    },
+    {
+      "size": 10964,
+      "name": "FINAL_COMPLETION_SUMMARY.md",
+      "lastModified": "2025-10-29T12:35:33.0397973-07:00"
+    },
+    {
+      "size": 10383,
+      "name": "FINAL_IMPLEMENTATION_GUIDE.md",
+      "lastModified": "2025-10-29T14:23:33.2552280-07:00"
+    },
+    {
+      "size": 9170,
+      "name": "FULL_BACKEND_COMPLETE.md",
+      "lastModified": "2025-11-08T10:31:18.8084447-08:00"
+    },
+    {
+      "size": 9803,
+      "name": "IMPLEMENTATION_SUMMARY.md",
+      "lastModified": "2025-10-29T14:23:33.2594987-07:00"
+    },
+    {
+      "size": 13478,
+      "name": "INTEGRATION_COMPLETE_SUMMARY.md",
+      "lastModified": "2025-10-29T14:23:33.2647693-07:00"
+    },
+    {
+      "size": 8894,
+      "name": "INTEGRATION_COMPLETE.md",
+      "lastModified": "2025-10-29T14:23:33.2627677-07:00"
+    },
+    {
+      "size": 16947,
+      "name": "INTEGRATION_TESTING_GUIDE.md",
+      "lastModified": "2025-10-29T14:23:33.2693684-07:00"
+    },
+    {
+      "size": 34091,
+      "name": "langchain-enhancement-plan.md",
+      "lastModified": "2025-10-31T12:03:59.5987902-07:00"
+    },
+    {
+      "size": 5281,
+      "name": "P0_COMPLETION_SUMMARY.md",
+      "lastModified": "2025-10-29T12:35:33.0418099-07:00"
+    },
+    {
+      "size": 12277,
+      "name": "P0_REFACTORING_PROGRESS.md",
+      "lastModified": "2025-10-27T16:34:07.7650039-07:00"
+    },
+    {
+      "size": 8387,
+      "name": "P0_SUMMARY.md",
+      "lastModified": "2025-10-27T16:34:07.7720041-07:00"
+    },
+    {
+      "size": 7924,
+      "name": "P1_COMPLETION_SUMMARY.md",
+      "lastModified": "2025-10-29T12:35:33.0449760-07:00"
+    },
+    {
+      "size": 7635,
+      "name": "P1_PROGRESS.md",
+      "lastModified": "2025-10-27T16:34:07.7775193-07:00"
+    },
+    {
+      "size": 7347,
+      "name": "p1-completion-summary.md",
+      "lastModified": "2025-10-27T16:34:07.7935210-07:00"
+    },
+    {
+      "size": 9881,
+      "name": "P2_COMPLETION_SUMMARY.md",
+      "lastModified": "2025-10-29T12:35:33.0469750-07:00"
+    },
+    {
+      "size": 8407,
+      "name": "p2-completion-summary.md",
+      "lastModified": "2025-10-27T16:34:07.7965183-07:00"
+    },
+    {
+      "size": 15141,
+      "name": "P3_COMPLETION_SUMMARY.md",
+      "lastModified": "2025-10-29T12:35:33.0494947-07:00"
+    },
+    {
+      "size": 6077,
+      "name": "P3_PROGRESS.md",
+      "lastModified": "2025-10-27T16:34:07.7825182-07:00"
+    },
+    {
+      "size": 8519,
+      "name": "p3-completion-summary.md",
+      "lastModified": "2025-10-27T16:34:07.7995200-07:00"
+    },
+    {
+      "size": 12153,
+      "name": "p4-complete-all-pipelines.md",
+      "lastModified": "2025-10-27T16:34:07.8035218-07:00"
+    },
+    {
+      "size": 13644,
+      "name": "p4-final-summary.md",
+      "lastModified": "2025-10-27T16:34:07.8089460-07:00"
+    },
+    {
+      "size": 10306,
+      "name": "p4-pipeline-refactoring-complete.md",
+      "lastModified": "2025-10-27T16:34:07.8149563-07:00"
+    },
+    {
+      "size": 9280,
+      "name": "p4-pipeline-refactoring-progress.md",
+      "lastModified": "2025-10-27T16:34:07.8189594-07:00"
+    },
+    {
+      "size": 9890,
+      "name": "PHASE_1_COMPLETE.md",
+      "lastModified": "2025-10-30T13:19:01.1998800-07:00"
+    },
+    {
+      "size": 6904,
+      "name": "PHASE_2_COMPLETE.md",
+      "lastModified": "2025-10-30T13:19:01.2035080-07:00"
+    },
+    {
+      "size": 8990,
+      "name": "PHASE_2_PROGRESS.md",
+      "lastModified": "2025-10-30T13:19:01.2060243-07:00"
+    },
+    {
+      "size": 8758,
+      "name": "PHASE_2_UI_COMPLETE.md",
+      "lastModified": "2025-10-29T14:23:33.2767911-07:00"
+    },
+    {
+      "size": 15830,
+      "name": "PHASE_3_GIT_SYNC_COMPLETE.md",
+      "lastModified": "2025-10-29T14:23:33.2803468-07:00"
+    },
+    {
+      "size": 4639,
+      "name": "phase-1-complete.md",
+      "lastModified": "2025-11-08T10:31:18.8866601-08:00"
+    },
+    {
+      "size": 8315,
+      "name": "phase-2-complete.md",
+      "lastModified": "2025-11-08T10:31:18.8896796-08:00"
+    },
+    {
+      "size": 13699,
+      "name": "phase-4-ui-integration-complete.md",
+      "lastModified": "2025-11-08T10:31:18.8998879-08:00"
+    },
+    {
+      "size": 13846,
+      "name": "phase-4-ui-integration-guide.md",
+      "lastModified": "2025-11-08T10:31:18.9018964-08:00"
+    },
+    {
+      "size": 10990,
+      "name": "phase-5-complete.md",
+      "lastModified": "2025-11-08T10:31:18.9053567-08:00"
+    },
+    {
+      "size": 8155,
+      "name": "phase-5-task-1-complete.md",
+      "lastModified": "2025-11-08T10:31:18.9298798-08:00"
+    },
+    {
+      "size": 10568,
+      "name": "phase-5-task-2-complete.md",
+      "lastModified": "2025-11-08T10:31:18.9462279-08:00"
+    },
+    {
+      "size": 11456,
+      "name": "phase-5-task-3-complete.md",
+      "lastModified": "2025-11-08T10:31:18.9492566-08:00"
+    },
+    {
+      "size": 14573,
+      "name": "phase-6-complete.md",
+      "lastModified": "2025-11-08T10:31:18.9512635-08:00"
+    },
+    {
+      "size": 9136,
+      "name": "PHASE1_COMPLETE.md",
+      "lastModified": "2025-10-29T14:23:33.2733767-07:00"
+    },
+    {
+      "size": 9853,
+      "name": "PHASE3_LANGCHAIN_AGENT_COMPLETE.md",
+      "lastModified": "2025-11-08T10:31:18.8185175-08:00"
+    },
+    {
+      "size": 5968,
+      "name": "phase3-implementation.md",
+      "lastModified": "2025-10-24T09:28:55.0498531-07:00"
+    },
+    {
+      "size": 8727,
+      "name": "phase4-implementation.md",
+      "lastModified": "2025-10-24T09:28:55.0518560-07:00"
+    },
+    {
+      "size": 10389,
+      "name": "phase5-implementation.md",
+      "lastModified": "2025-10-24T09:28:55.0538548-07:00"
+    },
+    {
+      "size": 6473,
+      "name": "phase6-git-workflow-completion.md",
+      "lastModified": "2025-10-24T09:28:55.0558519-07:00"
+    },
+    {
+      "size": 10727,
+      "name": "PR_DESCRIPTION_P1-P4.md",
+      "lastModified": "2025-10-29T12:35:33.0515022-07:00"
+    },
+    {
+      "size": 17786,
+      "name": "PROJECT_COMPLETE.md",
+      "lastModified": "2025-10-29T14:23:33.2833468-07:00"
+    },
+    {
+      "size": 26746,
+      "name": "python-sidecar-migration-plan.md",
+      "lastModified": "2025-11-08T10:31:18.9542623-08:00"
+    },
+    {
+      "size": 13896,
+      "name": "python-sidecar-phases-1-4-complete.md",
+      "lastModified": "2025-11-08T10:31:18.9949683-08:00"
+    },
+    {
+      "size": 3653,
+      "name": "REFACTORING_COMPLETE.md",
+      "lastModified": "2025-10-27T16:34:07.7865197-07:00"
+    },
+    {
+      "size": 8643,
+      "name": "ROUTER-INTEGRATION-COMPLETE.md",
+      "lastModified": "2025-10-28T09:12:47.9368621-07:00"
+    },
+    {
+      "size": 8387,
+      "name": "TASK_COMPLETION_STATUS.md",
+      "lastModified": "2025-11-08T10:31:18.8298054-08:00"
+    },
+    {
+      "size": 3144,
+      "name": "TEST-C4-ANALYZER.md",
+      "lastModified": "2025-10-28T09:12:47.9388628-07:00"
+    },
+    {
+      "size": 527,
+      "name": "test-c4-mermaid.md",
+      "lastModified": "2025-10-28T09:12:47.9428637-07:00"
+    },
+    {
+      "size": 8609,
+      "name": "TESTING-PHASE-4.md",
+      "lastModified": "2025-11-08T10:31:18.8344307-08:00"
+    },
+    {
+      "size": 10439,
+      "name": "TESTING.md",
+      "lastModified": "2025-10-28T09:12:47.9408660-07:00"
+    },
+    {
+      "size": 11315,
+      "name": "UX_ENHANCEMENTS_COMPLETE.md",
+      "lastModified": "2025-10-29T14:23:33.2873413-07:00"
+    }
+  ],
+  "reason": "Historical completion records, implementation plans, and status reports superseded by current system state"
+}

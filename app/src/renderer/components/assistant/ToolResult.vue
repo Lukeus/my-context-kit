@@ -156,14 +156,12 @@ const summarizedOutput = computed(() => {
 
 // Methods
 function formatTimestamp(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleTimeString();
+  return formatTime(iso);
 }
 
 function formatDuration(ms: number): string {
   if (ms === 0) return 'Running...';
-  if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
+  return formatDurationHelper(ms);
 }
 
 function formatOutput(output: unknown): string {

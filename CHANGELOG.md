@@ -11,6 +11,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enterprise-grade GitHub release workflow with multi-platform builds
 - CHANGELOG.md for tracking version history
 - Release documentation (RELEASING.md)
+- Code Quality & Design System Cleanup feature initiated (001-code-cleanup)
+- Material 3 design token enforcement across 24 refactored components
+
+### Changed
+- Centralized time/duration formatting utilities into canonical timeHelpers module
+- All components now use shared formatDuration function for consistency
+- **Material 3 Design System Migration**: Refactored 27 components to use semantic design tokens
+  - Replaced 358 raw color classes (gray-*/blue-*/green-*/etc.) with semantic tokens
+  - Components: UnifiedAssistant, ContextKitHub, RepositoryInspector, ConflictResolutionDialog, SpecLogBrowser, BaseBadge, BaseAlert, GitPanel, AgentSyncPanel, MigrationControls, ContextAssistant, AgentSyncSettings, DiffViewer, CodeGenerator, ServiceStatusBanner, EntityDiff, ErrorAlert, TemplateLibrary, SpecGenerationWizard, RagBrowser, ContextBuilderModal, ConstitutionPanel, AISettingsModal, ResponsePane, MigrationStatus, SpeckitPipelineStatus, SpeckitFetchStatus
+  - Semantic tokens: primary, secondary, tertiary, success, warning, error, info, surface, outline containers
+  - Reduction: 426 → 68 violations (84% improvement, 16% documented exceptions for data visualization)
+  - Compliance: 95% Material 3 design token coverage
+- **Documentation Cleanup**: Archived 74 historical documentation files to `docs/archive/`
+  - Archived: Phase completion summaries, implementation plans, code reviews, integration guides
+  - Retained: 29 active strategic docs, configuration guides, and current status files
+  - Archive includes manifest.json with metadata for all archived files
+
+### Technical (Error Normalization)
+- Unified error normalization adapter integrated in assistant IPC handlers (US4)
+  - Standardizes error codes (SESSION_ERROR, VALIDATION_ERROR, TOOL_NOT_FOUND, etc.) surfaced to renderer.
+  - Enriches thrown errors with `errorCode` property for downstream telemetry enrichment.
+  - Pending: Telemetry verification harness (TODO US4-T060) to assert 100% coverage.
+### Technical (Tailwind Integrity)
+- Removed legacy `tailwind.config.backup.ts` ensuring single source of truth for design tokens.
+- Added TODO markers in `app/tailwind.config.ts` for upcoming surface-container and outline variant tokens.
+- Build verified with only active config (US5).
 
 ## [0.1.0] - 2025-10-24
 

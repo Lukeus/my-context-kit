@@ -12,6 +12,13 @@ coverage/
 playwright-report/
 -test-results/
 .nyc_output/
+# Test and report artefacts
+test-results/
+reports/
+specs/001-code-cleanup/artefacts/
+# Electron packaging outputs
+release/
+packages/
 # Lock files (managed by pnpm)
 package-lock.json
 yarn.lock
@@ -20,3 +27,14 @@ context-repo/generated/
 # Ignore compiled or temporary files
 *.log
 *.tmp
+*.asar
+*.asar.unpacked
+package-lock.json
+yarn.lock
+
+# Avoid formatting Python caches or virtual envs
+__pycache__/
+.venv/
+context-kit-service/.venv/
+
+# TODO: Confirm whether artefacts directory should be formatted when reports stabilized.

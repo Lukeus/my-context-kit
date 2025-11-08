@@ -87,11 +87,11 @@ function exportTemplate(template: SpecTemplate) {
 
 function getCategoryColor(category: TemplateCategory): string {
   switch (category) {
-    case 'feature': return 'bg-blue-100 text-blue-800';
-    case 'api': return 'bg-green-100 text-green-800';
+    case 'feature': return 'bg-primary-container text-on-primary-container';
+    case 'api': return 'bg-success-container text-on-success-container';
     case 'component': return 'bg-primary-100 text-primary-800';
     case 'service': return 'bg-secondary-100 text-secondary-800';
-    case 'custom': return 'bg-gray-100 text-gray-800';
+    case 'custom': return 'bg-surface-variant text-on-surface-variant';
   }
 }
 </script>

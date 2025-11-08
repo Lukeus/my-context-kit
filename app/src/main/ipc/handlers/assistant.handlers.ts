@@ -10,6 +10,8 @@ import {
 import { loadProviderConfiguration } from '../../services/providerConfig';
 import { ContextService } from '../../services/ContextService';
 import { createTelemetryWriter } from '../../services/telemetryWriter';
+// US4: integrate error normalization for telemetry errorCode propagation
+import { errorNormalizationAdapter, extractErrorCode } from '@/utils/errorNormalizationAdapter';
 import { AssistantSessionManager } from '../../services/assistantSessionManager';
 import { readContextFile } from '../../services/tools/readContextFile';
 import { searchContextRepository } from '../../services/tools/searchContextRepository';
@@ -58,7 +60,11 @@ export function registerAssistantHandlers(): void {
   ipcMain.handle('assistant:pipelineRun', async (_event, payload: PipelineRunPayload) => {
     const session = sessionManager.getSession(payload.sessionId);
     if (!session) {
-      throw new Error('Assistant session not found. Create a session before running pipelines.');
+      // Normalize and throw enriched error (delegation-only logic retained)
+      const norm = errorNormalizationAdapter(new Error('Assistant session not found. Create a session before running pipelines.'));
+      const err = new Error(norm.userMessage);
+      (err as any).errorCode = norm.code; // surfaced for renderer classification if caught
+      throw err;
     }
 
     const execution = await orchestrator.executeTool(toExecuteToolOptions(session.id, session.provider, payload));
@@ -69,7 +75,11 @@ export function registerAssistantHandlers(): void {
     }));
 
     if (!execution.ok) {
-      throw new Error(execution.error ?? 'Pipeline execution failed.');
+      const base = execution.error ?? 'Pipeline execution failed.';
+      const norm = errorNormalizationAdapter(new Error(base));
+      const err = new Error(norm.userMessage);
+      (err as any).errorCode = norm.code;
+      throw err;
     }
 
     return {
@@ -98,16 +108,25 @@ export function registerAssistantHandlers(): void {
     const session = sessionManager.getSession(payload.sessionId);
     console.log('[assistant:executeTool] Session found:', !!session);
     if (!session) {
-      throw new Error('Assistant session not found. Create a session before executing tools.');
+      const norm = errorNormalizationAdapter(new Error('Assistant session not found. Create a session before executing tools.'));
+      const err = new Error(norm.userMessage);
+      (err as any).errorCode = norm.code;
+      throw err;
     }
 
     if (!payload.repoPath || typeof payload.repoPath !== 'string') {
-      throw new Error('Repository path is required to execute tools.');
+      const norm = errorNormalizationAdapter(new Error('Repository path is required to execute tools.'));
+      const err = new Error(norm.userMessage);
+      (err as any).errorCode = norm.code;
+      throw err;
     }
 
     const activeTool = session.activeTools.find(tool => tool.id === payload.toolId);
     if (!activeTool) {
-      throw new Error(`Tool ${payload.toolId} is not active for the current session.`);
+      const norm = errorNormalizationAdapter(new Error(`Tool ${payload.toolId} is not active for the current session.`));
+      const err = new Error(norm.userMessage);
+      (err as any).errorCode = norm.code;
+      throw err;
     }
 
     const parameters = payload.parameters ?? {};
@@ -130,7 +149,10 @@ export function registerAssistantHandlers(): void {
     }));
 
     if (!execution.ok) {
-      throw new Error(execution.error ?? 'Tool execution failed.');
+      const norm = errorNormalizationAdapter(new Error(execution.error ?? 'Tool execution failed.'));
+      const err = new Error(norm.userMessage);
+      (err as any).errorCode = norm.code;
+      throw err;
     }
 
     return {
@@ -163,12 +185,18 @@ export function registerAssistantHandlers(): void {
     const { sessionId, actionId, decision, notes } = payload;
     const session = sessionManager.getSession(sessionId);
     if (!session) {
-      throw new Error('Assistant session not found.');
+      const norm = errorNormalizationAdapter(new Error('Assistant session not found.'));
+      const err = new Error(norm.userMessage);
+      (err as any).errorCode = norm.code;
+      throw err;
     }
 
     const pending = session.pendingApprovals.find(p => p.id === actionId);
     if (!pending) {
-      throw new Error(`Pending action ${actionId} not found.`);
+      const norm = errorNormalizationAdapter(new Error(`Pending action ${actionId} not found.`));
+      const err = new Error(norm.userMessage);
+      (err as any).errorCode = norm.code;
+      throw err;
     }
 
     let updated: PendingAction = { ...pending };
@@ -230,8 +258,11 @@ export function registerAssistantHandlers(): void {
 
       return updated;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to resolve pending action.';
-      throw new Error(message);
+      const baseMessage = err instanceof Error ? err.message : 'Failed to resolve pending action.';
+      const norm = errorNormalizationAdapter(new Error(baseMessage));
+      const wrapped = new Error(norm.userMessage);
+      (wrapped as any).errorCode = norm.code;
+      throw wrapped;
     }
   });
 

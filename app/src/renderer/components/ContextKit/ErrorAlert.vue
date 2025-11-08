@@ -83,8 +83,8 @@ const shouldShow = computed(() => {
               class="px-3 py-1.5 text-xs font-semibold rounded-m3-md transition-colors"
               :class="[
                 errorInfo.severity === 'error' ? 'bg-error-600 hover:bg-error-700 text-white' :
-                errorInfo.severity === 'warning' ? 'bg-orange-600 hover:bg-orange-700 text-white' :
-                'bg-blue-600 hover:bg-blue-700 text-white'
+                errorInfo.severity === 'warning' ? 'bg-warning hover:bg-warning-hover text-on-warning' :
+                'bg-primary hover:bg-primary-hover text-on-primary'
               ]"
             >
               {{ errorInfo.recoveryLabel || 'Retry' }}
@@ -95,8 +95,8 @@ const shouldShow = computed(() => {
               class="px-3 py-1.5 text-xs font-medium rounded-m3-md transition-colors"
               :class="[
                 errorInfo.severity === 'error' ? 'text-error-700 hover:bg-error-100' :
-                errorInfo.severity === 'warning' ? 'text-orange-700 hover:bg-orange-100' :
-                'text-blue-700 hover:bg-blue-100'
+                errorInfo.severity === 'warning' ? 'text-warning hover:bg-warning-container' :
+                'text-primary hover:bg-primary-container'
               ]"
             >
               Dismiss

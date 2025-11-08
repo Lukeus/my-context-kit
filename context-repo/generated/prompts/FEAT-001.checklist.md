@@ -1,6 +1,6 @@
 # Validation Checklist: FEAT-001 (feature)
 
-**Generated**: 2025-10-30T22:58:30.658Z
+**Generated**: 2025-11-08T22:28:05.863Z
 **Source Prompt**: C:\Users\ladams\source\repos\my-context-kit\context-repo\generated\prompts\FEAT-001.md
 
 ## Specification Quality

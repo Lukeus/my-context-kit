@@ -146,7 +146,7 @@ function taskStatusLabel(task: TaskEnvelope): string {
         </p>
         <p
           v-if="result.truncated"
-          class="text-[11px] text-orange-700 bg-orange-50 border border-orange-200 rounded-m3-md px-2 py-1"
+          class="text-[11px] text-warning bg-warning-container border border-outline rounded-m3-md px-2 py-1"
         >Preview truncated for safety. Download locally for full contents.</p>
       </div>
       <div class="px-4 py-3">

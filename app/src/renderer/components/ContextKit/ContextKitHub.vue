@@ -18,10 +18,11 @@ const isStarting = ref(false);
 const isStopping = ref(false);
 
 const statusColor = computed(() => {
-  if (!contextKitStore.serviceStatus) return 'bg-gray-500';
-  if (contextKitStore.isServiceHealthy) return 'bg-green-600';
-  if (contextKitStore.isServiceRunning) return 'bg-yellow-600';
-  return 'bg-red-600';
+  // Map service states to semantic status tokens
+  if (!contextKitStore.serviceStatus) return 'bg-status-todo';
+  if (contextKitStore.isServiceHealthy) return 'bg-success';
+  if (contextKitStore.isServiceRunning) return 'bg-warning';
+  return 'bg-error';
 });
 
 const statusText = computed(() => {
@@ -165,7 +166,7 @@ onMounted(() => {
               {{ isStopping ? 'Stopping...' : 'Stop Service' }}
             </button>
             <span 
-              class="px-3 py-1 rounded-m3-full text-sm font-semibold text-white"
+              class="px-3 py-1 rounded-m3-full text-sm font-semibold text-on-primary"
               :class="statusColor"
             >
               {{ statusText }}
@@ -284,8 +285,8 @@ onMounted(() => {
           <div class="p-6 space-y-4">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="p-2 rounded-m3-md bg-blue-100">
-                  <svg class="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="p-2 rounded-m3-md bg-primary-container text-on-primary-container">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
@@ -299,8 +300,8 @@ onMounted(() => {
 
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="p-2 rounded-m3-md bg-blue-100">
-                  <svg class="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="p-2 rounded-m3-md bg-primary-container text-on-primary-container">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                   </svg>
                 </div>
@@ -314,8 +315,8 @@ onMounted(() => {
 
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="p-2 rounded-m3-md bg-green-100">
-                  <svg class="w-5 h-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="p-2 rounded-m3-md bg-success-container text-on-success-container">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                   </svg>
                 </div>
@@ -351,16 +352,11 @@ onMounted(() => {
                 <div 
                   class="p-1.5 rounded-m3-md flex-shrink-0"
                   :class="{
-                    'bg-blue-100': item.type === 'spec',
-                    'bg-blue-100': item.type === 'prompt',
-                    'bg-green-100': item.type === 'code'
+                    'bg-primary-container text-on-primary-container': item.type === 'spec' || item.type === 'prompt',
+                    'bg-success-container text-on-success-container': item.type === 'code'
                   }"
                 >
-                  <svg class="w-4 h-4" :class="{
-                    'text-blue-700': item.type === 'spec',
-                    'text-blue-700': item.type === 'prompt',
-                    'text-green-700': item.type === 'code'
-                  }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>

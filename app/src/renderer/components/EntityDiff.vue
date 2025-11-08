@@ -150,7 +150,7 @@ onMounted(loadDiff);
           :key="idx"
           class="flex"
           :class="{
-            'bg-green-50': line.type === 'add',
+            'bg-success-container': line.type === 'add',
             'bg-error-50': line.type === 'remove',
             'bg-secondary-100': line.type === 'header'
           }"
@@ -161,7 +161,7 @@ onMounted(loadDiff);
           </span>
           <span class="px-3 py-1 flex-1 whitespace-pre"
             :class="{
-              'text-green-800': line.type === 'add',
+              'text-on-success-container': line.type === 'add',
               'text-error-800': line.type === 'remove',
               'text-secondary-700 font-semibold': line.type === 'header'
             }"
@@ -200,14 +200,14 @@ onMounted(loadDiff);
         
         <!-- Right (Modified) -->
         <div class="border border-surface-variant rounded-m3-md overflow-hidden">
-          <div class="bg-green-100 border-b border-green-200 px-3 py-2 text-xs font-semibold text-green-900">Modified</div>
+          <div class="bg-success-container border-b border-outline px-3 py-2 text-xs font-semibold text-on-success-container">Modified</div>
           <div class="font-mono text-xs bg-surface-2">
             <div
               v-for="(line, idx) in splitDiff.right"
               :key="idx"
               class="flex"
               :class="{
-                'bg-green-50': line.type === 'add',
+                'bg-success-container': line.type === 'add',
                 'bg-secondary-100': line.type === 'header',
                 'opacity-30': !line.content && line.type !== 'header'
               }"
@@ -217,7 +217,7 @@ onMounted(loadDiff);
               </span>
               <span class="px-3 py-1 flex-1 whitespace-pre"
                 :class="{
-                  'text-green-800': line.type === 'add',
+                  'text-on-success-container': line.type === 'add',
                   'text-secondary-700 font-semibold': line.type === 'header'
                 }"
               >{{ line.content || '\u00A0' }}</span>

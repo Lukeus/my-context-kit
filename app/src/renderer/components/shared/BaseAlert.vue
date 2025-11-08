@@ -42,39 +42,39 @@ const emit = defineEmits<{ dismiss: [] }>();
 const severityConfig = computed(() => {
   const configs = {
     info: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
-      text: 'text-blue-900',
-      icon: 'text-blue-600',
-      actionBg: 'bg-blue-600 hover:bg-blue-700',
-      actionText: 'text-white',
+      bg: 'bg-info-container',
+      border: 'border-outline',
+      text: 'text-on-info-container',
+      icon: 'text-info',
+      actionBg: 'bg-info hover:bg-info-hover',
+      actionText: 'text-on-info',
       iconPath: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
     },
     success: {
-      bg: 'bg-green-50',
-      border: 'border-green-200',
-      text: 'text-green-900',
-      icon: 'text-green-600',
-      actionBg: 'bg-green-600 hover:bg-green-700',
-      actionText: 'text-white',
+      bg: 'bg-success-container',
+      border: 'border-outline',
+      text: 'text-on-success-container',
+      icon: 'text-success',
+      actionBg: 'bg-success hover:bg-success-hover',
+      actionText: 'text-on-success',
       iconPath: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
     },
     warning: {
-      bg: 'bg-orange-50',
-      border: 'border-orange-200',
-      text: 'text-orange-900',
-      icon: 'text-orange-600',
-      actionBg: 'bg-orange-600 hover:bg-orange-700',
-      actionText: 'text-white',
+      bg: 'bg-warning-container',
+      border: 'border-outline',
+      text: 'text-on-warning-container',
+      icon: 'text-warning',
+      actionBg: 'bg-warning hover:bg-warning-hover',
+      actionText: 'text-on-warning',
       iconPath: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'
     },
     error: {
-      bg: 'bg-error-50',
-      border: 'border-error-200',
-      text: 'text-error-900',
-      icon: 'text-error-600',
-      actionBg: 'bg-error-600 hover:bg-error-700',
-      actionText: 'text-white',
+      bg: 'bg-error-container',
+      border: 'border-outline',
+      text: 'text-on-error-container',
+      icon: 'text-error',
+      actionBg: 'bg-error hover:bg-error-hover',
+      actionText: 'text-on-error',
       iconPath: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z'
     }
   };
@@ -146,7 +146,7 @@ async function handleAction() {
         <button
           v-if="dismissible"
           @click="emit('dismiss')"
-          class="flex-shrink-0 text-secondary-400 hover:text-secondary-600 p-1 rounded-m3-sm hover:bg-surface-3 transition-colors"
+          class="flex-shrink-0 text-on-surface-variant hover:text-on-surface p-1 rounded-m3-sm hover:bg-surface-variant transition-colors"
           aria-label="Dismiss alert"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -194,23 +194,23 @@ function handleClose() {
             <!-- Overview Tab -->
             <div v-if="activeTab === 'overview'" class="space-y-6">
               <div class="grid gap-4 sm:grid-cols-3">
-                <div class="p-4 rounded-m3-lg bg-blue-50 border border-blue-200">
-                  <p class="text-sm font-medium text-blue-900">Total Entities</p>
-                  <p class="text-3xl font-bold text-blue-700 mt-2">
+                <div class="p-4 rounded-m3-lg bg-primary-container border border-outline">
+                  <p class="text-sm font-medium text-on-primary-container">Total Entities</p>
+                  <p class="text-3xl font-bold text-on-primary-container mt-2">
                     {{ inspectionResult.overview.total_entities }}
                   </p>
                 </div>
 
-                <div class="p-4 rounded-m3-lg bg-blue-50 border border-blue-200">
-                  <p class="text-sm font-medium text-blue-900">Entity Types</p>
-                  <p class="text-3xl font-bold text-blue-700 mt-2">
+                <div class="p-4 rounded-m3-lg bg-primary-container border border-outline">
+                  <p class="text-sm font-medium text-on-primary-container">Entity Types</p>
+                  <p class="text-3xl font-bold text-on-primary-container mt-2">
                     {{ Object.keys(inspectionResult.overview.by_type).length }}
                   </p>
                 </div>
 
-                <div class="p-4 rounded-m3-lg bg-orange-50 border border-orange-200">
-                  <p class="text-sm font-medium text-orange-900">Gaps Found</p>
-                  <p class="text-3xl font-bold text-orange-700 mt-2">
+                <div class="p-4 rounded-m3-lg bg-warning-container border border-outline">
+                  <p class="text-sm font-medium text-on-warning-container">Gaps Found</p>
+                  <p class="text-3xl font-bold text-on-warning-container mt-2">
                     {{ inspectionResult.gaps.length }}
                   </p>
                 </div>
@@ -248,8 +248,8 @@ function handleClose() {
                 </div>
               </div>
 
-              <div class="p-4 rounded-m3-md bg-green-50 border border-green-200">
-                <p class="text-sm font-medium text-green-900">
+              <div class="p-4 rounded-m3-md bg-success-container border border-outline">
+                <p class="text-sm font-medium text-on-success-container">
                   Inspection completed in {{ inspectionResult.duration_ms }}ms
                 </p>
               </div>
@@ -300,9 +300,9 @@ function handleClose() {
                 <div
                   v-for="(gap, index) in inspectionResult.gaps"
                   :key="index"
-                  class="p-4 rounded-m3-md bg-orange-50 border border-orange-200"
+                  class="p-4 rounded-m3-md bg-warning-container border border-outline"
                 >
-                  <p class="text-sm text-orange-900">{{ gap }}</p>
+                  <p class="text-sm text-on-warning-container">{{ gap }}</p>
                 </div>
               </div>
 
@@ -311,15 +311,15 @@ function handleClose() {
                 <div
                   v-for="(rec, index) in inspectionResult.recommendations"
                   :key="index"
-                  class="p-4 rounded-m3-md bg-blue-50 border border-blue-200"
+                  class="p-4 rounded-m3-md bg-primary-container border border-outline"
                 >
-                  <p class="text-sm text-blue-900">{{ rec }}</p>
+                  <p class="text-sm text-on-primary-container">{{ rec }}</p>
                 </div>
               </div>
 
               <div v-if="inspectionResult.gaps.length === 0 && inspectionResult.recommendations.length === 0" class="text-center py-12">
-                <div class="p-4 rounded-m3-full bg-green-100 w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="p-4 rounded-m3-full bg-success-container w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                  <svg class="w-8 h-8 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>

@@ -33,11 +33,11 @@ const statusIcon = computed(() => {
 });
 
 const statusColor = computed(() => {
-  if (!syncStatus.value) return 'text-secondary-400';
-  if (syncStatus.value.hasConflict) return 'text-error-600';
-  if (syncStatus.value.hasChanges) return 'text-yellow-600';
-  if (syncStatus.value.behind > 0 || syncStatus.value.ahead > 0) return 'text-blue-600';
-  return 'text-green-600';
+  if (!syncStatus.value) return 'text-on-surface-variant';
+  if (syncStatus.value.hasConflict) return 'text-error';
+  if (syncStatus.value.hasChanges) return 'text-warning';
+  if (syncStatus.value.behind > 0 || syncStatus.value.ahead > 0) return 'text-primary';
+  return 'text-success';
 });
 
 const statusText = computed(() => {
@@ -235,8 +235,8 @@ function toggleExpanded() {
               v-if="operationResult"
               class="text-xs px-3 py-2 rounded-m3-md flex items-center gap-2"
               :class="operationResult.success
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-error-50 text-error-700 border border-error-200'"
+                ? 'bg-success-container text-on-success-container border border-outline'
+                : 'bg-error-container text-on-error-container border border-outline'"
             >
               <svg
                 v-if="operationResult.success"
@@ -277,8 +277,8 @@ function toggleExpanded() {
             <button
               class="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-m3-md transition-all"
               :class="canPull
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-secondary-200 text-secondary-500 cursor-not-allowed'"
+                ? 'bg-primary text-on-primary hover:bg-primary-hover'
+                : 'bg-surface-variant text-on-surface-variant cursor-not-allowed'"
               :disabled="!canPull"
               @click="pullAgents"
             >
@@ -297,8 +297,8 @@ function toggleExpanded() {
             <button
               class="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-m3-md transition-all"
               :class="canPush
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-secondary-200 text-secondary-500 cursor-not-allowed'"
+                ? 'bg-success text-on-success hover:bg-success-hover'
+                : 'bg-surface-variant text-on-surface-variant cursor-not-allowed'"
               :disabled="!canPush"
               @click="pushAgents"
             >
@@ -347,9 +347,9 @@ function toggleExpanded() {
                 <span
                   class="flex-shrink-0 w-12 text-[10px] px-1.5 py-0.5 rounded-m3-md font-medium"
                   :class="{
-                    'bg-blue-100 text-blue-700': item.type === 'pull',
-                    'bg-green-100 text-green-700': item.type === 'push',
-                    'bg-primary-100 text-primary-700': item.type === 'sync'
+                    'bg-primary-container text-on-primary-container': item.type === 'pull',
+                    'bg-success-container text-on-success-container': item.type === 'push',
+                    'bg-tertiary-container text-on-tertiary-container': item.type === 'sync'
                   }"
                 >
                   {{ item.type }}

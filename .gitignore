@@ -68,3 +68,44 @@ __pycache__/
 *.py[cod]
 .python-version
 .pytest_cache/
+
+# Additional language / tool artefacts (applicable to mixed repo)
+coverage/
+playwright-report/
+test-results/
+reports/
+
+# Generated artefacts & design token reports
+specs/001-code-cleanup/artefacts/
+
+# Electron / packaging outputs
+*.asar
+*.asar.unpacked
+release/
+packages/
+
+# Lockfiles from other ecosystems (ensure pnpm single source of truth)
+package-lock.json
+yarn.lock
+
+# Env files (extended patterns)
+.envrc
+.env.test
+.env.production
+
+# Ignore macOS and Windows specific clutter (extended)
+.AppleDouble
+.LSOverride
+ehthumbs.db
+Desktop.ini
+
+# Node REPL history
+.node_repl_history
+
+# Optional npm cache directory
+.npm/
+
+# Tailwind generated cache (if present)
+.tailwindcache
+
+# TODO: Review if storing artefact snapshots long-term; if yes remove individual exclusions above.

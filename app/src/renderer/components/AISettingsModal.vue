@@ -327,7 +327,7 @@ function validateSidecarConfig() {
           :class="activeTab === 'sidecar' ? 'text-primary-600 border-primary-600' : 'text-secondary-600 border-transparent hover:text-secondary-900'"
         >
           <span>🐍 Sidecar</span>
-          <span v-if="assistantStore.isSidecarRunning" class="px-1.5 py-0.5 text-[10px] font-bold bg-green-100 text-green-800 rounded-m3-full">ON</span>
+          <span v-if="assistantStore.isSidecarRunning" class="px-1.5 py-0.5 text-[10px] font-bold bg-success-container text-on-success-container rounded-m3-full">ON</span>
         </button>
         <button 
           @click="activeTab = 'connection'"
@@ -413,7 +413,7 @@ function validateSidecarConfig() {
               class="w-full px-4 py-3 bg-surface-2 border border-surface-variant rounded-m3-md text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all shadow-elevation-1 hover:shadow-elevation-2"
               placeholder="Enter API key (stored securely)"
             />
-            <p class="text-xs text-green-700 font-medium mt-2" v-if="hasStoredKey">
+            <p class="text-xs text-success font-medium mt-2" v-if="hasStoredKey">
               ✓ API key is securely stored
             </p>
             <p class="text-xs text-secondary-600 mt-2">
@@ -486,7 +486,7 @@ function validateSidecarConfig() {
                 class="w-full px-4 py-3 bg-surface-2 border border-surface-variant rounded-m3-md text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all shadow-elevation-1 hover:shadow-elevation-2"
                 placeholder="Enter API key (stored securely)"
               />
-              <p class="text-xs text-green-700 font-medium mt-2" v-if="sidecarHasStoredKey">
+              <p class="text-xs text-success font-medium mt-2" v-if="sidecarHasStoredKey">
                 ✓ API key is securely stored
               </p>
               <p class="text-xs text-secondary-600 mt-2">
@@ -512,11 +512,11 @@ function validateSidecarConfig() {
 
         <!-- Status Message -->
         <div v-if="statusMessage" class="p-4 rounded-m3-md shadow-elevation-1" :class="{
-          'bg-green-50 border border-green-200': statusType === 'success',
+          'bg-success-container border border-outline': statusType === 'success',
           'bg-error-50 border border-error-200': statusType === 'error'
         }">
           <p class="text-sm font-medium" :class="{
-            'text-green-800': statusType === 'success',
+            'text-on-success-container': statusType === 'success',
             'text-error-700': statusType === 'error'
           }">{{ statusMessage }}</p>
         </div>
@@ -562,8 +562,8 @@ function validateSidecarConfig() {
         <p class="text-sm text-secondary-700 mb-5">
           The sidecar is currently running. Do you want to restart it now to apply the new configuration?
         </p>
-        <div class="bg-blue-50 border border-blue-200 rounded-m3-md p-3 mb-5">
-          <p class="text-xs text-blue-800">
+        <div class="bg-info-container border border-outline rounded-m3-md p-3 mb-5">
+          <p class="text-xs text-on-info-container">
             💡 <strong>Tip:</strong> The restart will stop the current sidecar, save your changes, and start it again with the new settings. This takes about 2-3 seconds.
           </p>
         </div>

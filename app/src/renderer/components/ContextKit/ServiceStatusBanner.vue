@@ -5,10 +5,10 @@ import { useContextKitStore } from '@/stores/contextKitStore';
 const contextKitStore = useContextKitStore();
 
 const statusColor = computed(() => {
-  if (!contextKitStore.serviceStatus) return 'bg-gray-500';
-  if (contextKitStore.isServiceHealthy) return 'bg-green-600';
-  if (contextKitStore.isServiceRunning) return 'bg-yellow-600';
-  return 'bg-red-600';
+  if (!contextKitStore.serviceStatus) return 'bg-surface-variant';
+  if (contextKitStore.isServiceHealthy) return 'bg-success';
+  if (contextKitStore.isServiceRunning) return 'bg-warning';
+  return 'bg-error';
 });
 
 const statusText = computed(() => {
@@ -59,7 +59,7 @@ async function handleRefresh() {
       <button
         v-if="!contextKitStore.isServiceRunning"
         @click="handleStartService"
-        class="px-4 py-2 bg-white text-gray-900 rounded-md font-medium hover:bg-gray-100 transition-colors"
+        class="px-4 py-2 bg-surface text-on-surface rounded-md font-medium hover:bg-surface-variant transition-colors"
         :disabled="contextKitStore.isLoading"
       >
         {{ contextKitStore.isLoading ? 'Starting...' : 'Start Service' }}

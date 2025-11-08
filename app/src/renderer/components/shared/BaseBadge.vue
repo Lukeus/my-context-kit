@@ -31,23 +31,23 @@ const props = withDefaults(defineProps<Props>(), {
 
 const variantClasses = {
   primary: props.outline 
-    ? 'border border-primary-300 text-primary-700 bg-transparent'
-    : 'bg-primary-100 text-primary-700',
+    ? 'border border-outline text-primary bg-transparent'
+    : 'bg-primary-container text-on-primary-container',
   secondary: props.outline
-    ? 'border border-secondary-300 text-secondary-700 bg-transparent'
-    : 'bg-secondary-100 text-secondary-700',
+    ? 'border border-outline text-secondary bg-transparent'
+    : 'bg-surface-variant text-on-surface-variant',
   success: props.outline
-    ? 'border border-green-300 text-green-700 bg-transparent'
-    : 'bg-green-100 text-green-700',
+    ? 'border border-outline text-success bg-transparent'
+    : 'bg-success-container text-on-success-container',
   warning: props.outline
-    ? 'border border-orange-300 text-orange-700 bg-transparent'
-    : 'bg-orange-100 text-orange-700',
+    ? 'border border-outline text-warning bg-transparent'
+    : 'bg-warning-container text-on-warning-container',
   error: props.outline
-    ? 'border border-error-300 text-error-700 bg-transparent'
-    : 'bg-error-100 text-error-700',
+    ? 'border border-outline text-error bg-transparent'
+    : 'bg-error-container text-on-error-container',
   info: props.outline
-    ? 'border border-blue-300 text-blue-700 bg-transparent'
-    : 'bg-blue-100 text-blue-700'
+    ? 'border border-outline text-info bg-transparent'
+    : 'bg-info-container text-on-info-container'
 };
 
 const sizeClasses = {

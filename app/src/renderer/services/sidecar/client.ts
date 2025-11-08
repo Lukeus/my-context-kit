@@ -171,7 +171,7 @@ export class SidecarClient {
           generatedAt: new Date().toISOString(),
           version: '1.0.0',
           capabilities: [],
-          source: 'fallback'
+          source: 'static' as const
         };
       }
     }, {});

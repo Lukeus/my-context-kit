@@ -9,6 +9,15 @@ out/
 coverage/
 # Ignore generated context artifacts
 context-repo/generated/
+# Ignore feature artefacts
+specs/001-code-cleanup/artefacts/
+# Ignore report & build output folders
+playwright-report/
+test-results/
+reports/
+# Electron packaging outputs
+release/
+packages/
 # Ignore lock and minified files
 **/*.min.js
 # Ignore temporary and cache files

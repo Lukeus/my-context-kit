@@ -141,7 +141,7 @@ function handleClose() {
     >
       <div class="bg-surface rounded-m3-xl shadow-elevation-5 w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
         <!-- Header -->
-        <div class="flex items-center justify-between px-6 py-4 bg-green-700 text-white">
+        <div class="flex items-center justify-between px-6 py-4 bg-success text-on-success">
           <div>
             <h2 class="text-xl font-semibold">Code Generator</h2>
             <p class="text-sm text-white/80">Generate production-ready code from specifications</p>
@@ -201,18 +201,18 @@ function handleClose() {
                     :disabled="isGenerating"
                     class="flex flex-col items-center p-3 rounded-m3-lg border transition-all disabled:opacity-50"
                     :class="targetLanguage === lang.value
-                      ? 'bg-green-50 border-green-600 shadow-elevation-1'
+                      ? 'bg-success-container border-success shadow-elevation-1'
                       : 'bg-surface-2 border-surface-variant hover:bg-surface-3'"
                   >
                     <div 
                       class="w-10 h-10 rounded-m3-md flex items-center justify-center mb-2 text-xs font-bold"
-                      :class="targetLanguage === lang.value ? 'bg-green-600 text-white' : 'bg-surface-3 text-secondary-600'"
+                      :class="targetLanguage === lang.value ? 'bg-success text-on-success' : 'bg-surface-3 text-secondary-600'"
                     >
                       {{ lang.icon }}
                     </div>
                     <span 
                       class="text-xs font-semibold"
-                      :class="targetLanguage === lang.value ? 'text-green-900' : 'text-secondary-700'"
+                      :class="targetLanguage === lang.value ? 'text-on-success-container' : 'text-secondary-700'""
                     >
                       {{ lang.label }}
                     </span>
@@ -247,7 +247,7 @@ function handleClose() {
               <button
                 @click="generateCode"
                 :disabled="!selectedSpecId || !targetLanguage || isGenerating"
-                class="px-6 py-3 rounded-m3-md bg-green-600 hover:bg-green-700 text-white text-sm font-semibold shadow-elevation-2 hover:shadow-elevation-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                class="px-6 py-3 rounded-m3-md bg-success hover:bg-success-hover text-on-success text-sm font-semibold shadow-elevation-2 hover:shadow-elevation-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ isGenerating ? 'Generating Code...' : 'Generate Code' }}
               </button>
@@ -289,7 +289,7 @@ function handleClose() {
               </div>
               <button
                 @click="downloadAll"
-                class="px-4 py-2 rounded-m3-md bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors"
+                class="px-4 py-2 rounded-m3-md bg-success hover:bg-success-hover text-on-success text-sm font-semibold transition-colors"
               >
                 <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -318,7 +318,7 @@ function handleClose() {
                     @click="toggleFileExpansion(artifact.path)"
                   >
                     <div class="flex items-center gap-3">
-                      <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                       <div>

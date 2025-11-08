@@ -42,7 +42,7 @@ const copiedPath = ref<string | null>(null);
 function statusClasses(status: string): string {
   switch (status) {
     case 'succeeded':
-      return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+      return 'bg-success-container text-success border border-outline';
     case 'failed':
       return 'bg-error-100 text-error-700 border border-error-200';
     case 'running':
@@ -101,7 +101,7 @@ async function copyPath(path: string): Promise<void> {
           </p>
           <p
             v-else-if="entry.status === 'succeeded' && entry.key === 'validate' && report.entities.some((entity) => entity.errors.length > 0)"
-            class="mt-2 text-xs text-amber-600"
+            class="mt-2 text-xs text-warning"
           >
             Validation completed with entity-level warnings.
           </p>
@@ -121,7 +121,7 @@ async function copyPath(path: string): Promise<void> {
               <span class="rounded-m3-md bg-surface-2 px-2 py-0.5 text-[11px] uppercase tracking-wide text-secondary-500">
                 {{ entity.type }}
               </span>
-              <span :class="['text-xs font-semibold uppercase tracking-wide', entity.status === 'succeeded' ? 'text-emerald-600' : 'text-error-600']">
+              <span :class="['text-xs font-semibold uppercase tracking-wide', entity.status === 'succeeded' ? 'text-success' : 'text-error-600']">
                 {{ entity.status === 'succeeded' ? 'Succeeded' : 'Failed' }}
               </span>
             </div>

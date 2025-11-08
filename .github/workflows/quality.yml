@@ -1,0 +1,125 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [main, 'feature/**', '**-code-cleanup']
+  pull_request:
+    branches: [main]
+
+jobs:
+  design-tokens:
+    name: Verify Design Tokens
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Verify semantic token usage
+        run: pnpm verify:tokens
+        continue-on-error: true
+      
+      - name: Upload token violation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: token-violations
+          path: app/scripts/verify-design-tokens.json
+          if-no-files-found: ignore
+
+  time-helpers:
+    name: Scan Duplicate Time Helpers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Scan for duplicate time helpers
+        run: pnpm scan:time
+        continue-on-error: true
+      
+      - name: Upload duplicate scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: duplicate-time-helpers
+          path: app/scripts/scan-duplicate-time-helpers.json
+          if-no-files-found: ignore
+
+  performance:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run performance timing harness
+        run: pnpm --filter context-sync exec tsx scripts/measure-verification-scripts.ts
+        continue-on-error: true
+
+  store-stability:
+    name: Store API Stability
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check store API stability
+        run: pnpm --filter context-sync exec tsx scripts/check-store-api-stability.ts > store-snapshot.json
+      
+      - name: Upload store snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-api-snapshot
+          path: store-snapshot.json
