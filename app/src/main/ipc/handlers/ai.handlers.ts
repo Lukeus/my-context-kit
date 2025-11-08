@@ -3,13 +3,11 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { toErrorMessage } from '../../utils/errorHandler';
 import { LangChainAIService } from '../../services/LangChainAIService';
-import { AIService } from '../../services/AIService';
 import type { WritableAIConfig, TestConnectionOptions } from '../../services/LangChainAIService';
 import { getSchemaForEntityType } from '../../schemas/entitySchemas';
 import { successWith, error } from '../types';
 
 const aiService = new LangChainAIService();
-const aiDiagnostic = new AIService();
 
 /**
  * Registers all AI-related IPC handlers.
@@ -96,13 +94,12 @@ export function registerAIHandlers(): void {
       }
 
       // If caller requested to use stored credentials, attempt to load them
-      // from the secure app store via the AIService helper so we can supply
-      // decrypted keys to the LangChain service.
+      // from the secure app store so we can supply decrypted keys to the LangChain service.
       if ((incoming.useStoredKey || incoming.useStoredCredentials) && incoming.provider) {
         try {
-          const has = await aiDiagnostic.hasCredentials(incoming.provider);
+          const has = await aiService.hasCredentials(incoming.provider);
           if (has) {
-            const stored = await aiDiagnostic.getStoredCredentials(incoming.provider);
+            const stored = await aiService.getStoredCredentials(incoming.provider);
             if (stored) incoming.apiKey = stored;
           }
         } catch {
@@ -133,10 +130,10 @@ export function registerAIHandlers(): void {
   // Diagnostic endpoint ping
   ipcMain.handle('ai:pingEndpoint', async (_event, { endpoint, model }: { endpoint: string; model: string }) => {
     try {
-      // Try to use stored credentials if available using the AIService helper
-      const has = await aiDiagnostic.hasCredentials('azure-openai');
-      const apiKey = has ? (await aiDiagnostic.getStoredCredentials('azure-openai')) || undefined : undefined;
-      const result = await aiDiagnostic.pingEndpoint({ endpoint, model, apiKey, timeoutMs: 30000 });
+      // Try to use stored credentials if available
+      const has = await aiService.hasCredentials('azure-openai');
+      const apiKey = has ? (await aiService.getStoredCredentials('azure-openai')) || undefined : undefined;
+      const result = await aiService.pingEndpoint({ endpoint, model, apiKey, timeoutMs: 30000 });
       return successWith({ result });
     } catch (err: unknown) {
       return error(toErrorMessage(err));

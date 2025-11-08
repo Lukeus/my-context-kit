@@ -12,8 +12,7 @@ from pydantic import BaseModel, Field
 class ContextReadInput(BaseModel):
     """Input for context.read tool."""
 
-    entity_type: str = Field(description="Entity type (e.g., 'feature', 'task', 'service')")
-    entity_id: str = Field(description="Entity ID (filename without extension)")
+    path: str = Field(description="Relative path to read from the repository root (e.g., 'contexts/features/auth.yaml', 'README.md', 'specs/feature-branch/spec.md')")
     repo_path: str | None = Field(
         default=None, description="Path to context repository (optional, uses default if not provided)"
     )
@@ -31,24 +30,39 @@ class ContextSearchInput(BaseModel):
     )
 
 
-def _read_context_file(entity_type: str, entity_id: str, repo_path: str | None = None) -> dict[str, Any]:
-    """Read a context entity file."""
+def _read_context_file(path: str, repo_path: str | None = None) -> dict[str, Any]:
+    """Read a file from the context repository."""
     if repo_path is None:
         repo_path = os.getenv("CONTEXT_REPO_PATH", "../context-repo")
 
-    entity_path = Path(repo_path) / "contexts" / entity_type / f"{entity_id}.yaml"
+    # Resolve the full file path
+    file_path = Path(repo_path) / path
 
-    if not entity_path.exists():
-        raise FileNotFoundError(f"Entity not found: {entity_type}/{entity_id}")
+    if not file_path.exists():
+        # Try to give helpful suggestions
+        suggestions = []
+        contexts_dir = Path(repo_path) / "contexts"
+        if contexts_dir.exists():
+            # List first few available files
+            for i, yaml_file in enumerate(contexts_dir.rglob("*.yaml")):
+                if i >= 5:  # Limit to 5 suggestions
+                    break
+                rel_path = yaml_file.relative_to(repo_path)
+                suggestions.append(str(rel_path))
+        
+        error_msg = f"File not found: {path}"
+        if suggestions:
+            error_msg += f"\n\nAvailable files (examples):\n" + "\n".join(f"  - {s}" for s in suggestions)
+        raise FileNotFoundError(error_msg)
 
-    with open(entity_path) as f:
-        data = yaml.safe_load(f)
+    with open(file_path, encoding='utf-8') as f:
+        content = f.read()
 
     return {
-        "entity_type": entity_type,
-        "entity_id": entity_id,
-        "data": data,
-        "path": str(entity_path),
+        "path": str(file_path),
+        "relative_path": path,
+        "content": content,
+        "size_bytes": len(content),
     }
 
 
@@ -109,7 +123,7 @@ def ContextReadTool() -> StructuredTool:
     return StructuredTool.from_function(
         func=_read_context_file,
         name="context.read",
-        description="Read a specific context entity from the repository. Returns the full entity data including metadata, relationships, and content.",
+        description="Read the contents of a file from the context repository. Use this to read YAML entities (contexts/*/), markdown docs (specs/, README.md), or any text file. Returns the file content.",
         args_schema=ContextReadInput,
     )
 

@@ -5,10 +5,11 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic import SecretStr
 
-from ..models.assistant import AssistantProvider
+from ..models.assistant import AssistantProvider, ProviderConfig
 from .tools import get_tool_registry
 
 
@@ -20,37 +21,49 @@ class LangChainAgent:
         provider: AssistantProvider,
         system_prompt: str,
         available_tools: list[str] | None = None,
+        config: ProviderConfig | None = None,
     ):
         self.provider = provider
         self.system_prompt = system_prompt
         self.available_tools = available_tools or []
-        self._llm: ChatOpenAI | AzureChatOpenAI | None = None
+        self.config = config
+        self._llm: ChatOpenAI | AzureChatOpenAI | ChatOllama | None = None
 
     @property
-    def llm(self) -> ChatOpenAI | AzureChatOpenAI:
+    def llm(self) -> ChatOpenAI | AzureChatOpenAI | ChatOllama:
         """Lazy-initialize LLM."""
         if self._llm is None:
-            # Get API key from environment (passed from Electron app)
-            api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_API_KEY")
+            # Use config if provided, otherwise fall back to environment variables
+            if self.config:
+                api_key = self.config.apiKey
+                endpoint = self.config.endpoint
+                model = self.config.model
+                temperature = self.config.temperature
+                provider = self.config.provider
+            else:
+                # Fallback to environment variables (legacy)
+                api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_API_KEY")
+                endpoint = None
+                model = None
+                temperature = 0.7
+                provider = self.provider
 
-            if not api_key:
+            if not api_key and provider == AssistantProvider.AZURE_OPENAI:
                 raise ValueError(
                     "No API key found. Please configure Azure OpenAI credentials in the app settings."
                 )
 
             # Check provider type
-            if self.provider == AssistantProvider.AZURE_OPENAI:
-                azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+            if provider == AssistantProvider.AZURE_OPENAI:
+                # Use config endpoint or fallback to environment
+                azure_endpoint = endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
                 if not azure_endpoint:
                     raise ValueError(
-                        "AZURE_OPENAI_ENDPOINT environment variable is required for Azure OpenAI provider."
+                        "Azure endpoint is required. Please configure it in the sidecar settings."
                     )
 
-                deployment_name = (
-                    os.getenv("AZURE_OPENAI_DEPLOYMENT")
-                    or os.getenv("MODEL_NAME")
-                    or "gpt-4"
-                )
+                # Use config model or fallback to environment
+                deployment_name = model or os.getenv("AZURE_OPENAI_DEPLOYMENT") or os.getenv("MODEL_NAME") or "gpt-4"
 
                 # Detect APIM vs standard Azure OpenAI
                 is_apim = "azure-api.net" in azure_endpoint
@@ -59,9 +72,9 @@ class LangChainAgent:
                     self._llm = AzureChatOpenAI(
                         azure_endpoint=azure_endpoint,
                         api_key=SecretStr(api_key),
-                        api_version="2024-02-15-preview",
+                        api_version=self.config.apiVersion if self.config else "2024-02-15-preview",
                         azure_deployment=deployment_name,
-                        temperature=0.7,
+                        temperature=temperature,
                         streaming=True,
                         default_headers={"Ocp-Apim-Subscription-Key": api_key},
                     )
@@ -69,21 +82,21 @@ class LangChainAgent:
                     self._llm = AzureChatOpenAI(
                         azure_endpoint=azure_endpoint,
                         api_key=SecretStr(api_key),
-                        api_version="2024-02-15-preview",
+                        api_version=self.config.apiVersion if self.config else "2024-02-15-preview",
                         azure_deployment=deployment_name,
-                        temperature=0.7,
+                        temperature=temperature,
                         streaming=True,
                     )
-            elif self.provider == AssistantProvider.OLLAMA:
-                # Ollama doesn't need API key
+            elif provider == AssistantProvider.OLLAMA:
+                # Use native Ollama API via langchain-ollama (better tool support)
+                ollama_base_url = endpoint or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+                model_name = model or os.getenv("OLLAMA_MODEL", "llama2")
 
-                ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-                model_name = os.getenv("OLLAMA_MODEL", "llama2")
-
-                # Note: Ollama uses different class, but we'll need to adapt
-                # For now, raise error as Ollama needs different handling
-                raise NotImplementedError(
-                    "Ollama provider requires different implementation. Use Azure OpenAI for now."
+                print(f"[LangChainAgent] Initializing Ollama via native API: base_url={ollama_base_url}, model={model_name}")
+                self._llm = ChatOllama(
+                    base_url=ollama_base_url,
+                    model=model_name,
+                    temperature=temperature,
                 )
             else:
                 # Standard OpenAI
@@ -100,7 +113,9 @@ class LangChainAgent:
                 tools = registry.get_by_ids(self.available_tools)
                 if tools:
                     print(f"[LangChainAgent] Binding {len(tools)} tools to LLM: {[t.name for t in tools]}")
+                    print(f"[LangChainAgent] Tool schemas: {[{t.name: t.args} for t in tools]}")
                     self._llm = self._llm.bind_tools(tools)
+                    print(f"[LangChainAgent] Tools bound successfully. LLM type: {type(self._llm)}")
                 else:
                     print(f"[LangChainAgent] WARNING: No tools found for IDs: {self.available_tools}")
             elif self.available_tools:
@@ -146,15 +161,23 @@ class LangChainAgent:
         messages = self._build_messages(message, chat_history)
 
         # Invoke LLM (may include tool calls if tools are bound)
-        response = await self.llm.ainvoke(messages)
+        # Loop up to 5 times to handle multi-turn tool calls
+        max_iterations = 5
+        for iteration in range(max_iterations):
+            response = await self.llm.ainvoke(messages)
 
-        print(f"[LangChainAgent] Response type: {type(response)}")
-        print(f"[LangChainAgent] Response has tool_calls: {hasattr(response, 'tool_calls')}")
-        if hasattr(response, "tool_calls"):
-            print(f"[LangChainAgent] Tool calls: {response.tool_calls}")
+            print(f"[LangChainAgent] Iteration {iteration + 1}: Response type: {type(response)}")
+            print(f"[LangChainAgent] Response has tool_calls: {hasattr(response, 'tool_calls')}")
+            if hasattr(response, "tool_calls"):
+                print(f"[LangChainAgent] Tool calls: {response.tool_calls}")
 
-        # Check if response includes tool calls
-        if hasattr(response, "tool_calls") and response.tool_calls:
+            # Check if response includes tool calls
+            if not (hasattr(response, "tool_calls") and response.tool_calls):
+                # No more tool calls, return final response
+                print(f"[LangChainAgent] No tool calls, returning response: {response.content[:200] if response.content else '<empty>'}...")
+                return response.content if response.content else "I couldn't process that request."
+
+            # Has tool calls - execute them
             print(f"[LangChainAgent] Executing {len(response.tool_calls)} tool calls")
 
             # Add AI message with tool calls to conversation
@@ -198,12 +221,12 @@ class LangChainAgent:
                 else:
                     print(f"[LangChainAgent] Tool {tool_name} not found in registry")
 
-            # Get final response after tool execution
-            final_response = await self.llm.ainvoke(messages)
-            return final_response.content
+            # Continue loop to get next response
+            print(f"[LangChainAgent] Tool execution complete, continuing to next iteration...")
 
-        # No tool calls, return direct response
-        return response.content
+        # Max iterations reached
+        print(f"[LangChainAgent] Max iterations ({max_iterations}) reached")
+        return "I apologize, but I reached the maximum number of tool calls without completing the task."
 
     async def stream(
         self, message: str, chat_history: list[dict[str, Any]] | None = None
@@ -230,6 +253,7 @@ def create_agent(
     provider: AssistantProvider,
     system_prompt: str,
     available_tools: list[str] | None = None,
+    config: ProviderConfig | None = None,
 ) -> LangChainAgent:
     """
     Factory function to create a LangChain agent.
@@ -238,8 +262,9 @@ def create_agent(
         provider: AI provider (azure-openai, ollama)
         system_prompt: System prompt for the agent
         available_tools: List of tool IDs available to the agent
+        config: Provider configuration (endpoint, model, API key, etc.)
 
     Returns:
         Configured LangChain agent
     """
-    return LangChainAgent(provider, system_prompt, available_tools)
+    return LangChainAgent(provider, system_prompt, available_tools, config)

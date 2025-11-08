@@ -18,7 +18,6 @@ describe('Streaming Message Assembly', () => {
     
     // Create a session first
     await store.createSession({
-      userId: 'test-user',
       provider: 'azure-openai',
       systemPrompt: 'Test prompt',
       activeTools: []
@@ -40,7 +39,6 @@ describe('Streaming Message Assembly', () => {
     const store = useAssistantStore();
     
     await store.createSession({
-      userId: 'test-user',
       provider: 'azure-openai',
       systemPrompt: 'Test prompt',
       activeTools: []
@@ -58,7 +56,6 @@ describe('Streaming Message Assembly', () => {
     const store = useAssistantStore();
     
     await store.createSession({
-      userId: 'test-user',
       provider: 'azure-openai',
       systemPrompt: 'Test prompt',
       activeTools: []

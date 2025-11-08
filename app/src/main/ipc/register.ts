@@ -16,6 +16,7 @@ import { registerAgentHandlers } from './handlers/agent.handlers';
 import { registerPathResolutionHandlers } from './handlers/path-resolution.handlers';
 import { ContextKitServiceClient } from '../services/ContextKitServiceClient';
 import { registerContextKitHandlers } from './contextKitHandlers';
+import { initializeSidecarHandlers } from './handlers/sidecar.handlers';
 
 // Global Context Kit service client instance
 let contextKitServiceClient: ContextKitServiceClient | null = null;
@@ -119,4 +120,7 @@ export async function registerAllHandlers(): Promise<void> {
     contextKitServiceClient = new ContextKitServiceClient({ autoStart: false });
   }
   registerContextKitHandlers(contextKitServiceClient);
+  
+  // Sidecar handlers (Phase 4 - Python AI service)
+  initializeSidecarHandlers();
 }

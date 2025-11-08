@@ -17,7 +17,6 @@ describe('Edit Suggestion Apply Workflow', () => {
     const store = useAssistantStore();
     
     await store.createSession({
-      userId: 'test-user',
       provider: 'azure-openai',
       systemPrompt: 'Test prompt',
       activeTools: []
@@ -35,7 +34,6 @@ describe('Edit Suggestion Apply Workflow', () => {
     const store = useAssistantStore();
     
     await store.createSession({
-      userId: 'test-user',
       provider: 'azure-openai',
       systemPrompt: 'Test prompt',
       activeTools: []
@@ -54,7 +52,6 @@ describe('Edit Suggestion Apply Workflow', () => {
     const store = useAssistantStore();
     
     await store.createSession({
-      userId: 'test-user',
       provider: 'azure-openai',
       systemPrompt: 'Test prompt',
       activeTools: []
@@ -74,7 +71,6 @@ describe('Edit Suggestion Apply Workflow', () => {
     const store = useAssistantStore();
     
     await store.createSession({
-      userId: 'test-user',
       provider: 'azure-openai',
       systemPrompt: 'Test prompt',
       activeTools: []

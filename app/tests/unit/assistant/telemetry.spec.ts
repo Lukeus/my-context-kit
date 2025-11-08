@@ -16,7 +16,6 @@ describe('Telemetry Emission', () => {
     const store = useAssistantStore();
     
     await store.createSession({
-      userId: 'test-user',
       provider: 'azure-openai',
       systemPrompt: 'Test prompt',
       activeTools: []
@@ -30,7 +29,6 @@ describe('Telemetry Emission', () => {
     const store = useAssistantStore();
     
     await store.createSession({
-      userId: 'test-user',
       provider: 'azure-openai',
       systemPrompt: 'Test prompt',
       activeTools: ['context.read']
@@ -48,7 +46,6 @@ describe('Telemetry Emission', () => {
     const store = useAssistantStore();
     
     await store.createSession({
-      userId: 'test-user',
       provider: 'azure-openai',
       systemPrompt: 'Test prompt',
       activeTools: []
