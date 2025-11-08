@@ -15,6 +15,7 @@ export const EnterpriseConfigSchema = z.object({
   azureOpenAIKey: z.string().optional(),
   azureOpenAIDeployment: z.string().optional(),
   ollamaEndpoint: z.string().url().optional(),
+  defaultProvider: z.enum(['azure', 'ollama']).optional().default('azure'),
 });
 
 export type EnterpriseConfig = z.infer<typeof EnterpriseConfigSchema>;

@@ -23,7 +23,7 @@ import type {
 
 export const useEnterpriseStore = defineStore('enterprise', () => {
   // State
-  const config = ref<EnterpriseConfig>({});
+  const config = ref<EnterpriseConfig>({ defaultProvider: 'azure' });
   const repos = ref<EnterpriseRepoInfo[]>([]);
   const enterpriseRepoStatus = ref<EnterpriseRepoStatus | null>(null);
   const prompts = ref<PromptTemplate[]>([]);
