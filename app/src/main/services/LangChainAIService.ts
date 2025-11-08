@@ -587,6 +587,71 @@ export class LangChainAIService {
   }
 
   /**
+   * Diagnostic: Ping the Azure OpenAI deployment endpoint with a minimal request.
+   * 
+   * Tests raw HTTP connectivity to Azure OpenAI endpoints with detailed diagnostics.
+   * Returns HTTP status, body (truncated), and timing information or a detailed error.
+   * 
+   * @param options - Ping options including endpoint, model, API key, API version, and timeout
+   * @returns Object with status info: { ok, status?, body?, durationMs?, error? }
+   * 
+   * @example
+   * ```typescript
+   * const result = await service.pingEndpoint({
+   *   endpoint: 'https://myinstance.openai.azure.com',
+   *   model: 'gpt-4',
+   *   apiKey: 'sk-...',
+   *   apiVersion: '2024-12-01-preview',
+   *   timeoutMs: 30000
+   * });
+   * console.log(result); // { ok: true, status: 200, body: '...', durationMs: 1234 }
+   * ```
+   */
+  async pingEndpoint(options: { endpoint: string; model: string; apiKey?: string; apiVersion?: string; timeoutMs?: number }): Promise<{ ok: boolean; status?: number; body?: string; durationMs?: number; error?: string }> {
+    const { endpoint, model, apiKey, apiVersion, timeoutMs = 30000 } = options;
+    const resolvedApiVersion = (apiVersion && apiVersion.trim()) || process.env.AZURE_OPENAI_API_VERSION || '2024-12-01-preview';
+    const uri = `${endpoint.replace(/\/$/, '')}/openai/deployments/${model}/chat/completions?api-version=${resolvedApiVersion}`;
+
+    const start = Date.now();
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+
+      const fetchOptions: any = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': apiKey || ''
+        },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Ping' }], max_tokens: 1 }),
+        signal: controller.signal
+      };
+
+      const resp = await fetch(uri, fetchOptions);
+      clearTimeout(id);
+      const durationMs = Date.now() - start;
+      let text = '';
+      try {
+        text = await resp.text();
+      } catch {
+        text = '<failed to read body>';
+      }
+
+      return {
+        ok: resp.ok,
+        status: resp.status,
+        body: text.length > 2000 ? text.slice(0, 2000) + '...[truncated]' : text,
+        durationMs
+      };
+    } catch (err) {
+      const durationMs = Date.now() - start;
+      const message = err instanceof Error ? err.message : String(err);
+      logger.warn({ service: 'LangChainAIService', method: 'pingEndpoint' }, `Ping failed: ${message}`);
+      return { ok: false, error: message, durationMs };
+    }
+  }
+
+  /**
    * Generate a context entity with structured output validation.
    * 
    * Uses LangChain's StructuredOutputParser with Zod schemas to guarantee

@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { marked } from 'marked';
 import type { ConversationTurn, TaskEnvelope } from '@shared/assistant/types';
+
+// Configure marked for better code highlighting
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 
 const props = defineProps<{
   transcript: ConversationTurn[];
@@ -114,6 +121,15 @@ function isQueued(entry: ConversationTurn): boolean {
   const meta = entry.metadata;
   return !!(meta && typeof meta === 'object' && (meta as Record<string, unknown>).queuedDueToHealth);
 }
+
+function renderMarkdown(content: string): string {
+  try {
+    return marked.parse(content) as string;
+  } catch (err) {
+    console.error('Markdown render error:', err);
+    return content; // Fallback to plain text
+  }
+}
 </script>
 
 <template>
@@ -148,7 +164,22 @@ function isQueued(entry: ConversationTurn): boolean {
           <span class="text-[10px] text-secondary-500">{{ formatTimestamp(entryTimestamp(entry)) }}</span>
         </div>
         <div class="px-4 py-3 space-y-2">
-          <p class="text-sm text-secondary-900 whitespace-pre-wrap">{{ entry.content }}</p>
+          <div 
+            class="text-sm text-secondary-900 prose prose-sm max-w-none
+                   prose-headings:text-secondary-900 prose-headings:font-semibold
+                   prose-p:my-2 prose-p:leading-relaxed
+                   prose-a:text-primary-600 prose-a:no-underline hover:prose-a:underline
+                   prose-code:bg-surface-2 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-secondary-800
+                   prose-pre:bg-surface-2 prose-pre:border prose-pre:border-surface-variant prose-pre:rounded-lg prose-pre:p-3 prose-pre:overflow-x-auto
+                   prose-pre:my-3
+                   prose-ul:my-2 prose-ol:my-2 prose-li:my-1
+                   prose-blockquote:border-l-4 prose-blockquote:border-primary-300 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-secondary-700
+                   prose-strong:text-secondary-900 prose-strong:font-semibold
+                   prose-table:border-collapse prose-table:border prose-table:border-surface-variant
+                   prose-th:bg-surface-2 prose-th:border prose-th:border-surface-variant prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:font-semibold
+                   prose-td:border prose-td:border-surface-variant prose-td:px-3 prose-td:py-2"
+            v-html="renderMarkdown(entry.content)"
+          />
           <p v-if="taskBadge(taskForEntry(entry))" class="text-[10px] text-secondary-500">Task: {{ taskBadge(taskForEntry(entry)) }}</p>
           <div v-if="referenceList(entry.metadata).length" class="space-y-1">
             <p class="text-[11px] font-semibold text-secondary-700">References</p>

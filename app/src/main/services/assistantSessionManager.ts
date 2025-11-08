@@ -11,9 +11,13 @@ import {
   type ProviderAssistantMessage
 } from './conversationManager';
 import { loadProviderConfiguration } from './providerConfig';
-import { createLangChainClient } from '../../renderer/services/langchain/client'; // NOTE: relies on shared code path via bundler alias
+import { createLangChainClient, type ProviderConfig } from '../../renderer/services/langchain/client'; // NOTE: relies on shared code path via bundler alias
 import { resolveLangChainConfig } from '../../renderer/services/langchain/config';
 import { resolveRepositoryPaths } from '../ipc/handlers/path-resolution.handlers';
+import { app } from 'electron';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { LangChainAIService } from '../services/LangChainAIService';
 
 // Phase 3 T009 Refactor: Integrate LangChain orchestration.
 // Responsibilities added:
@@ -29,6 +33,71 @@ type CreateSessionOptions = {
 };
 
 type SessionRecord = AssistantSessionExtended;
+
+/**
+ * Load sidecar configuration from config file.
+ * Falls back to defaults if file doesn't exist.
+ */
+async function getSidecarConfig(repoPath?: string): Promise<ProviderConfig | null> {
+  try {
+    // Get default repo path if not provided
+    if (!repoPath) {
+      const userDataPath = app.getPath('userData');
+      const configPath = path.join(userDataPath, 'default-repo-path.txt');
+      try {
+        repoPath = await fs.readFile(configPath, 'utf-8').then(p => p.trim());
+      } catch {
+        console.log('[getSidecarConfig] No default repo path configured');
+        return null;
+      }
+    }
+
+    // repoPath is guaranteed to be defined here if we got past the check above
+    if (!repoPath) return null;
+    
+    // Try to read sidecar config
+    // Config is stored in context-repo/.context-kit/sidecar-config.json
+    const configFilePath = path.join(repoPath, '.context-kit', 'sidecar-config.json');
+    try {
+      const configContent = await fs.readFile(configFilePath, 'utf-8');
+      const config = JSON.parse(configContent);
+      
+      // Get API key from secure storage if needed
+      let apiKey: string | undefined;
+      if (config.provider === 'azure-openai') {
+        try {
+          const aiService = new LangChainAIService();
+          const credKey = 'sidecar-' + config.provider;
+          const hasKey = await aiService.hasCredentials(credKey);
+          if (hasKey) {
+            apiKey = await aiService.getStoredCredentials(credKey) || undefined;
+            console.log('[getSidecarConfig] Retrieved API key from secure storage');
+          } else {
+            console.warn('[getSidecarConfig] No API key found in secure storage for', credKey);
+          }
+        } catch (err) {
+          console.error('[getSidecarConfig] Failed to retrieve API key:', err);
+        }
+      }
+      
+      return {
+        provider: config.provider || 'ollama',
+        endpoint: config.endpoint || 'http://localhost:11434',
+        model: config.model || 'llama2',
+        apiKey,
+        apiVersion: config.apiVersion || '2024-02-15-preview',
+        temperature: config.temperature || 0.7,
+        maxTokens: config.maxTokens,
+      };
+    } catch (err) {
+      console.log('[getSidecarConfig] No sidecar config file, will use defaults');
+      return null;
+    }
+  } catch (err) {
+    console.error('[getSidecarConfig] Failed to load sidecar config:', err);
+    return null;
+  }
+}
 
 export class AssistantSessionManager {
   private readonly sessions = new Map<string, SessionRecord>();
@@ -56,6 +125,11 @@ export class AssistantSessionManager {
     const featureBranch: string | undefined = pathResolution.currentBranch || undefined;
     const specificationPath: string | undefined = pathResolution.specPaths?.spec || undefined;
 
+    // Get sidecar configuration from context-repo directory
+    const contextRepoPath = pathResolution.contextDir;
+    const sidecarConfig = await getSidecarConfig(contextRepoPath);
+    console.log('[assistantSessionManager] Loaded sidecar config from', contextRepoPath, ':', sidecarConfig ? 'found' : 'not found');
+    
     // Create remote LangChain session
     const lcConfig = resolveLangChainConfig();
     const client = createLangChainClient(lcConfig.baseUrl);
@@ -67,7 +141,8 @@ export class AssistantSessionManager {
         clientVersion: lcConfig.telemetryDefaults.appVersion,
         provider: options.provider,
         systemPrompt: options.systemPrompt?.substring(0, 100),
-        activeTools: options.activeTools
+        activeTools: options.activeTools,
+        hasConfig: !!sidecarConfig
       });
       
       const remote = await client.createSession({
@@ -75,7 +150,8 @@ export class AssistantSessionManager {
         clientVersion: lcConfig.telemetryDefaults.appVersion,
         provider: options.provider,
         systemPrompt: options.systemPrompt,
-        activeTools: options.activeTools
+        activeTools: options.activeTools,
+        config: sidecarConfig || undefined
       });
       langchainSessionId = remote.sessionId;
       if (remote.capabilityProfile?.capabilities) {

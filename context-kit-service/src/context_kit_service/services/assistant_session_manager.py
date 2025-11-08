@@ -9,6 +9,7 @@ from ..models.assistant import (
     AssistantProvider,
     CreateSessionRequest,
     CreateSessionResponse,
+    ProviderConfig,
     SendMessageRequest,
     TaskActionType,
     TaskEnvelope,
@@ -28,12 +29,14 @@ class AssistantSession:
         provider: AssistantProvider,
         system_prompt: str | None = None,
         active_tools: list[str] | None = None,
+        config: ProviderConfig | None = None,
     ):
         self.session_id = session_id
         self.user_id = user_id
         self.provider = provider
         self.system_prompt = system_prompt or self._default_system_prompt()
         self.active_tools = active_tools or []
+        self.config = config
         self.messages: list[dict[str, Any]] = []
         self.tasks: list[TaskEnvelope] = []
         self.created_at = datetime.utcnow()
@@ -70,6 +73,7 @@ class AssistantSession:
                 provider=self.provider,
                 system_prompt=self.system_prompt,
                 available_tools=self.active_tools,
+                config=self.config,
             )
         return self._agent
 
@@ -92,6 +96,7 @@ class AssistantSessionManager:
             provider=request.provider or AssistantProvider.AZURE_OPENAI,
             system_prompt=request.systemPrompt,
             active_tools=request.activeTools,
+            config=request.config,
         )
 
         self._sessions[session_id] = session

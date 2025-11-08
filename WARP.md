@@ -23,7 +23,7 @@ pnpm dlx @electron-forge/cli@latest init app --template=typescript
 cd app
 pnpm add -D @electron-forge/plugin-vite vite @vitejs/plugin-vue tailwindcss postcss autoprefixer
 pnpm add vue pinia
-pnpm add yaml ajv handlebars chokidar cytoscape isomorphic-git simple-git execa
+pnpm add yaml ajv handlebars chokidar cytoscape simple-git execa
 pnpm add -D @types/node @types/handlebars
 
 # 4) add renderer scaffolding, Tailwind, and Forge config
@@ -69,7 +69,7 @@ pnpm start
 - **Frontend**: Vue 3 (Composition API) + Pinia for state management
 - **Styling**: Tailwind CSS with PostCSS
 - **Build Tool**: Vite with @vitejs/plugin-vue
-- **Version Control Integration**: isomorphic-git, simple-git
+- **Version Control Integration**: simple-git
 - **Data Validation**: AJV (JSON Schema validator)
 - **Template Engine**: Handlebars
 - **File Watching**: chokidar
@@ -338,14 +338,29 @@ node "$env:REPO\.context\pipelines\generate.mjs" FEAT-002
 3. **Never deploy without explicit confirmation** from user
 4. **Never commit changes** unless explicitly requested
 
-### Recent Improvements (2025-10-27)
-- **Lint Error Cleanup**: Resolved all 24 lint errors down to 0 errors
-  - Removed obsolete `index.old.ts` file
-  - Fixed unused variable errors across e2e tests, services, and stores
-  - Converted `require()` to ES6 imports for consistency
-  - Cleaned up unused imports (ContextService, EventEmitter, StatusResult, etc.)
-- **Code Quality**: 133 warnings remain (all `any` type warnings, lower priority)
-- **PR Workflow**: All changes committed to `fix/lint-errors` branch and PR #21 created
+### Recent Improvements
+
+**2025-11-07: Code Consolidation & Python Sidecar Migration**
+- **AI Service Consolidation**: Migrated to unified `LangChainAIService` implementation
+  - Removed legacy `AIService.ts` (~1000 lines)
+  - Removed deprecated `aiStore.ts` and legacy `AIAssistantModal.vue`
+  - Consolidated IPC handlers for cleaner architecture
+- **Dependency Cleanup**: Removed unused packages
+  - `isomorphic-git` (not used anywhere in codebase)
+  - `reactflow` (not used anywhere in codebase)
+- **Python Sidecar**: AI orchestration now routed through `context-kit-service` (FastAPI + LangChain)
+  - TypeScript code no longer directly invokes `@langchain/*` for AI operations
+  - All AI tool execution delegated to Python sidecar service
+  - Retrieval-augmented generation (RAG) handled by Python pipelines
+
+**2025-10-27: Lint Error Cleanup**
+- Resolved all 24 lint errors down to 0 errors
+- Removed obsolete `index.old.ts` file
+- Fixed unused variable errors across e2e tests, services, and stores
+- Converted `require()` to ES6 imports for consistency
+- Cleaned up unused imports (ContextService, EventEmitter, StatusResult, etc.)
+- Code Quality: 133 warnings remain (all `any` type warnings, lower priority)
+- PR Workflow: All changes committed to `fix/lint-errors` branch and PR #21 created
 
 ### IPC Architecture
 - Main process exposes handlers via `ipcMain.handle`
@@ -419,9 +434,16 @@ GitHub Actions workflow (`.github/workflows/context-validate.yml`):
 
 ## AI Assistant Features (Latest)
 
+### Python Sidecar Architecture (NEW)
+- **AI Orchestration**: All AI operations route through `context-kit-service` Python sidecar (FastAPI + LangChain)
+- **Tool Execution**: TypeScript delegates to Python service via HTTP APIs
+- **Session Management**: `assistantStore` manages UI state, sidecar handles AI logic
+- **RAG Pipelines**: Vector embeddings and semantic search built by deterministic Python pipelines
+- **Provider Parity**: Unified interface for Azure OpenAI and local providers (Ollama)
+
 ### Streaming Responses
 - Real-time token-by-token AI output with progress indicators
-- Implemented for both Ollama and Azure OpenAI providers
+- Implemented through Python sidecar for both Ollama and Azure OpenAI
 - IPC handlers: `ai:assistStreamStart`, `ai:assistStream:event`, `ai:assistStream:end`
 
 ### Configurable Prompts

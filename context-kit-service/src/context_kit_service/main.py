@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 
 from .endpoints import assistant, codegen, inspect, promptify, spec, spec_log
 from .models.responses import HealthResponse
+from .routers import ai
 
 # Service start time for uptime calculation
 START_TIME = time.time()
@@ -118,6 +119,7 @@ async def health() -> HealthResponse:
 
 
 # Include endpoint routers
+app.include_router(ai.router)  # New AI operations router (sidecar)
 app.include_router(assistant.router, tags=["Assistant"])
 app.include_router(inspect.router, prefix="/context", tags=["Context Inspection"])
 app.include_router(spec.router, prefix="/spec", tags=["Specification Generation"])

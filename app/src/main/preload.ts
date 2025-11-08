@@ -221,6 +221,32 @@ contextBridge.exposeInMainWorld('api', {
     loadDiagrams: (dir: string) => ipcRenderer.invoke('c4:load-diagrams', { dir }),
     analyze: (filePath: string) => ipcRenderer.invoke('c4:analyze', { filePath }),
   },
+  sidecar: {
+    start: () => ipcRenderer.invoke('sidecar:start'),
+    stop: () => ipcRenderer.invoke('sidecar:stop'),
+    status: () => ipcRenderer.invoke('sidecar:status'),
+    health: () => ipcRenderer.invoke('sidecar:health'),
+    generateEntity: (request: any) => ipcRenderer.invoke('sidecar:generate-entity', request),
+    assistStream: (request: any) => ipcRenderer.invoke('sidecar:assist-stream', request),
+    cancelStream: (streamId: string) => ipcRenderer.invoke('sidecar:cancel-stream', streamId),
+    executeTool: (request: any) => ipcRenderer.invoke('sidecar:execute-tool', request),
+    ragQuery: (request: any) => ipcRenderer.invoke('sidecar:rag-query', request),
+    onStreamToken: (listener: (payload: { streamId: string; token: string }) => void) => {
+      const wrapped = (_e: any, payload: any) => listener(payload);
+      ipcRenderer.on('sidecar:stream-token', wrapped);
+      return () => ipcRenderer.removeListener('sidecar:stream-token', wrapped);
+    },
+    onStreamComplete: (listener: (payload: { streamId: string; fullContent: string }) => void) => {
+      const wrapped = (_e: any, payload: any) => listener(payload);
+      ipcRenderer.on('sidecar:stream-complete', wrapped);
+      return () => ipcRenderer.removeListener('sidecar:stream-complete', wrapped);
+    },
+    onStreamError: (listener: (payload: { streamId: string; error: string }) => void) => {
+      const wrapped = (_e: any, payload: any) => listener(payload);
+      ipcRenderer.on('sidecar:stream-error', wrapped);
+      return () => ipcRenderer.removeListener('sidecar:stream-error', wrapped);
+    },
+  },
   contextKit: {
     status: () => ipcRenderer.invoke('context-kit:status'),
     start: () => ipcRenderer.invoke('context-kit:start'),
@@ -436,6 +462,20 @@ declare global {
       c4: {
         loadDiagrams: (dir: string) => Promise<{ success: boolean; diagrams?: any[]; error?: string }>;
         analyze: (filePath: string) => Promise<{ success: boolean; analysis?: any; validation?: any; error?: string }>;
+      };
+      sidecar: {
+        start: () => Promise<{ success: boolean; baseUrl?: string; error?: string }>;
+        stop: () => Promise<void>;
+        status: () => Promise<{ status: 'stopped' | 'starting' | 'running' | 'error' | 'stopping'; baseUrl: string | null }>;
+        health: () => Promise<{ healthy: boolean }>;
+        generateEntity: (request: any) => Promise<{ success: boolean; data?: any; error?: string }>;
+        assistStream: (request: any) => Promise<{ success: boolean; streamId?: string; error?: string }>;
+        cancelStream: (streamId: string) => Promise<void>;
+        executeTool: (request: any) => Promise<{ success: boolean; data?: any; error?: string }>;
+        ragQuery: (request: any) => Promise<{ success: boolean; data?: any; error?: string }>;
+        onStreamToken: (listener: (payload: { streamId: string; token: string }) => void) => (() => void);
+        onStreamComplete: (listener: (payload: { streamId: string; fullContent: string }) => void) => (() => void);
+        onStreamError: (listener: (payload: { streamId: string; error: string }) => void) => (() => void);
       };
       contextKit: {
         status: () => Promise<{ running: boolean; healthy: boolean; port: number; uptime?: number; lastError?: string }>;

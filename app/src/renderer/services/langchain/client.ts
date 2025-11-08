@@ -5,6 +5,16 @@
 
 import type { CapabilityProfile, TaskEnvelope } from '@shared/assistant/types';
 
+export interface ProviderConfig {
+  provider: string;
+  endpoint: string;
+  model: string;
+  apiKey?: string;
+  apiVersion?: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
 export interface CreateSessionRequest {
   userId: string;
   clientVersion: string;
@@ -12,6 +22,7 @@ export interface CreateSessionRequest {
   systemPrompt?: string;
   activeTools?: string[];
   capabilitiesOverride?: Record<string, string>;
+  config?: ProviderConfig;
 }
 
 export interface CreateSessionResponse {
