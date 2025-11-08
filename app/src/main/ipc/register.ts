@@ -146,16 +146,22 @@ export async function registerAllHandlers(): Promise<void> {
       userAgent: 'Context-Sync-App',
     });
     
+    // Create enterprise service (will initialize AIService from config)
+    enterpriseService = new EnterpriseService(githubService);
+    
+    // Load enterprise config and initialize AIService with stored settings
+    const config = await enterpriseService.getConfig();
     const aiService = new AIService({
-      azureEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
-      azureKey: process.env.AZURE_OPENAI_KEY,
-      azureDeployment: process.env.AZURE_OPENAI_DEPLOYMENT,
-      ollamaEndpoint: process.env.OLLAMA_ENDPOINT || 'http://localhost:11434',
+      azureEndpoint: config.azureOpenAIEndpoint,
+      azureKey: config.azureOpenAIKey,
+      azureDeployment: config.azureOpenAIDeployment,
+      ollamaEndpoint: config.ollamaEndpoint || 'http://localhost:11434',
       defaultProvider: 'azure',
       promptsPath: enterprisePromptsPath,
     });
     
-    enterpriseService = new EnterpriseService(githubService, aiService);
+    // Set the AIService on EnterpriseService
+    enterpriseService.setAIService(aiService);
   }
   
   registerEnterpriseHandlers(enterpriseService);

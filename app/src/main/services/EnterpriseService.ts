@@ -28,21 +28,49 @@ import type {
  */
 export class EnterpriseService {
   private githubService: GitHubService;
-  private aiService: AIService;
+  private aiService!: AIService;
   private constitutionMerger: ConstitutionMerger;
   private configPath: string;
 
   constructor(
     githubService: GitHubService,
-    aiService: AIService
+    aiService?: AIService
   ) {
     this.githubService = githubService;
-    this.aiService = aiService;
+    if (aiService) {
+      this.aiService = aiService;
+    }
     this.constitutionMerger = new ConstitutionMerger();
     
     // Store config in userData
     const userDataPath = app.getPath('userData');
     this.configPath = path.join(userDataPath, 'enterprise-config.json');
+  }
+
+  /**
+   * Set or update the AIService instance
+   */
+  setAIService(aiService: AIService): void {
+    this.aiService = aiService;
+  }
+
+  /**
+   * Update AIService configuration from enterprise config
+   */
+  updateAIConfig(): void {
+    // This will be called after setConfig to sync AI settings
+    this.getConfig().then(config => {
+      if (this.aiService) {
+        this.aiService.setConfig({
+          azureEndpoint: config.azureOpenAIEndpoint,
+          azureKey: config.azureOpenAIKey,
+          azureDeployment: config.azureOpenAIDeployment,
+          ollamaEndpoint: config.ollamaEndpoint || 'http://localhost:11434',
+        });
+      }
+    }).catch(err => {
+      console.error('Failed to update AI config:', err);
+    });
   }
 
   // ============================================================================
@@ -75,6 +103,16 @@ export class EnterpriseService {
     }
 
     await writeFile(this.configPath, JSON.stringify(updated, null, 2), 'utf-8');
+    
+    // Update AIService configuration if AI-related settings changed
+    if (this.aiService && (
+      config.azureOpenAIEndpoint !== undefined ||
+      config.azureOpenAIKey !== undefined ||
+      config.azureOpenAIDeployment !== undefined ||
+      config.ollamaEndpoint !== undefined
+    )) {
+      this.updateAIConfig();
+    }
   }
 
   // ============================================================================
