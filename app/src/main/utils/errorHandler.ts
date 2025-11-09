@@ -25,48 +25,7 @@ export function toErrorMessage(error: unknown, fallback = 'Unknown error'): stri
    * Normalize error in main process using shared error normalization logic
    * T055: Main process error normalization
    */
-  function normalizeMainProcessError(error: unknown): NormalizedError {
-    // Handle Error instances
-    if (error instanceof Error) {
-      const errorMessage = error.message || 'Unknown error';
-      const code = detectErrorCode(error, errorMessage);
-      const config = DEFAULT_ERROR_MAP[code] || DEFAULT_ERROR_MAP['UNKNOWN_ERROR'];
-    
-      return {
-        code,
-        message: errorMessage,
-        userMessage: config.defaultUserMessage,
-        retryable: config.retryable,
-        details: {
-          originalName: error.name,
-          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-        },
-      };
-    }
 
-    // Handle string errors
-    if (typeof error === 'string') {
-      const code = detectErrorCodeFromString(error);
-      const config = DEFAULT_ERROR_MAP[code] || DEFAULT_ERROR_MAP['UNKNOWN_ERROR'];
-      return {
-        code,
-        message: error,
-        userMessage: config.defaultUserMessage,
-        retryable: config.retryable,
-        details: { originalType: 'string' },
-      };
-    }
-
-    // Handle unknown errors
-    const config = DEFAULT_ERROR_MAP['UNKNOWN_ERROR'];
-    return {
-      code: 'UNKNOWN_ERROR',
-      message: 'An unknown error occurred',
-      userMessage: config.defaultUserMessage,
-      retryable: config.retryable,
-      details: { originalType: typeof error, value: String(error) },
-    };
-  }
 
   /**
    * Detect error code from Error instance
