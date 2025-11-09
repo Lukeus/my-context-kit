@@ -221,16 +221,16 @@ watch(() => builderStore.partialEntity.feature, async () => {
         <!-- Step 1: Basic Info -->
         <div v-if="builderStore.currentStep === 1" class="space-y-5">
           <!-- AI Assist Panel -->
-          <div class="p-4 bg-gradient-to-r from-purple-50 to-primary-50 rounded-m3-md border-2 border-purple-200 shadow-elevation-2">
+          <div class="p-4 bg-gradient-to-r from-info-container to-primary-container rounded-m3-md border-2 border-outline shadow-elevation-2">
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center gap-2">
-                <svg class="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-info" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 <h3 class="text-sm font-semibold text-secondary-900">✨ AI Assist</h3>
               </div>
               <div class="flex items-center gap-1.5 px-2 py-1 rounded-m3-md text-xs font-medium" 
-                   :class="langchainStore.enabled ? 'bg-green-100 text-green-800' : 'bg-secondary-200 text-secondary-700'">
+                   :class="langchainStore.enabled ? 'bg-success-container text-on-success-container' : 'bg-secondary-200 text-secondary-700'">
                 <span>{{ langchainStore.enabled ? '🔗 LangChain' : '🔧 Legacy' }}</span>
               </div>
             </div>
@@ -238,11 +238,11 @@ watch(() => builderStore.partialEntity.feature, async () => {
               v-model="aiPrompt"
               rows="2"
               placeholder="Describe what you want to create... (e.g., 'User authentication with Google OAuth')"
-              class="w-full px-4 py-3 bg-white border border-purple-300 rounded-m3-md text-secondary-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-secondary-500 shadow-elevation-1"
+              class="w-full px-4 py-3 bg-white border border-outline rounded-m3-md text-secondary-900 text-sm focus:outline-none focus:ring-2 focus:ring-info focus:border-transparent placeholder-secondary-500 shadow-elevation-1"
               :disabled="isGenerating"
             ></textarea>
             <div class="flex items-center justify-between mt-3">
-              <div class="text-xs text-purple-700 font-medium">
+              <div class="text-xs text-info font-medium">
                 <span v-if="tokenUsage" class="flex items-center gap-1">
                   <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
@@ -253,7 +253,7 @@ watch(() => builderStore.partialEntity.feature, async () => {
               <button 
                 @click="generateWithAI"
                 :disabled="!aiPrompt.trim() || isGenerating"
-                class="px-4 py-2 text-xs font-medium bg-purple-600 hover:bg-purple-700 active:bg-purple-800 disabled:bg-surface-3 disabled:text-secondary-400 text-white rounded-m3-md transition-all shadow-elevation-1 hover:shadow-elevation-2 flex items-center gap-2"
+                class="px-4 py-2 text-xs font-medium bg-primary hover:bg-primary-hover active:bg-primary-pressed disabled:bg-surface-3 disabled:text-secondary-400 text-on-primary rounded-m3-md transition-all shadow-elevation-1 hover:shadow-elevation-2 flex items-center gap-2"
               >
                 <span v-if="isGenerating" class="inline-block animate-spin rounded-m3-md-full h-3 w-3 border-2 border-white border-t-transparent"></span>
                 {{ isGenerating ? 'Generating...' : 'Generate with AI' }}
@@ -541,8 +541,8 @@ watch(() => builderStore.partialEntity.feature, async () => {
           </div>
 
           <div v-if="builderStore.validationState.valid" 
-               class="bg-green-50 border border-green-300 rounded-m3-md p-4 shadow-elevation-1">
-            <p class="text-green-700 text-sm font-semibold">✓ Ready to create</p>
+               class="bg-success-container border border-outline rounded-m3-md p-4 shadow-elevation-1">
+            <p class="text-success text-sm font-semibold">✓ Ready to create</p>
           </div>
 
           <!-- Git Integration Options -->

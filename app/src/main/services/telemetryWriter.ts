@@ -73,7 +73,8 @@ export class FileTelemetryWriter implements TelemetryWriter {
       resultSummary: payload.resultSummary ?? existing.resultSummary,
       metadata: {
         ...(existing.metadata ?? {}),
-        ...(payload.metadata ?? {})
+        ...(payload.metadata ?? {}),
+        ...(payload.errorCode ? { errorCode: payload.errorCode } : {})
       }
     };
 
@@ -110,7 +111,7 @@ export class FileTelemetryWriter implements TelemetryWriter {
       startedAt: new Date().toISOString(),
       finishedAt: new Date().toISOString(),
       provider: 'azure-openai',
-      metadata: metadata ? { ...metadata } : undefined
+      metadata: metadata ? { ...metadata } : undefined // TODO(US4-T056): Include errorCode if rejection due to error classification
     } as ToolInvocationRecord;
 
     this.recordsById.set(record.id, record);

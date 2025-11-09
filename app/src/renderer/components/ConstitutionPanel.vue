@@ -202,7 +202,7 @@ onMounted(() => {
               <span class="text-[11px] px-2 py-0.5 bg-error-50 text-error-700 rounded-m3-md">
                 {{ article.gates.filter(g => g.critical).length }} Critical
               </span>
-              <span class="text-[11px] px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-m3-md">
+              <span class="text-[11px] px-2 py-0.5 bg-warning-container text-warning rounded-m3-md">
                 {{ article.gates.filter(g => !g.critical).length }} Advisory
               </span>
             </div>
@@ -253,11 +253,11 @@ onMounted(() => {
                     v-for="gate in currentArticle.gates"
                     :key="gate.id"
                     class="flex items-start gap-3 p-3 bg-surface-1 rounded-m3-md border"
-                    :class="gate.critical ? 'border-error-200' : 'border-yellow-200'"
+                    :class="gate.critical ? 'border-error-200' : 'border-outline'"
                   >
                     <div
                       class="w-5 h-5 rounded-m3-md flex items-center justify-center flex-shrink-0 mt-0.5"
-                      :class="gate.critical ? 'bg-error-100 text-error-700' : 'bg-yellow-100 text-yellow-700'"
+                      :class="gate.critical ? 'bg-error-100 text-error-700' : 'bg-warning-container text-warning'"
                     >
                       {{ gate.critical ? '!' : 'i' }}
                     </div>

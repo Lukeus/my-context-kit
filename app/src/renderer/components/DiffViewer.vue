@@ -83,10 +83,10 @@ const stats = computed(() => {
         <span class="text-sm font-medium text-secondary-900">{{ filePath }}</span>
       </div>
       <div class="flex items-center gap-3 text-xs">
-        <span class="px-2 py-1 rounded-m3-md bg-green-100 text-green-800 font-medium">
+        <span class="px-2 py-1 rounded-m3-md bg-success-container text-on-success-container font-medium">
           +{{ stats.additions }}
         </span>
-        <span class="px-2 py-1 rounded-m3-md bg-red-100 text-red-800 font-medium">
+        <span class="px-2 py-1 rounded-m3-md bg-error-container text-on-error-container font-medium">
           -{{ stats.deletions }}
         </span>
         <span class="text-secondary-600">
@@ -103,8 +103,8 @@ const stats = computed(() => {
             v-for="(line, index) in diffLines"
             :key="index"
             :class="{
-              'bg-red-50': line.type === 'delete',
-              'bg-green-50': line.type === 'insert',
+              'bg-error-container': line.type === 'delete',
+              'bg-success-container': line.type === 'insert',
               'bg-surface-1': line.type === 'equal'
             }"
           >
@@ -112,7 +112,7 @@ const stats = computed(() => {
             <td
               class="w-10 px-2 py-1 text-right text-secondary-500 select-none border-r border-surface-variant"
               :class="{
-                'bg-red-100': line.type === 'delete',
+                'bg-error-container': line.type === 'delete',
                 'bg-surface-2': line.type === 'equal' || line.type === 'insert'
               }"
             >
@@ -123,7 +123,7 @@ const stats = computed(() => {
             <td
               class="w-10 px-2 py-1 text-right text-secondary-500 select-none border-r border-surface-variant"
               :class="{
-                'bg-green-100': line.type === 'insert',
+                'bg-success-container': line.type === 'insert',
                 'bg-surface-2': line.type === 'equal' || line.type === 'delete'
               }"
             >
@@ -134,8 +134,8 @@ const stats = computed(() => {
             <td
               class="w-6 px-1 py-1 text-center select-none border-r border-surface-variant"
               :class="{
-                'text-red-700 bg-red-100': line.type === 'delete',
-                'text-green-700 bg-green-100': line.type === 'insert',
+                'text-error bg-error-container': line.type === 'delete',
+                'text-success bg-success-container': line.type === 'insert',
                 'text-secondary-400 bg-surface-2': line.type === 'equal'
               }"
             >
@@ -148,8 +148,8 @@ const stats = computed(() => {
             <td
               class="px-3 py-1 whitespace-pre"
               :class="{
-                'text-red-900': line.type === 'delete',
-                'text-green-900': line.type === 'insert',
+                'text-on-error-container': line.type === 'delete',
+                'text-on-success-container': line.type === 'insert',
                 'text-secondary-800': line.type === 'equal'
               }"
             >{{ line.content || ' ' }}</td>
@@ -160,8 +160,8 @@ const stats = computed(() => {
 
     <!-- Footer hint -->
     <div class="px-4 py-2 bg-surface-2 border-t border-surface-variant text-xs text-secondary-600">
-      <span class="font-medium text-green-700">Green</span> lines will be added, 
-      <span class="font-medium text-red-700">red</span> lines will be removed
+      <span class="font-medium text-success">Green</span> lines will be added, 
+      <span class="font-medium text-error">red</span> lines will be removed
     </div>
   </div>
 </template>

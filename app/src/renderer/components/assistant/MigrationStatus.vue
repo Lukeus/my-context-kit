@@ -35,8 +35,8 @@ const label = computed(() => {
 const icon = computed(() => imported.value.length === 0 ? '🕒' : '✅');
 
 const badgeClass = computed(() => imported.value.length === 0
-  ? 'bg-amber-100 text-amber-700'
-  : 'bg-green-100 text-green-800');
+  ? 'bg-warning-container text-warning'
+  : 'bg-success-container text-on-success-container');
 
 const visible = computed(() => !props.dismissed);
 

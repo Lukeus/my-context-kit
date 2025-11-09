@@ -112,10 +112,10 @@ const filteredLogs = computed(() => {
 
 const typeColor = (type: string) => {
   switch (type) {
-    case 'spec-generate': return 'bg-blue-100 text-blue-800';
-    case 'promptify': return 'bg-blue-100 text-blue-800';
-    case 'codegen': return 'bg-green-100 text-green-800';
-    default: return 'bg-gray-100 text-gray-800';
+    case 'spec-generate': return 'bg-primary-container text-on-primary-container';
+    case 'promptify': return 'bg-primary-container text-on-primary-container';
+    case 'codegen': return 'bg-success-container text-on-success-container';
+    default: return 'bg-surface-variant text-on-surface-variant';
   }
 };
 
@@ -215,13 +215,13 @@ function clearCache() {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-white">
+  <div class="h-full flex flex-col bg-surface">
     <!-- Header -->
     <div class="px-6 py-4 border-b border-surface-variant bg-surface">
       <div class="flex items-center justify-between">
         <div>
-          <h2 class="text-2xl font-semibold text-secondary-900">Spec Logs</h2>
-          <p class="text-sm text-secondary-600 mt-1">Generated specifications, prompts, and code artifacts</p>
+          <h2 class="text-2xl font-semibold text-on-surface">Spec Logs</h2>
+          <p class="text-sm text-on-surface-variant mt-1">Generated specifications, prompts, and code artifacts</p>
         </div>
         <div class="flex gap-2">
           <!-- View Mode Toggle -->
@@ -229,14 +229,14 @@ function clearCache() {
             <button
               @click="viewMode = 'list'"
               class="px-3 py-2 text-sm font-medium transition-colors"
-              :class="viewMode === 'list' ? 'bg-primary-600 text-white' : 'bg-surface text-secondary-700 hover:bg-surface-2'"
+              :class="viewMode === 'list' ? 'bg-primary text-on-primary' : 'bg-surface text-on-surface-variant hover:bg-surface-2'"
             >
               List
             </button>
             <button
               @click="viewMode = 'timeline'"
               class="px-3 py-2 text-sm font-medium transition-colors"
-              :class="viewMode === 'timeline' ? 'bg-primary-600 text-white' : 'bg-surface text-secondary-700 hover:bg-surface-2'"
+              :class="viewMode === 'timeline' ? 'bg-primary text-on-primary' : 'bg-surface text-on-surface-variant hover:bg-surface-2'"
             >
               Timeline
             </button>
@@ -246,7 +246,7 @@ function clearCache() {
           <div class="relative">
             <button
               @click="showExportMenu = !showExportMenu"
-              class="px-4 py-2 rounded-m3-md border border-surface-variant text-secondary-700 hover:bg-surface-2 text-sm font-medium transition-colors flex items-center gap-2"
+              class="px-4 py-2 rounded-m3-md border border-outline text-on-surface-variant hover:bg-surface-2 text-sm font-medium transition-colors flex items-center gap-2"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -263,7 +263,7 @@ function clearCache() {
           <!-- Cache Management -->
           <button
             @click="clearCache"
-            class="px-4 py-2 rounded-m3-md border border-surface-variant text-secondary-700 hover:bg-surface-2 text-sm font-medium transition-colors"
+            class="px-4 py-2 rounded-m3-md border border-outline text-on-surface-variant hover:bg-surface-2 text-sm font-medium transition-colors"
             title="Clear cached inspection results"
           >
             Clear Cache
@@ -278,16 +278,16 @@ function clearCache() {
             v-model="searchQuery"
             type="text"
             placeholder="Search logs by ID, content, or spec..."
-            class="w-full pl-10 pr-4 py-2 rounded-m3-md border border-surface-variant bg-surface-1 text-secondary-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            class="w-full pl-10 pr-4 py-2 rounded-m3-md border border-outline bg-surface-1 text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
-          <svg class="w-5 h-5 text-secondary-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-on-surface-variant absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
 
         <select
           v-model="sortOrder"
-          class="px-4 py-2 rounded-m3-md border border-surface-variant bg-surface-1 text-secondary-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          class="px-4 py-2 rounded-m3-md border border-outline bg-surface-1 text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="newest">Newest First</option>
           <option value="oldest">Oldest First</option>
@@ -296,7 +296,7 @@ function clearCache() {
         <button
           v-if="searchQuery || filterType !== 'all' || dateFilter.start || dateFilter.end"
           @click="clearFilters"
-          class="px-4 py-2 rounded-m3-md text-sm font-medium text-error-700 hover:bg-error-50 transition-colors"
+          class="px-4 py-2 rounded-m3-md text-sm font-medium text-error hover:bg-error-container transition-colors"
         >
           Clear Filters
         </button>
@@ -309,8 +309,8 @@ function clearCache() {
         @click="filterType = 'all'"
         class="px-4 py-2 rounded-full text-sm font-medium transition-colors"
         :class="filterType === 'all' 
-          ? 'bg-blue-600 text-white' 
-          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          ? 'bg-primary text-on-primary' 
+          : 'bg-surface-variant text-on-surface-variant hover:bg-surface-2'"
       >
         All ({{ specLogs.length }})
       </button>
@@ -318,8 +318,8 @@ function clearCache() {
         @click="filterType = 'spec-generate'"
         class="px-4 py-2 rounded-full text-sm font-medium transition-colors"
         :class="filterType === 'spec-generate' 
-          ? 'bg-blue-600 text-white' 
-          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          ? 'bg-primary text-on-primary' 
+          : 'bg-surface-variant text-on-surface-variant hover:bg-surface-2'"
       >
         Specifications
       </button>
@@ -327,8 +327,8 @@ function clearCache() {
         @click="filterType = 'promptify'"
         class="px-4 py-2 rounded-full text-sm font-medium transition-colors"
         :class="filterType === 'promptify' 
-          ? 'bg-blue-600 text-white' 
-          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          ? 'bg-primary text-on-primary' 
+          : 'bg-surface-variant text-on-surface-variant hover:bg-surface-2'"
       >
         Prompts
       </button>
@@ -336,8 +336,8 @@ function clearCache() {
         @click="filterType = 'codegen'"
         class="px-4 py-2 rounded-full text-sm font-medium transition-colors"
         :class="filterType === 'codegen' 
-          ? 'bg-blue-600 text-white' 
-          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          ? 'bg-primary text-on-primary' 
+          : 'bg-surface-variant text-on-surface-variant hover:bg-surface-2'"
       >
         Code
       </button>
@@ -345,7 +345,7 @@ function clearCache() {
 
     <!-- Log List -->
     <div class="flex-1 overflow-y-auto">
-      <div v-if="filteredLogs.length === 0" class="flex items-center justify-center h-full text-gray-500">
+      <div v-if="filteredLogs.length === 0" class="flex items-center justify-center h-full text-on-surface-variant">
         <div class="text-center">
           <p class="text-lg font-medium">No logs yet</p>
           <p class="text-sm mt-1">Generate specs, prompts, or code to see them here</p>
@@ -357,7 +357,7 @@ function clearCache() {
           v-for="log in filteredLogs"
           :key="log.id"
           @click="selectEntry(log)"
-          class="px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
+          class="px-6 py-4 hover:bg-surface-variant cursor-pointer transition-colors"
         >
           <div class="flex items-start justify-between">
             <div class="flex-1">
@@ -368,34 +368,34 @@ function clearCache() {
                 >
                   {{ typeLabel(log.type) }}
                 </span>
-                <span class="text-sm text-gray-500">{{ formatTimestamp(log.timestamp) }}</span>
+                <span class="text-sm text-on-surface-variant">{{ formatTimestamp(log.timestamp) }}</span>
               </div>
               
               <div class="mt-2">
                 <div v-if="log.type === 'spec-generate'" class="text-sm">
-                  <p class="font-medium text-gray-900">{{ (log.data as SpecGenerateResponse).spec_id }}</p>
-                  <p class="text-gray-600 mt-1 line-clamp-2">
+                  <p class="font-medium text-on-surface">{{ (log.data as SpecGenerateResponse).spec_id }}</p>
+                  <p class="text-on-surface-variant mt-1 line-clamp-2">
                     {{ (log.data as SpecGenerateResponse).spec_content.substring(0, 150) }}...
                   </p>
                 </div>
                 
                 <div v-else-if="log.type === 'promptify'" class="text-sm">
-                  <p class="font-medium text-gray-900">Prompt for {{ (log.data as PromptifyResponse).spec_id }}</p>
-                  <p class="text-gray-600 mt-1">
+                  <p class="font-medium text-on-surface">Prompt for {{ (log.data as PromptifyResponse).spec_id }}</p>
+                  <p class="text-on-surface-variant mt-1">
                     Context: {{ (log.data as PromptifyResponse).context_included.length }} entities
                   </p>
                 </div>
                 
                 <div v-else-if="log.type === 'codegen'" class="text-sm">
-                  <p class="font-medium text-gray-900">{{ (log.data as CodegenResponse).summary }}</p>
-                  <p class="text-gray-600 mt-1">
+                  <p class="font-medium text-on-surface">{{ (log.data as CodegenResponse).summary }}</p>
+                  <p class="text-on-surface-variant mt-1">
                     {{ (log.data as CodegenResponse).artifacts.length }} files generated
                   </p>
                 </div>
               </div>
             </div>
             
-            <div class="text-sm text-gray-400 ml-4">
+            <div class="text-sm text-on-surface-variant ml-4">
               {{ (log.data as any).duration_ms }}ms
             </div>
           </div>
@@ -406,18 +406,18 @@ function clearCache() {
     <!-- Detail Panel -->
     <div
       v-if="selectedEntry"
-      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      class="fixed inset-0 bg-scrim flex items-center justify-center z-50"
       @click.self="closeDetail"
     >
-      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col m-4">
+      <div class="bg-surface rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col m-4">
         <div class="px-6 py-4 border-b flex items-center justify-between">
           <div>
             <h3 class="text-xl font-semibold">{{ typeLabel(selectedEntry.type) }} Details</h3>
-            <p class="text-sm text-gray-600 mt-1">{{ formatTimestamp(selectedEntry.timestamp) }}</p>
+            <p class="text-sm text-on-surface-variant mt-1">{{ formatTimestamp(selectedEntry.timestamp) }}</p>
           </div>
           <button
             @click="closeDetail"
-            class="text-gray-400 hover:text-gray-600 rounded p-2"
+            class="text-on-surface-variant hover:text-on-surface rounded p-2"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -429,22 +429,22 @@ function clearCache() {
           <!-- Spec Content -->
           <div v-if="selectedEntry.type === 'spec-generate'" class="space-y-4">
             <div>
-              <h4 class="font-medium text-gray-700 mb-2">Specification ID</h4>
+              <h4 class="font-medium text-on-surface-variant mb-2">Specification ID</h4>
               <p class="font-mono text-sm">{{ (selectedEntry.data as SpecGenerateResponse).spec_id }}</p>
             </div>
             
             <div>
-              <h4 class="font-medium text-gray-700 mb-2">Content</h4>
-              <pre class="bg-gray-50 p-4 rounded text-sm overflow-x-auto">{{ (selectedEntry.data as SpecGenerateResponse).spec_content }}</pre>
+              <h4 class="font-medium text-on-surface-variant mb-2">Content</h4>
+              <pre class="bg-surface-variant p-4 rounded text-sm overflow-x-auto">{{ (selectedEntry.data as SpecGenerateResponse).spec_content }}</pre>
             </div>
             
             <div>
-              <h4 class="font-medium text-gray-700 mb-2">Related Entities</h4>
+              <h4 class="font-medium text-on-surface-variant mb-2">Related Entities</h4>
               <div class="flex flex-wrap gap-2">
                 <span
                   v-for="entity in (selectedEntry.data as SpecGenerateResponse).related_entities"
                   :key="entity"
-                  class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                  class="px-3 py-1 bg-primary-container text-on-primary-container rounded-full text-sm"
                 >
                   {{ entity }}
                 </span>
@@ -455,17 +455,17 @@ function clearCache() {
           <!-- Prompt Content -->
           <div v-else-if="selectedEntry.type === 'promptify'" class="space-y-4">
             <div>
-              <h4 class="font-medium text-gray-700 mb-2">Prompt</h4>
-              <pre class="bg-gray-50 p-4 rounded text-sm overflow-x-auto whitespace-pre-wrap">{{ (selectedEntry.data as PromptifyResponse).prompt }}</pre>
+              <h4 class="font-medium text-on-surface-variant mb-2">Prompt</h4>
+              <pre class="bg-surface-variant p-4 rounded text-sm overflow-x-auto whitespace-pre-wrap">{{ (selectedEntry.data as PromptifyResponse).prompt }}</pre>
             </div>
             
             <div>
-              <h4 class="font-medium text-gray-700 mb-2">Included Context</h4>
+              <h4 class="font-medium text-on-surface-variant mb-2">Included Context</h4>
               <div class="flex flex-wrap gap-2">
                 <span
                   v-for="entity in (selectedEntry.data as PromptifyResponse).context_included"
                   :key="entity"
-                  class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                  class="px-3 py-1 bg-primary-container text-on-primary-container rounded-full text-sm"
                 >
                   {{ entity }}
                 </span>
@@ -476,14 +476,14 @@ function clearCache() {
           <!-- Code Artifacts -->
           <div v-else-if="selectedEntry.type === 'codegen'" class="space-y-4">
             <div>
-              <h4 class="font-medium text-gray-700 mb-2">Summary</h4>
+              <h4 class="font-medium text-on-surface-variant mb-2">Summary</h4>
               <p>{{ (selectedEntry.data as CodegenResponse).summary }}</p>
             </div>
             
             <div v-for="(artifact, index) in (selectedEntry.data as CodegenResponse).artifacts" :key="index" class="space-y-2">
-              <h4 class="font-medium text-gray-700">{{ artifact.path }}</h4>
-              <p v-if="artifact.description" class="text-sm text-gray-600">{{ artifact.description }}</p>
-              <pre class="bg-gray-50 p-4 rounded text-sm overflow-x-auto">{{ artifact.content }}</pre>
+              <h4 class="font-medium text-on-surface-variant">{{ artifact.path }}</h4>
+              <p v-if="artifact.description" class="text-sm text-on-surface-variant">{{ artifact.description }}</p>
+              <pre class="bg-surface-variant p-4 rounded text-sm overflow-x-auto">{{ artifact.content }}</pre>
             </div>
           </div>
         </div>
@@ -491,13 +491,13 @@ function clearCache() {
         <div class="px-6 py-4 border-t flex justify-end gap-2">
           <button
             @click="copyToClipboard(JSON.stringify(selectedEntry.data, null, 2))"
-            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+            class="px-4 py-2 bg-surface-variant text-on-surface-variant rounded-md hover:bg-surface-2 transition-colors"
           >
             Copy JSON
           </button>
           <button
             @click="closeDetail"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            class="px-4 py-2 bg-primary text-on-primary rounded-md hover:bg-primary-hover transition-colors"
           >
             Close
           </button>

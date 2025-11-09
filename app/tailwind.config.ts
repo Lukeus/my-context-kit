@@ -157,12 +157,14 @@ const config: Config = {
           4: '#D2E0F2',
           5: '#C8D8ED',
           tint: '#E8F2FF',
+          // TODO(US5-T062): add surface-container, surface-container-high, etc. tokens for elevation mapping
         },
         
         // Outline colors - Borders and dividers
         outline: {
           DEFAULT: '#CBD5E1',
           variant: '#94A3B8',
+          // TODO(US5-T062): add outline-weak / outline-strong variants to refine borders
         },
         
         // State layer colors for interactive elements
@@ -189,6 +191,7 @@ const config: Config = {
             content: 'rgba(0, 0, 0, 0.38)',
             container: 'rgba(0, 0, 0, 0.12)',
           },
+          // TODO(US5-T062): add focus-visible ring color tokens for accessibility outlines
         },
         
         // Status indicator colors (for badges, status dots, etc.)
@@ -200,6 +203,7 @@ const config: Config = {
           blocked: '#B3261E',
           'needs-review': '#F97316',
           todo: '#64748B',
+          // TODO(US5-T062): consider migrating status palette to semantic containers (info/warning/success/error) to reduce raw codes
         },
       },
       

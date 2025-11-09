@@ -3,6 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/lukeus/my-context-kit?label=version)](https://github.com/lukeus/my-context-kit/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/lukeus/my-context-kit/total)](https://github.com/lukeus/my-context-kit/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/lukeus/my-context-kit/release.yml?branch=main)](https://github.com/lukeus/my-context-kit/actions/workflows/release.yml)
+[![Quality](https://img.shields.io/github/actions/workflow/status/lukeus/my-context-kit/quality.yml?branch=001-code-cleanup&label=quality)](https://github.com/lukeus/my-context-kit/actions/workflows/quality.yml)
 [![License](https://img.shields.io/github/license/lukeus/my-context-kit)](LICENSE)
 
 A desktop application for managing GitHub-versioned context repositories for spec-driven software development.
@@ -304,6 +305,18 @@ pnpm format         # Auto-fix linting issues
 pnpm typecheck      # TypeScript type checking
 ```
 
+### Quality & Verification Scripts
+
+```powershell
+# From repository root
+pnpm verify:tokens  # Verify Material 3 semantic token usage
+pnpm scan:time      # Scan for duplicate time formatting helpers
+```
+
+These scripts help maintain code quality by:
+- **verify:tokens**: Ensures components use semantic design tokens (e.g., `bg-surface`) instead of raw Tailwind color classes (e.g., `bg-blue-500`)
+- **scan:time**: Detects duplicate time/duration formatting functions to ensure centralization
+
 ### Context Repository
 
 ```powershell
@@ -396,6 +409,35 @@ All code uses **Bundler** module resolution:
 - ✅ Use environment variables
 - ✅ Context isolation enabled (`contextIsolation: true`)
 - ✅ No node integration in renderer
+
+### Material 3 Design Tokens & Verification Scripts
+
+**Semantic Token Compliance**: The app enforces Material 3 design token usage across all components. Raw Tailwind color classes (e.g., `bg-blue-500`, `text-gray-700`) are prohibited except for documented exceptions.
+
+**Verification Scripts**:
+```powershell
+# Scan for raw color violations (target: ≤5 exceptions)
+pnpm --filter context-sync exec tsx scripts/verify-design-tokens.ts
+
+# Check for duplicate time formatting helpers
+pnpm --filter context-sync exec tsx scripts/scan-duplicate-time-helpers.ts
+
+# Verify error normalization coverage
+pnpm --filter context-sync exec tsx scripts/verify-error-telemetry.ts
+```
+
+**Semantic Token Categories**:
+- `primary`, `secondary`, `tertiary` - Brand hierarchy
+- `error`, `warning`, `success`, `info` - Status semantics
+- `surface`, `outline` - Backgrounds and borders
+- `*-container`, `on-*-container` - Container pairs
+
+**Acceptance Criteria**:
+- ≥95% semantic token coverage (current: 84% with 68 documented exceptions)
+- All exceptions documented with rationale (data visualization, chart colors)
+- CI gates fail on undocumented raw color violations
+
+See `app/tailwind.config.ts` for full token palette and `specs/001-code-cleanup/research.md` for exception documentation.
 
 ## Troubleshooting
 

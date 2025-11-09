@@ -34,7 +34,9 @@
 		"service:typecheck": "pnpm --filter @context-kit/service typecheck",
 		"service:clean": "pnpm --filter @context-kit/service clean",
 		"service:health": "pnpm --filter @context-kit/service health",
-		"service:bootstrap": "pnpm --filter @context-kit/service bootstrap"
+		"service:bootstrap": "pnpm --filter @context-kit/service bootstrap",
+		"verify:tokens": "pnpm --filter context-sync exec tsx scripts/verify-design-tokens.ts",
+		"scan:time": "pnpm --filter context-sync exec tsx scripts/scan-duplicate-time-helpers.ts"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [

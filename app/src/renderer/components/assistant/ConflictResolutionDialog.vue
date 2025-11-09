@@ -126,7 +126,7 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
               </div>
               <svg
                 v-if="conflict.resolution"
-                class="w-4 h-4 text-green-600 flex-shrink-0"
+                class="w-4 h-4 text-success flex-shrink-0"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -175,8 +175,8 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
             <button
               class="flex-1 px-3 py-2 text-sm font-medium rounded-m3-md transition-all border-2"
               :class="selectedConflict.resolution === 'keep-local'
-                ? 'bg-blue-50 border-blue-500 text-blue-700'
-                : 'bg-white border-surface-variant text-secondary-700 hover:border-blue-300'"
+                ? 'bg-primary-container border-primary text-on-primary-container'
+                : 'bg-surface border-outline text-on-surface hover:border-primary'"
               @click="setResolution('keep-local')"
             >
               ← Keep Local
@@ -184,8 +184,8 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
             <button
               class="flex-1 px-3 py-2 text-sm font-medium rounded-m3-md transition-all border-2"
               :class="selectedConflict.resolution === 'merge'
-                ? 'bg-purple-50 border-purple-500 text-purple-700'
-                : 'bg-white border-surface-variant text-secondary-700 hover:border-purple-300'"
+                ? 'bg-tertiary-container border-tertiary text-on-tertiary-container'
+                : 'bg-surface border-outline text-on-surface hover:border-tertiary'"
               @click="setResolution('merge')"
             >
               ⟷ Merge Both
@@ -193,8 +193,8 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
             <button
               class="flex-1 px-3 py-2 text-sm font-medium rounded-m3-md transition-all border-2"
               :class="selectedConflict.resolution === 'keep-remote'
-                ? 'bg-green-50 border-green-500 text-green-700'
-                : 'bg-white border-surface-variant text-secondary-700 hover:border-green-300'"
+                ? 'bg-success-container border-success text-on-success-container'
+                : 'bg-surface border-outline text-on-surface hover:border-success'"
               @click="setResolution('keep-remote')"
             >
               Keep Remote →
@@ -205,16 +205,16 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
           <div class="flex-1 overflow-y-auto">
             <div class="grid grid-cols-2 divide-x divide-surface-variant h-full">
               <!-- Local Version -->
-              <div class="p-4 space-y-4 bg-blue-50/30">
+              <div class="p-4 space-y-4 bg-primary-container/30">
                 <div class="flex items-center gap-2 mb-2">
-                  <div class="w-3 h-3 bg-blue-500 rounded-m3-md-full"></div>
+                  <div class="w-3 h-3 bg-primary rounded-m3-md-full"></div>
                   <h3 class="text-sm font-semibold text-secondary-900">Local Version</h3>
                 </div>
 
                 <!-- System Prompt -->
                 <div>
                   <div class="text-xs font-medium text-secondary-700 mb-1">System Prompt</div>
-                  <div class="text-sm text-secondary-900 bg-white rounded-m3-md p-3 border border-blue-200 font-mono text-xs whitespace-pre-wrap">
+                  <div class="text-sm text-secondary-900 bg-surface rounded-m3-md p-3 border border-outline font-mono text-xs whitespace-pre-wrap">
                     {{ selectedConflict.localAgent.systemPrompt }}
                   </div>
                 </div>
@@ -226,10 +226,10 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
                     <div
                       v-for="tool in selectedConflict.localAgent.tools"
                       :key="tool.toolId"
-                      class="text-xs px-2 py-1 bg-white rounded-m3-md border border-blue-200 flex items-center justify-between"
+                      class="text-xs px-2 py-1 bg-surface rounded-m3-md border border-outline flex items-center justify-between"
                     >
                       <span>{{ tool.toolId }}</span>
-                      <span v-if="tool.required" class="text-[10px] text-blue-700">required</span>
+                      <span v-if="tool.required" class="text-[10px] text-primary">required</span>
                     </div>
                     <div v-if="!selectedConflict.localAgent.tools?.length" class="text-xs text-secondary-500 italic">
                       No tools configured
@@ -240,7 +240,7 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
                 <!-- Config -->
                 <div>
                   <div class="text-xs font-medium text-secondary-700 mb-1">Configuration</div>
-                  <div class="text-xs text-secondary-900 bg-white rounded-m3-md p-3 border border-blue-200 font-mono">
+                  <div class="text-xs text-secondary-900 bg-surface rounded-m3-md p-3 border border-outline font-mono">
                     <div>Temperature: {{ selectedConflict.localAgent.config?.temperature ?? 'default' }}</div>
                     <div>Max Tokens: {{ selectedConflict.localAgent.config?.maxTokens ?? 'default' }}</div>
                   </div>
@@ -249,23 +249,23 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
                 <!-- Metadata -->
                 <div>
                   <div class="text-xs font-medium text-secondary-700 mb-1">Description</div>
-                  <div class="text-xs text-secondary-900 bg-white rounded-m3-md p-3 border border-blue-200">
+                  <div class="text-xs text-secondary-900 bg-surface rounded-m3-md p-3 border border-outline">
                     {{ selectedConflict.localAgent.metadata.description }}
                   </div>
                 </div>
               </div>
 
               <!-- Remote Version -->
-              <div class="p-4 space-y-4 bg-green-50/30">
+              <div class="p-4 space-y-4 bg-success-container/30">
                 <div class="flex items-center gap-2 mb-2">
-                  <div class="w-3 h-3 bg-green-500 rounded-m3-md-full"></div>
+                  <div class="w-3 h-3 bg-success rounded-m3-md-full"></div>
                   <h3 class="text-sm font-semibold text-secondary-900">Remote Version</h3>
                 </div>
 
                 <!-- System Prompt -->
                 <div>
                   <div class="text-xs font-medium text-secondary-700 mb-1">System Prompt</div>
-                  <div class="text-sm text-secondary-900 bg-white rounded-m3-md p-3 border border-green-200 font-mono text-xs whitespace-pre-wrap">
+                  <div class="text-sm text-secondary-900 bg-surface rounded-m3-md p-3 border border-outline font-mono text-xs whitespace-pre-wrap">
                     {{ selectedConflict.remoteAgent.systemPrompt }}
                   </div>
                 </div>
@@ -277,10 +277,10 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
                     <div
                       v-for="tool in selectedConflict.remoteAgent.tools"
                       :key="tool.toolId"
-                      class="text-xs px-2 py-1 bg-white rounded-m3-md border border-green-200 flex items-center justify-between"
+                      class="text-xs px-2 py-1 bg-surface rounded-m3-md border border-outline flex items-center justify-between"
                     >
                       <span>{{ tool.toolId }}</span>
-                      <span v-if="tool.required" class="text-[10px] text-green-700">required</span>
+                      <span v-if="tool.required" class="text-[10px] text-success">required</span>
                     </div>
                     <div v-if="!selectedConflict.remoteAgent.tools?.length" class="text-xs text-secondary-500 italic">
                       No tools configured
@@ -291,7 +291,7 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
                 <!-- Config -->
                 <div>
                   <div class="text-xs font-medium text-secondary-700 mb-1">Configuration</div>
-                  <div class="text-xs text-secondary-900 bg-white rounded-m3-md p-3 border border-green-200 font-mono">
+                  <div class="text-xs text-secondary-900 bg-surface rounded-m3-md p-3 border border-outline font-mono">
                     <div>Temperature: {{ selectedConflict.remoteAgent.config?.temperature ?? 'default' }}</div>
                     <div>Max Tokens: {{ selectedConflict.remoteAgent.config?.maxTokens ?? 'default' }}</div>
                   </div>
@@ -300,7 +300,7 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
                 <!-- Metadata -->
                 <div>
                   <div class="text-xs font-medium text-secondary-700 mb-1">Description</div>
-                  <div class="text-xs text-secondary-900 bg-white rounded-m3-md p-3 border border-green-200">
+                  <div class="text-xs text-secondary-900 bg-surface rounded-m3-md p-3 border border-outline">
                     {{ selectedConflict.remoteAgent.metadata.description }}
                   </div>
                 </div>
@@ -313,10 +313,10 @@ function getDifferenceCount(local: AgentProfile, remote: AgentProfile): number {
       <!-- Footer -->
       <footer class="flex items-center justify-between px-6 py-4 border-t border-surface-variant bg-white">
         <div class="text-sm text-secondary-600">
-          <span v-if="hasUnresolvedConflicts" class="text-yellow-700">
+          <span v-if="hasUnresolvedConflicts" class="text-warning">
             ⚠ {{ localConflicts.length - conflictStats.resolved }} conflicts remaining
           </span>
-          <span v-else class="text-green-700">
+          <span v-else class="text-success">
             ✓ All conflicts resolved
           </span>
         </div>

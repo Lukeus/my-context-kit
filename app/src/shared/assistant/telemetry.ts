@@ -28,6 +28,7 @@ export interface TelemetryBaseEvent {
   provider?: string;       // provider id (azure-openai, ollama)
   correlationId?: string;  // links related events
   latencyMs?: number;      // duration when applicable
+  errorCode?: string;      // error classification code (VALIDATION_ERROR, TIMEOUT, etc.)
   meta?: Record<string, unknown>; // arbitrary structured metadata
 }
 

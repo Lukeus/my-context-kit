@@ -13,10 +13,10 @@
     </div>
     
     <!-- Header - Copilot Style -->
-    <header class="flex items-center justify-between gap-3 px-3 py-2 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
+    <header class="flex items-center justify-between gap-3 px-3 py-2 border-b border-outline bg-surface/95 backdrop-blur-sm">
       <!-- Left: Title and Status -->
       <div class="flex items-center gap-2 min-w-0">
-        <h2 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+        <h2 class="text-xs font-semibold text-on-surface uppercase tracking-wide">
           Assistant
         </h2>
         <GatingStatusBadge
@@ -34,34 +34,34 @@
       <div class="flex items-center gap-0.5">
         <button
           v-if="hasSession"
-          class="p-1.5 rounded hover:bg-gray-100 transition-colors"
+          class="p-1.5 rounded-m3-sm hover:bg-surface-variant transition-colors"
           @click="handleNewSession"
           aria-label="New session"
           title="Start new conversation"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5 text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5 text-on-surface-variant">
             <path d="M8.75 3.75a.75.75 0 00-1.5 0v3.5h-3.5a.75.75 0 000 1.5h3.5v3.5a.75.75 0 001.5 0v-3.5h3.5a.75.75 0 000-1.5h-3.5v-3.5z" />
           </svg>
         </button>
         <button
           v-if="hasSession"
-          class="p-1.5 rounded hover:bg-gray-100 transition-colors"
+          class="p-1.5 rounded-m3-sm hover:bg-surface-variant transition-colors"
           @click="handleRefreshCapabilities"
           aria-label="Refresh capabilities"
           title="Refresh"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5 text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5 text-on-surface-variant">
             <path fill-rule="evenodd" d="M13.836 2.477a.75.75 0 01.002 1.06A6.25 6.25 0 102.518 8a.75.75 0 011.5-.013 4.75 4.75 0 109.303-2.424l-.003-.002a.75.75 0 011.518-.084z" clip-rule="evenodd" />
           </svg>
         </button>
         <button
-          class="p-1.5 rounded hover:bg-gray-100 transition-colors"
+          class="p-1.5 rounded-m3-sm hover:bg-surface-variant transition-colors"
           :aria-pressed="showSettings"
           @click="showSettings = !showSettings"
           aria-label="Settings"
           title="Settings"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5 text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5 text-on-surface-variant">
             <path d="M6.955 1.45A.5.5 0 017.452 1h1.096a.5.5 0 01.497.45l.17 1.699a4.97 4.97 0 01.984.506l1.577-.67a.5.5 0 01.598.181l.548.95a.5.5 0 01-.122.58l-1.308 1.143a5.003 5.003 0 010 1.065l1.308 1.143a.5.5 0 01.122.58l-.548.95a.5.5 0 01-.598.181l-1.577-.67a4.97 4.97 0 01-.984.506l-.17 1.699a.5.5 0 01-.497.45H7.452a.5.5 0 01-.497-.45l-.17-1.699a4.973 4.973 0 01-.984-.506l-1.577.67a.5.5 0 01-.598-.181l-.548-.95a.5.5 0 01.122-.58l1.308-1.143a5.003 5.003 0 010-1.065L2.2 4.89a.5.5 0 01-.122-.58l.548-.95a.5.5 0 01.598-.181l1.577.67a4.97 4.97 0 01.984-.506l.17-1.699zM8 10a2 2 0 100-4 2 2 0 000 4z" />
           </svg>
         </button>
@@ -80,18 +80,18 @@
     />
 
     <!-- Tab Navigation - Copilot Style -->
-    <div class="flex items-center border-b border-gray-200 bg-white" v-if="hasSession">
+    <div class="flex items-center border-b border-outline bg-surface" v-if="hasSession">
       <button
         v-for="tab in panelOptions"
         :key="tab.id"
         class="relative px-4 py-2 text-xs font-medium transition-colors"
-        :class="activePanel === tab.id ? 'text-gray-900 bg-gray-50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'"
+        :class="activePanel === tab.id ? 'text-on-surface bg-surface-variant' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant'"
         @click="setActivePanel(tab.id)"
       >
         {{ tab.label }}
         <div
           v-if="activePanel === tab.id"
-          class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+          class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
         />
       </button>
     </div>
@@ -99,7 +99,7 @@
     <!-- Main Content Area - Single Pane -->
     <div class="flex-1 overflow-hidden">
       <!-- Chat View - Copilot Style -->
-      <div v-if="activePanel === 'chat'" class="flex flex-col h-full bg-white">
+      <div v-if="activePanel === 'chat'" class="flex flex-col h-full bg-surface">
         <!-- Transcript -->
         <div class="flex-1 overflow-auto px-3 py-3">
           <TranscriptView
@@ -112,7 +112,7 @@
         </div>
 
         <!-- Message Composer -->
-        <div class="border-t border-gray-200 px-3 py-2 bg-gray-50/50">
+        <div class="border-t border-outline px-3 py-2 bg-surface-variant/50">
           <MessageComposer
             :disabled="!hasSession || isBusy"
             :streaming-enabled="streamingEnabled"

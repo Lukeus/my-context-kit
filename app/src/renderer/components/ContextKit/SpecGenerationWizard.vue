@@ -307,16 +307,16 @@ function handleFinish() {
             </div>
 
             <div v-if="generatedSpec" class="space-y-4">
-              <div class="p-4 rounded-m3-md bg-green-50 border border-green-200">
+              <div class="p-4 rounded-m3-md bg-success-container border border-outline">
                 <div class="flex items-center gap-2">
-                  <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                   </svg>
-                  <p class="text-sm font-medium text-green-900">
+                  <p class="text-sm font-medium text-on-success-container">
                     Spec ID: {{ generatedSpec.spec_id }}
                   </p>
                 </div>
-                <p class="text-xs text-green-700 mt-1">
+                <p class="text-xs text-success mt-1">
                   Generated in {{ generatedSpec.duration_ms }}ms
                 </p>
               </div>
@@ -340,7 +340,7 @@ function handleFinish() {
                   <span
                     v-for="entityId in generatedSpec.related_entities"
                     :key="entityId"
-                    class="px-3 py-1 rounded-m3-full bg-blue-100 text-blue-800 text-sm"
+                    class="px-3 py-1 rounded-m3-full bg-primary-container text-on-primary-container text-sm"
                   >
                     {{ entityId }}
                   </span>

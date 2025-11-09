@@ -65,10 +65,10 @@ const statusTag = computed(() => {
 });
 const statusClasses = computed(() => {
   switch (statusTag.value) {
-    case 'completed': return 'bg-green-100 text-green-800';
-    case 'failed': return 'bg-red-100 text-red-700';
-    case 'migrated': return 'bg-blue-100 text-blue-700';
-    default: return 'bg-amber-100 text-amber-700';
+    case 'completed': return 'bg-success-container text-on-success-container';
+    case 'failed': return 'bg-error-container text-on-error-container';
+    case 'migrated': return 'bg-primary-container text-on-primary-container';
+    default: return 'bg-warning-container text-on-warning-container';
   }
 });
 

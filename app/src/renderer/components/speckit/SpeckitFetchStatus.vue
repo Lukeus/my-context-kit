@@ -47,14 +47,14 @@ const isStale = computed(() => props.summary?.status.stale ?? true);
         <span>Memory: {{ memoryCount }}</span>
       </div>
 
-      <div v-if="warnings.length" class="space-y-1 rounded-m3-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+      <div v-if="warnings.length" class="space-y-1 rounded-m3-md border border-outline bg-warning-container p-3 text-xs text-on-warning-container">
         <div class="font-semibold uppercase tracking-wide">Warnings</div>
         <ul class="list-disc pl-4">
           <li v-for="warning in warnings" :key="warning">{{ warning }}</li>
         </ul>
       </div>
 
-      <div v-if="status?.inProgress" class="rounded-m3-md border border-blue-200 bg-blue-50 px-3 py-2 text-blue-700">
+      <div v-if="status?.inProgress" class="rounded-m3-md border border-outline bg-info-container px-3 py-2 text-info">
         Fetch currently running — refresh once it completes.
       </div>
 
@@ -62,7 +62,7 @@ const isStale = computed(() => props.summary?.status.stale ?? true);
         Cache is older than the freshness window. Fetch again before generating entities.
       </div>
 
-      <div v-else class="rounded-m3-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+      <div v-else class="rounded-m3-md border border-outline bg-success-container px-3 py-2 text-success">
         ✓ Cache is fresh and ready for downstream workflows.
       </div>
     </div>

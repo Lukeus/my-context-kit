@@ -39,6 +39,8 @@ export interface CompleteInvocationPayload {
   finishedAt: string;
   resultSummary?: string;
   metadata?: Record<string, unknown>;
+  // TODO(US4-T056): errorCode populated when status === 'failed'
+  errorCode?: string;
 }
 
 export interface TelemetryWriter {
