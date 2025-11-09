@@ -11,7 +11,7 @@ import { loadProviderConfiguration } from '../../services/providerConfig';
 import { ContextService } from '../../services/ContextService';
 import { createTelemetryWriter } from '../../services/telemetryWriter';
 // US4: integrate error normalization for telemetry errorCode propagation
-import { errorNormalizationAdapter, extractErrorCode } from '@/utils/errorNormalizationAdapter';
+import { errorNormalizationAdapter } from '@/utils/errorNormalizationAdapter';
 import { AssistantSessionManager } from '../../services/assistantSessionManager';
 import { readContextFile } from '../../services/tools/readContextFile';
 import { searchContextRepository } from '../../services/tools/searchContextRepository';
