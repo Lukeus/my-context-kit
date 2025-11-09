@@ -76,7 +76,7 @@ async function handleManualMigration() {
   if (isRunning.value) return;
   isRunning.value = true;
   lastRunErrors.value = [];
-  lastRunSucceeded.value = null;s
+  lastRunSucceeded.value = null;
   try {
     // Rescan legacy store fresh (manual re-run)
     const legacy = scanLegacySessions();
