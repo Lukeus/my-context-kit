@@ -1,6 +1,6 @@
 import type { IpcMainInvokeEvent } from 'electron';
 import { AppError } from '../errors/AppError';
-import { DEFAULT_ERROR_MAP, type NormalizedError } from '@shared/errorNormalization';
+import type { NormalizedError } from '@shared/errorNormalization';
 
 /**
  * Standard IPC result format
