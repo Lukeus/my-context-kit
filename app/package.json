@@ -55,7 +55,7 @@
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.21",
     "electron": "39.0.0",
-    "eslint": "^9.38.0",
+    "eslint": "^9.39.1",
     "eslint-plugin-import": "^2.32.0",
     "glob": "^11.0.3",
     "jsdom": "^25.0.1",
