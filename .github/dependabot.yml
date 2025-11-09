@@ -1,7 +1,7 @@
 version: 2
 updates:
   # Root workspace
-  - package-ecosystem: "npm"
+  - package-ecosystem: "pnpm"
     directory: "/"
     schedule:
       interval: "weekly"
@@ -9,7 +9,7 @@ updates:
     versioning-strategy: increase
 
   # App directory
-  - package-ecosystem: "npm"
+  - package-ecosystem: "pnpm"
     directory: "/app"
     schedule:
       interval: "weekly"
