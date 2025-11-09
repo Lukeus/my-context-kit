@@ -93,7 +93,7 @@
     "openai": "^6.7.0",
     "path-browserify": "^1.0.1",
     "pinia": "^3.0.3",
-    "simple-git": "^3.28.0",
+    "simple-git": "^3.30.0",
     "undici": "^6.19.8",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3",
