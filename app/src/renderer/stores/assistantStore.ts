@@ -33,7 +33,7 @@ import { fetchManifest as fetchCapabilityManifest } from '@/services/sidecar/man
 import { ensureLegacyMigration } from '@/services/assistant/migrationAdapter';
 import { CONCURRENCY_LIMIT } from '@shared/assistant/constants';
 // T054: Error normalization
-import { errorNormalizationAdapter, extractErrorCode } from '@/utils/errorNormalizationAdapter';
+import { errorNormalizationAdapter } from '@/utils/errorNormalizationAdapter';
 import type { NormalizedError } from '@shared/errorNormalization';
 
 function assertAssistantBridge(): typeof window.api.assistant {
