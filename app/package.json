@@ -86,7 +86,7 @@
     "execa": "^9.6.0",
     "faiss-node": "^0.5.1",
     "handlebars": "^4.7.8",
-    "https-proxy-agent": "^6.2.1",
+    "https-proxy-agent": "^7.0.6",
     "langchain": "^1.0.2",
     "marked": "^16.4.1",
     "mermaid": "^11.12.1",
