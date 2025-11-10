@@ -516,6 +516,10 @@ pnpm validate
 4. Test locally with `pnpm start`
 5. Validate changes with `pnpm lint` and `pnpm typecheck`
 
+**Working with Pull Requests:**
+- For combining multiple PRs, see [docs/COMBINING_PULL_REQUESTS.md](./docs/COMBINING_PULL_REQUESTS.md)
+- For release process, see [RELEASING.md](./RELEASING.md)
+
 ## Documentation
 
 - [WARP.md](./WARP.md) - Complete build guide
@@ -523,6 +527,7 @@ pnpm validate
 - [docs/phase6-git-workflow-completion.md](./docs/phase6-git-workflow-completion.md) - Git integration
 - [docs/phase7-cicd-documentation.md](./docs/phase7-cicd-documentation.md) - CI/CD pipeline
 - [docs/merge-protection-setup.md](./docs/merge-protection-setup.md) - Branch protection guide
+- [docs/COMBINING_PULL_REQUESTS.md](./docs/COMBINING_PULL_REQUESTS.md) - Guide to combining multiple PRs
 - [.github/copilot-instructions.md](./.github/copilot-instructions.md) - AI assistant guidelines
 
 ## License
