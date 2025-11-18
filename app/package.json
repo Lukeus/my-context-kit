@@ -57,7 +57,7 @@
     "electron": "39.0.0",
     "eslint": "^9.38.0",
     "eslint-plugin-import": "^2.32.0",
-    "glob": "^11.0.3",
+    "glob": "^11.1.0",
     "jsdom": "^25.0.1",
     "playwright": "^1.56.1",
     "postcss": "^8.5.6",
